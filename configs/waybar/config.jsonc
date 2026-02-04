@@ -1,0 +1,149 @@
+{
+    "layer": "top",
+    "position": "top",
+    "spacing": 4,
+    "modules-left": [
+        "custom/launcher",
+        "hyprland/workspaces",
+    ],
+    "modules-center": [
+        "clock",
+        "custom/privacy-dots"
+    ],
+    "modules-right": [
+		"bluetooth",
+		"network",
+		"pulseaudio",
+		"cpu",
+		"battery"
+    ],
+
+    // [ ==== Modules configuration ==== ]
+    "custom/launcher": {
+        "format": "  ",
+        "on-click": "walker"
+    },
+    "hyprland/workspaces": {
+		"on-click": "activate",
+        "format": "{icon}",
+        "format-icons": {
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "5": "5",
+            "6": "6",
+            "7": "7",
+            "8": "8",
+            "9": "9",
+            "active": "<span>\uf192</span>"
+        },
+        "persistent-workspaces": {
+        	"1": [],
+        	"2": [],
+        	"3": [],
+        	"4": [],
+        	"5": [],
+        }
+        
+    },
+    "keyboard-state": {
+        "numlock": true,
+        "capslock": true,
+        "format": {
+        	"numlock": "N: {icon}",
+        	"capslock": "C: {icon}"
+        },
+        "format-icons": {
+            "locked": "",
+            "unlocked": ""
+        }
+    },
+    "tray": {
+        // "icon-size": 21,
+        "spacing": 10,
+        // "icons": {
+        //   "blueman": "bluetooth",
+        //   "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
+        // }
+    },
+    "clock": {
+        "timezone": "America/Chicago",
+		"format": "{:L%A  %I:%M %p}",
+        "tooltip-format": "<tt><small>{calendar}</small></tt>",
+        "calendar": {
+        	"mode": "month",
+			"format": {
+	        	"today": "<span color='#ffcc66'><b>{}</b></span>"
+			}
+        }
+    },
+    "custom/privacy-dots": {
+    	"exec": "privacy-dots",
+    	"return-type": "json",
+    	"interval": 3,
+    	"format": "{text}",
+    	"tooltip": true,
+    	"escape": false,
+    	"markup": "pango"
+    },
+	"bluetooth": {
+		"format": "",
+		"format-off": "󰂲",
+	    "format-disabled": "󰂲",
+	    "format-connected": "󰂱",
+	    "format-no-controller": "",
+	    "tooltip-format": "Devices connected: {num_connections}",
+	    "on-click": "$TERM --class=com.joelsgc.bluepala -e bluepala"
+	},
+	"network": {
+	    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+	    "format": "{icon}",
+	    "format-wifi": "{icon}",
+	    "format-ethernet": "󰀂",
+	    "format-disconnected": "󰤮",
+	    "tooltip-format-wifi": "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+	    "tooltip-format-ethernet": "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+	    "tooltip-format-disconnected": "Disconnected",
+	    "interval": 3,
+	    "spacing": 1,
+	    "on-click": "$TERM --class=com.joelsgc.netpala -e netpala"
+	},
+	"pulseaudio": {
+	  "format": "{icon}",
+	  "on-click": "$TERM --class=com.joelsgc.floating -e pulseaudio",
+	  "on-click-right": "pamixer -t",
+	  "tooltip-format": "Playing at {volume}%",
+	  "scroll-step": 5,
+	  "format-muted": "",
+	  "format-icons": {
+	    "headphone": "",
+	    "default": ["", "", ""]
+	  }
+	},
+	"cpu": {
+	  "interval": 5,
+	  "format": "󰍛",
+	  "on-click": "$TERM --class=com.joelsgc.floating -e btop",
+	  "on-click-right": "alacritty"
+	},
+	"battery": {
+	  "format": "{capacity}% {icon}",
+	  "format-discharging": "{icon}",
+	  "format-charging": "{icon}",
+	  "format-plugged": "",
+	  "format-icons": {
+	    "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
+	    "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+	  },
+	  "format-full": "󰂅",
+	  "tooltip-format-discharging": "{power:>1.0f}W↓ {capacity}%",
+	  "tooltip-format-charging": "{power:>1.0f}W↑ {capacity}%",
+	  "interval": 5,
+	  "on-click": "omarchy-menu power",
+	  "states": {
+	    "warning": 20,
+	    "critical": 10
+	  }
+	},
+}

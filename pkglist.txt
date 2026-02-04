@@ -1,0 +1,58 @@
+# 01: Base OS
+---
+UI: 
+	- hyprland
+	- hyprpaper
+	- waybar
+	- sddm
+		- fprintd (Fingerprint login)
+		- gnome-keyring (Password keyring)
+			- seahorse (To set the password to blank)
+		- libsecret (IDK)
+
+Wifi:
+	- NetworkManager
+	- WPA_Supplicant
+	
+Utils:
+	- base
+	- base-devel
+	- yay
+	- yay-debug
+	- zram-generator
+
+# 02: Desktop Environment
+---
+alacritty
+walker
+privacy-dots
+gtk4
+gtk4-layer-shell
+poppler-glib
+pulseaudio
+
+# 03: Fonts
+---
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd
+woff2-font-awesome
+
+# 04: Tools
+---
+git
+micro
+unzip
+zen-browser-bin
+Netpala
+Bluepala
+btop
+pulseaudio
+Walker
+	- elephant
+	- elephant-calc
+	- elephant-clipboard
+	- elephant-desktopapplications
+	- elephant-files
+	- elephant-providerlist
+	- elephant-runner
+	- elephant-symbols
