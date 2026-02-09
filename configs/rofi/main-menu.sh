@@ -13,10 +13,10 @@ choice=$(printf \
 case "$choice" in
 	*Programs*) rofi -show drun -p "Launch..." -lines 10 -no-fixed-num-lines -i;;
 	*Actions*) echo 2;;
-	*Settings*) echo 3;;
+	*Settings*) exec ~/coelOS-dotfiles/configs/rofi/settings.sh;;
 	*Install*) echo 4;;
 	*Uninstall*) echo 5;;
 	*Update*) echo 6;;
 	*About*) echo 7;;
-	*System*) ./power.sh;;
+	*System*) exec ~/coelOS-dotfiles/configs/rofi/power.sh;;
 esac

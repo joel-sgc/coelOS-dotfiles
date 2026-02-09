@@ -52,12 +52,5 @@ Bluepala
 btop
 pulseaudio
 eza (ls replacement)
-Walker
-	- elephant
-	- elephant-calc
-	- elephant-clipboard
-	- elephant-desktopapplications
-	- elephant-files
-	- elephant-providerlist
-	- elephant-runner
-	- elephant-symbols
+fastfetch (neofetch replacement)
+rofi (Walker replacement)
