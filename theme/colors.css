@@ -1,0 +1,4 @@
+@define-color base #262626;		/* Background */
+@define-color text #d4d4d4;		/* Foreground */
+@define-color accent #7acdcd;	/* Primary Color */
+@define-color urgent #ff99da;	/* Secondary Color / Alert */

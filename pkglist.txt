@@ -2,6 +2,8 @@
 ---
 UI: 
 	- hyprland
+	- hyprlock
+		- hypridle
 	- hyprpaper
 	- waybar
 	- sddm
@@ -9,6 +11,7 @@ UI:
 		- gnome-keyring (Password keyring)
 			- seahorse (To set the password to blank)
 		- libsecret (IDK)
+		- https://github.com/JaKooLit/simple-sddm-2/
 
 Wifi:
 	- NetworkManager
@@ -33,6 +36,7 @@ pulseaudio
 
 # 03: Fonts
 ---
+Monoid - Larsenwork (Main system font)
 noto-fonts-emoji
 ttf-jetbrains-mono-nerd
 woff2-font-awesome
@@ -47,6 +51,7 @@ Netpala
 Bluepala
 btop
 pulseaudio
+eza (ls replacement)
 Walker
 	- elephant
 	- elephant-calc

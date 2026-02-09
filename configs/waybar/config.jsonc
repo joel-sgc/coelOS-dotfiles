@@ -1,9 +1,14 @@
 {
     "layer": "top",
-    "position": "top",
+    "exclusive": true,
+    "height": 40,
+	"margin-left": 32,
+	"margin-right": 32,
+	"margin-top": 16,
     "spacing": 4,
     "modules-left": [
         "custom/launcher",
+        "custom/separator",
         "hyprland/workspaces",
     ],
     "modules-center": [
@@ -18,10 +23,12 @@
 		"battery"
     ],
 
-    // [ ==== Modules configuration ==== ]
     "custom/launcher": {
         "format": "  ",
         "on-click": "walker"
+    },
+    "custom/separator": {
+    	"format": "|"	
     },
     "hyprland/workspaces": {
 		"on-click": "activate",
@@ -69,12 +76,15 @@
     },
     "clock": {
         "timezone": "America/Chicago",
-		"format": "{:L%A  %I:%M %p}",
-        "tooltip-format": "<tt><small>{calendar}</small></tt>",
+		"format": "{:L%A @ %I:%M %p}",
+        "tooltip-format": "{calendar}",
         "calendar": {
         	"mode": "month",
 			"format": {
-	        	"today": "<span color='#ffcc66'><b>{}</b></span>"
+				"months": "<span color='#d4d4d4'><b>{}</b></span>\n--------------------",
+				"days": "<span color='#d4d4d4'><b>{}</b></span>",
+	        	"weekdays": "<span color='#ff99da'><b>{}</b></span>",
+	        	"today": "<span color='#7acdcd'><b>{}</b></span>"
 			}
         }
     },

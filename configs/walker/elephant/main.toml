@@ -1,0 +1,43 @@
+name = "main"
+name_pretty = "main"
+global_search = true
+
+[[entries]]
+text = "Programs"
+action = "runner:run"
+exec = "walker -m desktopapplications"
+
+[[entries]]
+text = "Actions"
+action = "runner:run"
+exec = "walker -m menus:trigger"
+
+[[entries]]
+text = "Settings"
+action = "runner:run"
+exec = "walker -m menus:settings"
+
+[[entries]]
+text = "Install"
+action = "runner:run"
+exec = "walker -m menus:install"
+
+[[entries]]
+text = "Uninstall"
+action = "runner:run"
+exec = "walker -m menus:uninstall"
+
+[[entries]]
+text = "Update"
+action = "runner:run"
+exec = "walker -m menus:update"
+
+[[entries]]
+text = "About"
+action = "runner:run"
+exec = "walker -m menus:about"
+
+[[entries]]
+text = "System"
+action = "runner:run"
+exec = "walker -m menus:system"
