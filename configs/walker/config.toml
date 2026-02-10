@@ -1,4 +1,0 @@
-[providers]
-default = ["menus:main"]
-empty = ["menus:main"]
-

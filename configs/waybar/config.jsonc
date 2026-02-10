@@ -13,6 +13,7 @@
     ],
     "modules-center": [
         "clock",
+        "custom/screenrecording-indicator",
         "custom/privacy-dots"
     ],
     "modules-right": [
@@ -54,18 +55,6 @@
         }
         
     },
-    "keyboard-state": {
-        "numlock": true,
-        "capslock": true,
-        "format": {
-        	"numlock": "N: {icon}",
-        	"capslock": "C: {icon}"
-        },
-        "format-icons": {
-            "locked": "",
-            "unlocked": ""
-        }
-    },
     "tray": {
         // "icon-size": 21,
         "spacing": 10,
@@ -87,6 +76,12 @@
 	        	"today": "<span color='#7acdcd'><b>{}</b></span>"
 			}
         }
+    },
+    "custom/screenrecording-indicator": {
+    	"on-click": "~/.coelOS-dotfiles/bin/screenrecord.sh",
+    	"exec": "~/.coelOS-dotfiles/bin/screenrecording-indicator.sh",
+    	"signal": 8,
+    	"return-type": "json"
     },
     "custom/privacy-dots": {
     	"exec": "privacy-dots",
@@ -117,11 +112,11 @@
 	    "tooltip-format-disconnected": "Disconnected",
 	    "interval": 3,
 	    "spacing": 1,
-	    "on-click": "$TERM --class=com.joelsgc.netpala -e netpala"
+	    "on-click": "alacritty --class=com.joelsgc.netpala -e netpala"
 	},
 	"pulseaudio": {
 	  "format": "{icon}",
-	  "on-click": "$TERM --class=com.joelsgc.floating -e pulseaudio",
+	  "on-click": "$TERM --class=com.joelsgc.floating -e wiremix",
 	  "on-click-right": "pamixer -t",
 	  "tooltip-format": "Playing at {volume}%",
 	  "scroll-step": 5,
@@ -134,7 +129,7 @@
 	"cpu": {
 	  "interval": 5,
 	  "format": "󰍛",
-	  "on-click": "$TERM --class=com.joelsgc.floating -e btop",
+	  "on-click": "alacritty --class=com.joelsgc.floating -e btop",
 	  "on-click-right": "alacritty"
 	},
 	"battery": {

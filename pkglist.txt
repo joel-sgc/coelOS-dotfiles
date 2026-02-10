@@ -26,13 +26,12 @@ Utils:
 
 # 02: Desktop Environment
 ---
-alacritty
-walker
+rofi
 privacy-dots
 gtk4
 gtk4-layer-shell
 poppler-glib
-pulseaudio
+pipewire
 
 # 03: Fonts
 ---
@@ -50,7 +49,32 @@ zen-browser-bin
 Netpala
 Bluepala
 btop
-pulseaudio
 eza (ls replacement)
 fastfetch (neofetch replacement)
 rofi (Walker replacement)
+gum (For installer UI)
+fzf (For installer UI)
+pipewire / pulseaudio
+	- wiremix (Audio management)
+power-profiles-daemon
+	- python-gobject (Dependency)
+
+# 05: Specific cases
+---
+Screenshots
+	- wayfreeze
+	- grim
+	- slurp
+	- jq
+	- satty
+	- wl-copy
+	- libnotify
+		- mako
+
+Screen Recordings
+	- gpu-screen-recorder
+	- v4l-utils
+	- xdg-desktop-portal-hyprland
+
+Color picker
+	- hyprpicker

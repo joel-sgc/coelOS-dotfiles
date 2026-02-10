@@ -1,4 +1,4 @@
-@import "/home/joelsgc/coelOS-dotfiles/theme/colors.css";
+@import "/home/joelsgc/.coelOS-dotfiles/theme/colors.css";
 
 * {
     /* `otf-font-awesome` is required to be installed for icons */
@@ -30,7 +30,7 @@ tooltip {
 
 #custom-launcher {
 	font-size: 16px;
-	background-image: url('/home/joelsgc/coelOS-dotfiles/Coel.svg');
+	background-image: url('/home/joelsgc/.coelOS-dotfiles/Coel.svg');
 	background-position: center;
 	background-repeat: no-repeat;
 	background-size: contain;
