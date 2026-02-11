@@ -33,7 +33,7 @@ pacman_packages=(
 	gum
 	fzf
 	wiremix
-	power-profiles-daemom
+	power-profiles-daemon
 	python-gobject
 	grim
 	slurp
@@ -78,10 +78,11 @@ ln -s ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
 ln -s ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf #hyprlock
 ln -s ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf #hypridle
 
+mkdir -p ~/.config/rofi/theme
 ln -s ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi #rofi
 ln -s ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/themes/coel-theme.rasi #rofi
 
-ln -s ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf #sddm
+sudo ln -s ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf #sddm
 
 ln -s ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc #Fastfetch
 
@@ -91,7 +92,7 @@ sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css
 
 # Services
 sudo systemctl enable --now NetworkManager
-sudo systemctl enable sddm
+sudo systemctl enable --now sddm
 sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
