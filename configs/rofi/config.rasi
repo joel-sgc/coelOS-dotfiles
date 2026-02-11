@@ -1,4 +1,4 @@
-@theme "themes/coel-theme"
+@theme "theme/coel-theme"
 
 configuration {
 	font: "JetBrainsMono Nerd Font Mono";

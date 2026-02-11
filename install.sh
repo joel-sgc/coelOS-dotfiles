@@ -80,7 +80,7 @@ ln -s ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf
 
 mkdir -p ~/.config/rofi/theme
 ln -s ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi #rofi
-ln -s ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/themes/coel-theme.rasi #rofi
+ln -s ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi #rofi
 
 sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
 sudo setfacl -m u:sddm:x ~
@@ -100,3 +100,7 @@ sudo systemctl enable --now sddm
 sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
+
+# Fonts
+cp ~/.coelOS-dotfiles/fonts/*.ttf ~/.local/share/fonts
+fc-cache -fv
