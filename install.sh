@@ -102,5 +102,6 @@ sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
 
 # Fonts
+mkdir -p ~/.local/share/fonts
 cp ~/.coelOS-dotfiles/fonts/*.ttf ~/.local/share/fonts
 fc-cache -fv
