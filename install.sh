@@ -27,14 +27,13 @@ pacman_packages=(
 	git
 	micro
 	unzip
-	zen-browser-bin
 	btop
 	eza
 	fastfetch
 	gum
 	fzf
 	wiremix
-	power-profiles-daemomn
+	power-profiles-daemom
 	python-gobject
 	grim
 	slurp
@@ -50,11 +49,10 @@ pacman_packages=(
 )
 
 aur_packages=(
-	pricacy-dots
+	privacy-dots
 	zen-browser-bin
 	netpala
 	bluepala
-	woff2-font-awesome
 	wayfreeze-git
 )
 
@@ -74,6 +72,8 @@ mkdir -p ~/Pictures ~/Videos
 echo "%group_name ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown" | sudo EDITOR='tee -a' visudo
 
 # Syslinks
+mkdir -p ~/.config/{hypr,rofi,fastfetch,waybar}
+
 ln -s ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf #hyprland
 ln -s ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf #hyprlock
 ln -s ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf #hypridle
@@ -87,3 +87,11 @@ ln -s ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/c
 
 sudo ln -s ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.json #waybar
 sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css #waybar
+
+
+# Services
+sudo systemctl enable --now NetworkManager
+sudo systemctl enable sddm
+sudo systemctl enable --now gnome-keyring-daemon.service
+sudo systemctl enable --now power-profiles-daemon
+sudo systemctl enable --now fprintd
