@@ -26,6 +26,7 @@
 
     "custom/launcher": {
         "format": "  ",
+        "tooltip": false,
         "on-click": "walker"
     },
     "custom/separator": {

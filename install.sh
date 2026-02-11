@@ -30,6 +30,7 @@ pacman_packages=(
 	btop
 	eza
 	fastfetch
+	less
 	gum
 	fzf
 	wiremix
@@ -101,7 +102,41 @@ sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
 
+## Disable systemd-networkd
+sudo systemctl disable --now systemd-networkd.service
+sudo systemctl disable --now systemd-networkd-wait-online.service
+sudo systemctl mask systemd-networkd.service
+sudo systemctl mask systemd-networkd-wait-online.service
+
+# networkmanager config
+sudo mkdir -p /etc/NetworkManager/conf.d
+sudo ln -s ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/NetworkManager/conf.d/wifi-backend.conf
+
+sudo systemctl restart NetworkManager
+
+
 # Fonts
 mkdir -p ~/.local/share/fonts
 cp ~/.coelOS-dotfiles/fonts/*.ttf ~/.local/share/fonts
 fc-cache -fv
+
+# Remove random .desktop files
+usrdesktops=(
+	btop
+	avahi-discover
+	bssh
+	bvnc
+	qv4l2
+	qvidcao
+	rofi
+	rofi-theme-selector
+	wiremix
+	xgps
+	xgpsspeed
+)
+
+for app in "${usrdesktops[@]}"; do
+	sudo rm -rf "/usr/share/applications/${app}.desktop"done
+
+# Alias
+alias ls='eza -l --header'
