@@ -136,7 +136,8 @@ usrdesktops=(
 )
 
 for app in "${usrdesktops[@]}"; do
-	sudo rm -rf "/usr/share/applications/${app}.desktop"done
+	sudo rm -rf "/usr/share/applications/${app}.desktop"
+done
 
 # Alias
 alias ls='eza -l --header'
