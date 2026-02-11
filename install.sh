@@ -82,11 +82,15 @@ mkdir -p ~/.config/rofi/theme
 ln -s ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi #rofi
 ln -s ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/themes/coel-theme.rasi #rofi
 
+sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
+sudo setfacl -m u:sddm:x ~
 sudo ln -s ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf #sddm
+sudo ln -s ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm #sddm
 
 ln -s ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc #Fastfetch
 
-sudo ln -s ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.json #waybar
+sudo rm -rf /etc/xdg/waybar/*
+sudo ln -s ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.jsonc #waybar
 sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css #waybar
 
 
