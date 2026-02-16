@@ -4,9 +4,10 @@ sudo pacman -Syu --noconfirm
 
 pacman_packages=(
 	hyprland
-	hyprlock 
 	hypridle 
 	hyprpaper 
+	hyprlock 
+	swayidle
 	waybar 
 	sddm 
 	fprintd 
@@ -94,10 +95,12 @@ sudo rm -rf /etc/xdg/waybar/*
 sudo ln -s ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.jsonc #waybar
 sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css #waybar
 
+mkdir -p ~/.config/alacritty #alacritty
+ln -s ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml #alacritty
 
 # Services
 sudo systemctl enable --now NetworkManager
-sudo systemctl enable --now sddm
+# sudo systemctl enable --now sddm
 sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
@@ -114,7 +117,6 @@ sudo ln -s ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/Netw
 
 sudo systemctl restart NetworkManager
 
-
 # Fonts
 mkdir -p ~/.local/share/fonts
 cp ~/.coelOS-dotfiles/fonts/*.ttf ~/.local/share/fonts
@@ -127,7 +129,7 @@ usrdesktops=(
 	bssh
 	bvnc
 	qv4l2
-	qvidcao
+	qvidcap
 	rofi
 	rofi-theme-selector
 	wiremix
@@ -140,4 +142,5 @@ for app in "${usrdesktops[@]}"; do
 done
 
 # Alias
-alias ls='eza -l --header'
+sed -i "/alias ls=/d" ~/.bashrc
+echo "alias ls='eza -l --header'" >> ~/.bashrc

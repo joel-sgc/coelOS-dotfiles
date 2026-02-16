@@ -2,4 +2,8 @@
 
 configuration {
 	font: "JetBrainsMono Nerd Font Mono";
+
+	disable-history: true;
+	disable-sort: false;
+	matching: "normal";
 }

@@ -20,5 +20,5 @@ case "$choice" in
 	*Keybindings*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/keybindings.conf;;
 	*Input*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/input.conf;;
 	*Fingerprint*) echo 7;;
-	*Config*) exec ~/.coelOS-dotfiles/configs/rofi/power.sh;;
+	*Config*) exec ~/.coelOS-dotfiles/configs/rofi/config.sh;;
 esac

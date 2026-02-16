@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.0
 import SddmComponents 2.0
+
 import QtQuick.Effects
 
 Rectangle {
@@ -304,6 +305,17 @@ Rectangle {
                 }
             }
         }
+
+		Text {
+			text: " Enter Password 󰈷 "
+			color: config.stringValue("placeholderColor")
+			font.pointSize: 25
+			anchors.centerIn: parent
+			horizontalAlignment: Text.HAlignCenter
+			verticalAlignment: Text.VAlignCenter
+			visible: passwordInput.text.length === 0
+		}
+        
         UsersChoose {
             id: username
             text: currentUsername
