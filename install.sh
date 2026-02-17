@@ -18,6 +18,8 @@ pacman_packages=(
 	zram-generator
 	alacritty
 	rofi
+	wl-clipboard
+	clipvault
 	gtk4
 	gtk4-layer-shell
 	poppler-glib
@@ -41,7 +43,6 @@ pacman_packages=(
 	slurp
 	jq
 	satty
-	wl-clipboard
 	mako
 	libnotify
 	gpu-screen-recorder
@@ -118,8 +119,8 @@ sudo ln -s ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/Netw
 sudo systemctl restart NetworkManager
 
 # Fonts
-mkdir -p ~/.local/share/fonts
-cp ~/.coelOS-dotfiles/fonts/*.ttf ~/.local/share/fonts
+mkdir -p /usr/share/fonts
+cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts
 fc-cache -fv
 
 # Remove random .desktop files

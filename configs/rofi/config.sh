@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 choice=$(printf \
-"   Hyprland\n\
-   Hyprpaper\n\
-   Hyprlock\n\
-   Hypridle\n\
-   Autostart\n\
-   Window Rules\n\
- 󰤆  Look & Feel\n\
-    Waybar" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
+"   Hyprland\n\
+   Hyprpaper\n\
+   Hyprlock\n\
+   Hypridle\n\
+ 󱓞  Autostart\n\
+ 󱂬  Window Rules\n\
+ 󰏘  Look & Feel\n\
+ 󰌧  Waybar" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
 
 case "$choice" in
 	*Hyprland*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/hyprland.conf;;

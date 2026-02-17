@@ -14,16 +14,26 @@ window {
 	border-color: @urgent;
 	padding: 48px;
 	background-color: #262626cc;
-
 }
 
-mainbox, listview, element, element-text, entry {
+wrap {
+	expand: false;
+	children: [inputbar];
+}
+
+mainbox, listview, element, element-text, entry, wrap, listview-split, icon-current-entry {
 	background-color: transparent;
 }
 
 listview {
 	spacing: 16px;
 	padding: 16px 0 0 0;
+}
+
+listview-split {
+	orientation: horizontal;
+	spacing: 24px;
+	children: [listview, icon-current-entry];
 }
 
 element {
@@ -38,6 +48,15 @@ element-text selected {
 	text-color: @urgent;
 }
 
+element-icon {
+	size: 0px;
+}
+
+icon-current-entry {
+	expand: false;
+	size: 50%;
+}
+
 inputbar {
 	padding: 12px;
 	children: [ entry ];
@@ -48,4 +67,10 @@ entry {
 	placeholder: "Go...";
 	placeholder-color: @text;
 	text-color: @text;
+}
+
+@media ( enabled: env(PREVIEW, false)) {
+	window {
+		children: [wrap, listview-split];
+	}
 }

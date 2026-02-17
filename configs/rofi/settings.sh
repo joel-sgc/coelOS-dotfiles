@@ -8,7 +8,7 @@ choice=$(printf \
  󰍹  Monitors\n\
    Keybindings\n\
  󰍽  Input\n\
-   Fingerprint\n\
+ 󰈷  Fingerprint\n\
    Config\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Settings")
 
 case "$choice" in
