@@ -134,10 +134,10 @@
 	  "on-click-right": "alacritty"
 	},
 	"battery": {
-	  "format": "{capacity}% {icon}",
-	  "format-discharging": "{icon}",
-	  "format-charging": "{icon}",
-	  "format-plugged": "",
+	  "format": "{capacity}% {icon}  ",
+	  "format-discharging": "{icon}  ",
+	  "format-charging": "{icon}  ",
+	  "format-plugged": "  ",
 	  "format-icons": {
 	    "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
 	    "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
