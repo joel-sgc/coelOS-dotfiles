@@ -101,7 +101,6 @@ ln -s ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/al
 
 # Services
 sudo systemctl enable --now NetworkManager
-# sudo systemctl enable --now sddm
 sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
@@ -119,8 +118,8 @@ sudo ln -s ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/Netw
 sudo systemctl restart NetworkManager
 
 # Fonts
-mkdir -p /usr/share/fonts
-cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts
+sudo mkdir -p /usr/share/fonts
+sudo cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts
 fc-cache -fv
 
 # Remove random .desktop files
@@ -145,3 +144,6 @@ done
 # Alias
 sed -i "/alias ls=/d" ~/.bashrc
 echo "alias ls='eza -l --header'" >> ~/.bashrc
+
+# Finally, enable sddm and go to desktop environment
+sudo systemctl enable --now sddm
