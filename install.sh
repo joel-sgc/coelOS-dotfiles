@@ -19,7 +19,6 @@ pacman_packages=(
 	alacritty
 	rofi
 	wl-clipboard
-	clipvault
 	gtk4
 	gtk4-layer-shell
 	poppler-glib
@@ -57,6 +56,7 @@ aur_packages=(
 	netpala
 	bluepala
 	wayfreeze-git
+	clipvault
 )
 
 # Install all required pacman packages
