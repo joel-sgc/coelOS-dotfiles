@@ -100,7 +100,7 @@
 	    "format-connected": "󰂱",
 	    "format-no-controller": "",
 	    "tooltip-format": "Devices connected: {num_connections}",
-	    "on-click": "$TERM --class=com.joelsgc.bluepala -e bluepala"
+	    "on-click": "alacritty --class=com.joelsgc.bluepala -e bluepala"
 	},
 	"network": {
 	    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
@@ -117,7 +117,7 @@
 	},
 	"pulseaudio": {
 	  "format": "{icon}",
-	  "on-click": "$TERM --class=com.joelsgc.floating -e wiremix",
+	  "on-click": "alacritty --class=com.joelsgc.floating -e wiremix",
 	  "on-click-right": "pamixer -t",
 	  "tooltip-format": "Playing at {volume}%",
 	  "scroll-step": 5,

@@ -48,6 +48,8 @@ pacman_packages=(
 	v4l-utils
 	xdg-desktop-portal-hyprland
 	hyprpicker
+	code
+	github-cli
 )
 
 aur_packages=(
@@ -80,6 +82,7 @@ mkdir -p ~/.config/{hypr,rofi,fastfetch,waybar}
 ln -s ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf #hyprland
 ln -s ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf #hyprlock
 ln -s ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf #hypridle
+ln -s ~/.coelOS-dotfiles/configs/hypr/hyprpaper.conf ~/.config/hypr/hyprpaper.conf #hypridle
 
 mkdir -p ~/.config/rofi/theme
 ln -s ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi #rofi
