@@ -27,7 +27,7 @@
     "custom/launcher": {
         "format": "  ",
         "tooltip": false,
-        "on-click": "walker"
+        "on-click": "~/.coelOS-dotfiles/configs/rofi/main-menu.sh"
     },
     "custom/separator": {
     	"format": "|"	
