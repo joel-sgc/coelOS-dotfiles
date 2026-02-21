@@ -125,10 +125,11 @@ fi
 
 # Suspend & Powerbutton
 sudo mkdir -p /etc/systemd/logind.conf.d/
-sudo ln -s ~/.coelOS-dotfiles/configs/logind-power.conf /etc/systemd/logind.conf.d/10-powerkey.conf
-sudo systemctl mask poweroff.target
-sudo systemctl mask reboot.target
-sudo systemctl restart systemd-logind
+sudo mkdir -p /etc/udev/hwdb.d/
+sudo ln -s ~/.coelOS-dotfiles/configs/power/logind-power.conf /etc/systemd/logind.conf.d/10-power.conf
+sudo ln -s ~/.coelOS-dotfiles/configs/power/70-framework-power.hwdb /etc/udev/hwdb.d/70-framework-power.hwdb
+sudo systemd-hwdb update
+sudo udevadm trigger
 
 # Services
 sudo systemctl enable --now NetworkManager

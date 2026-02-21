@@ -1,0 +1,2 @@
+evdev:name:Power Button:phys:LNXPWRBN/button/input0*
+ KEYBOARD_KEY_01=f15
