@@ -1,0 +1,27 @@
+{
+  "policies": {
+    "SearchEngines": {
+      "Add": [
+        {
+          "Name": "YouTube",
+          "URLTemplate": "https://www.youtube.com/results?search_query={searchTerms}",
+          "Method": "GET",
+          "IconURL": "https://www.youtube.com/favicon.ico",
+          "Alias": "y",
+          "Description": "Search YouTube"
+        }
+      ]
+    },
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
+    "DisableAccounts": true,
+    "DisableFormHistory": true,
+    "DisplayBookmarksToolbar": "never",
+    "Preferences": {
+      "browser.tabs.warnOnClose": false,
+      "privacy.trackingprotection.enabled": true,
+      "privacy.donottrackheader.enabled": true
+    }
+  }
+}

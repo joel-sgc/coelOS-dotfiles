@@ -187,5 +187,12 @@ if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
   echo 'eval "$(starship init bash)"' >> ~/.bashrc
 fi
 
+# --- Zen Browser Setup ---
+zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
+
+sudo mkdir -p /etc/zen/policies
+sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/user.js
+sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
+
 # --- Finalize ---
 sudo systemctl enable --now sddm

@@ -29,9 +29,9 @@ Each phase builds on the previous one.
 - [x] Touchpad scrolling feels correct
 - [x] Touchpad disable-while-typing works
 - [ ] External mouse behaves correctly
-- [ ] Laptop lid close suspends the system
-- [ ] Power button performs expected action
-- [ ] Resume from sleep works reliably
+- [x] Laptop lid close suspends the system
+- [x] Power button performs expected action
+- [x] Resume from sleep works reliably
 
 If this phase is incomplete, the system will always feel broken.
 
