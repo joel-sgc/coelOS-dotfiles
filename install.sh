@@ -1,183 +1,191 @@
 #!/bin/bash
 
+# --- Update System ---
 sudo pacman -Syu --noconfirm
 
 pacman_packages=(
-	hyprland
-	hypridle 
-	hyprpaper 
-	hyprlock 
-	swayidle
-	waybar 
-	sddm 
-	polkit
-	polkit-kde-agent
-	fprintd 
-	libfprint
-	pam
-	gnome-keyring 
-	networkmanager
-	base
-	base-devel
-	zram-generator
-	alacritty
-	rofi
-	wl-clipboard
-	gtk4
-	gtk4-layer-shell
-	poppler-glib
-	pipewire
-	pipewire-alsa
-	pipewire-pulse
-	wireplumber
-	noto-fonts-emoji
-	ttf-jetbrains-mono-nerd
-	woff2-font-awesome
-	git
-	micro
-	unzip
-	btop
-	eza
-	fastfetch
-	less
-	gum
-	fzf
-	wiremix
-	power-profiles-daemon
-	python-gobject
-	grim
-	slurp
-	jq
-	satty
-	mako
-	libnotify
-	gpu-screen-recorder
-	v4l-utils
-	xdg-desktop-portal-hyprland
-	hyprpicker
-	code
-	github-cli
+  # --- Core System & Hardware ---
+  base
+  base-devel
+  fprintd                  # Fingerprint daemon
+  libfprint                # Fingerprint library
+  networkmanager
+  power-profiles-daemon    # Power management
+  zram-generator           # Optimized swap
+
+  # --- Wayland & Hyprland Core ---
+  hyprland
+  hypridle
+  hyprlock
+  hyprpaper
+  hyprpicker
+  sddm                     # Login manager
+  swayidle
+  waybar                   # Status bar
+  xdg-desktop-portal-hyprland
+
+  # --- Auth & Security ---
+  gnome-keyring
+  pam
+  polkit
+  polkit-kde-agent
+
+  # --- Audio & Media ---
+  pipewire
+  pipewire-alsa
+  pipewire-pulse
+  wireplumber
+  wiremix
+  v4l-utils                # Video4Linux tools
+
+  # --- Terminal & Shell Tools ---
+  alacritty
+  btop
+  eza                      # Modern 'ls'
+  fastfetch
+  fzf
+  gum                      # Script interactivity
+  less
+  micro                    # Text editor
+  unzip
+  wl-clipboard
+  starship                 # Fast, customizable shell prompt
+
+  # --- Development ---
+  code                     # VS Code
+  git
+  github-cli
+  jq                       # JSON processor
+  python-gobject
+
+  # --- UI, Menus & Notifications ---
+  gtk4
+  gtk4-layer-shell
+  libnotify
+  mako                     # Notification daemon
+  rofi                     # Application launcher / Power menu
+  poppler-glib
+
+  # --- Graphics & Screenshots ---
+  gpu-screen-recorder
+  grim                     # Screenshot tool
+  slurp                    # Region selector
+  satty                    # Screenshot annotation
+
+  # --- Fonts ---
+  noto-fonts-emoji
+  ttf-jetbrains-mono-nerd
+  woff2-font-awesome
 )
 
 aur_packages=(
-	privacy-dots
-	zen-browser-bin
-	netpala
-	bluepala
-	wayfreeze-git
-	clipvault
+  bluepala                 # Bluetooth TUI
+  clipvault                # Clipboard manager
+  netpala                  # Network TUI
+  privacy-dots             # Camera/Mic indicators
+  wayfreeze-git            # Screen freeze tool
+  zen-browser-bin
 )
 
-# Install all required pacman packages
+# --- Install Pacman Packages ---
 sudo pacman -S --needed "${pacman_packages[@]}" --noconfirm
 
-# Install yay utility
-sudo pacman -S --needed git base-devel && git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si
+# --- Install Yay (AUR Helper) ---
+if ! command -v yay &> /dev/null; then
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin && makepkg -si --noconfirm
+    cd .. && rm -rf yay-bin
+fi
 
-# Install all yay packages
 yay -S --needed "${aur_packages[@]}" --noconfirm
 
-# Create Pictures and Videos directories for screenshots and screenrecordings
-mkdir -p ~/Pictures ~/Videos
+# --- Directory Setup ---
+mkdir -p ~/Pictures ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty}
 
-sudo visudo -cf /etc/sudoers && \
-sudo grep -Fxq "$LINE" /etc/sudoers || \
-echo "%group_name ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown, /sbin/suspend" | sudo EDITOR='tee -a' visudo
+# --- Sudoers NOPASSWD for Power Actions ---
+# This checks if the specific poweroff permission exists before adding it
+SUDO_LINE="%wheel ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown, /sbin/suspend"
+sudo grep -qxF "$SUDO_LINE" /etc/sudoers || echo "$SUDO_LINE" | sudo EDITOR='tee -a' visudo
 
-# Syslinks
-mkdir -p ~/.config/{hypr,rofi,fastfetch,waybar}
+# --- Symlinks (Using -sf to allow overwriting/updating) ---
+ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
+ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf
+ln -sf ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf
+ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprpaper.conf ~/.config/hypr/hyprpaper.conf
+ln -sf ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi
+ln -sf ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi
+ln -sf ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc
+ln -sf ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 
-ln -s ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf #hyprland
-ln -s ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf #hyprlock
-ln -s ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf #hypridle
-ln -s ~/.coelOS-dotfiles/configs/hypr/hyprpaper.conf ~/.config/hypr/hyprpaper.conf #hypridle
-
-mkdir -p ~/.config/rofi/theme
-ln -s ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi #rofi
-ln -s ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi #rofi
-
+# --- SDDM Setup ---
+# Permissions for SDDM to access themes in your home dir
 sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
 sudo setfacl -m u:sddm:x ~
-sudo ln -s ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf #sddm
-sudo ln -s ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm #sddm
+sudo ln -sf ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf
+sudo ln -sf ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm
 
-ln -s ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc #Fastfetch
-
+# --- Waybar System-wide Symlinks ---
 sudo rm -rf /etc/xdg/waybar/*
-sudo ln -s ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.jsonc #waybar
-sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css #waybar
+sudo ln -sf ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.jsonc
+sudo ln -sf ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css
 
-mkdir -p ~/.config/alacritty #alacritty
-ln -s ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml #alacritty
-
-# Fingerprint
+# --- Fingerprint & Polkit ---
 sudo cp ~/.coelOS-dotfiles/configs/polkit-fprint.rules /etc/polkit-1/rules.d/50-fprint.rules
 sudo chown root:root /etc/polkit-1/rules.d/50-fprint.rules
 sudo chmod 644 /etc/polkit-1/rules.d/50-fprint.rules
-sudo systemctl restart polkit
 
+# --- Starship Prompt ---
+sudo ln -sf ~/.coelOS-dotfiles/configs/starship.toml ~/.config/starship.toml 
+
+# Add fingerprint to PAM if not present
 PAM_SUDO="/etc/pam.d/sudo"
 FPRINT_LINE="auth sufficient pam_fprintd.so"
+grep -q "pam_fprintd.so" "$PAM_SUDO" || sudo sed -i "1i $FPRINT_LINE" "$PAM_SUDO"
 
-if ! grep -q "^auth.*pam_fprintd.so" "$PAM_SUDO"; then
-	sudo sed -i "1i $FPRINT_LINE" "$PAM_SUDO"
-fi
-
-# Suspend & Powerbutton
-sudo mkdir -p /etc/systemd/logind.conf.d/
-sudo mkdir -p /etc/udev/hwdb.d/
-sudo ln -s ~/.coelOS-dotfiles/configs/power/logind-power.conf /etc/systemd/logind.conf.d/10-power.conf
-sudo ln -s ~/.coelOS-dotfiles/configs/power/70-framework-power.hwdb /etc/udev/hwdb.d/70-framework-power.hwdb
+# --- Power & Framework Buttons ---
+sudo mkdir -p /etc/systemd/logind.conf.d/ /etc/udev/hwdb.d/
+sudo ln -sf ~/.coelOS-dotfiles/configs/power/logind-power.conf /etc/systemd/logind.conf.d/10-power.conf
+sudo ln -sf ~/.coelOS-dotfiles/configs/power/70-framework-power.hwdb /etc/udev/hwdb.d/70-framework-power.hwdb
 sudo systemd-hwdb update
 sudo udevadm trigger
 
-# Services
-sudo systemctl enable --now NetworkManager
-sudo systemctl enable --now power-profiles-daemon
-sudo systemctl enable --now fprintd
+# --- Services Configuration ---
+sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon
 systemctl --user enable --now pipewire pipewire-pulse wireplumber
 
-## Disable systemd-networkd
-sudo systemctl disable --now systemd-networkd.service
-sudo systemctl disable --now systemd-networkd-wait-online.service
-sudo systemctl mask systemd-networkd.service
-sudo systemctl mask systemd-networkd-wait-online.service
+# Ensure systemd-networkd doesn't conflict with NetworkManager
+sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
+sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.service
 
-# networkmanager config
+# NetworkManager Backend Config
 sudo mkdir -p /etc/NetworkManager/conf.d
-sudo ln -s ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/NetworkManager/conf.d/wifi-backend.conf
-
+sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/NetworkManager/conf.d/wifi-backend.conf
 sudo systemctl restart NetworkManager
 
-# Fonts
-sudo mkdir -p /usr/share/fonts
-sudo cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts
+# --- Fonts ---
+sudo mkdir -p /usr/share/fonts/local
+sudo cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts/local/ 2>/dev/null || true
 fc-cache -fv
 
-# Remove random .desktop files
-usrdesktops=(
-	btop
-	avahi-discover
-	bssh
-	bvnc
-	qv4l2
-	qvidcap
-	rofi
-	rofi-theme-selector
-	wiremix
-	xgps
-	xgpsspeed
-)
-
+# --- Cleanup .desktop clutter ---
+usrdesktops=(btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector wiremix xgps xgpsspeed)
 for app in "${usrdesktops[@]}"; do
-	sudo rm -rf "/usr/share/applications/${app}.desktop"
+  sudo rm -f "/usr/share/applications/${app}.desktop"
 done
 
-# Alias
-sed -i "/alias ls=/d" ~/.bashrc
+# --- Shell Environment (.bashrc & .inputrc) ---
+# Update alias
+grep -q "alias ls=" ~/.bashrc && sed -i "/alias ls=/d" ~/.bashrc
 echo "alias ls='eza -l --header'" >> ~/.bashrc
 
-sudo ln -s ~/coelOS-dotfiles/.inputrc ~/.inputrc
+# Case-insensitive completion
+[[ -f ~/.inputrc ]] || touch ~/.inputrc
+grep -qxF "set completion-ignore-case on" ~/.inputrc || echo "set completion-ignore-case on" >> ~/.inputrc
 
-# Finally, enable sddm and go to desktop environment
+# --- Starship Prompt Setup ---
+if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
+  echo 'eval "$(starship init bash)"' >> ~/.bashrc
+fi
+
+# --- Finalize ---
 sudo systemctl enable --now sddm
