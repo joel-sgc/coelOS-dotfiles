@@ -188,8 +188,21 @@ if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
 fi
 
 # --- Zen Browser Setup ---
+# - Custom Profile -
 zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
+PROFILE_PATH=$(grep -A2 "Name=CoelOS" ~/.config/zen/profiles.ini | grep Path | cut -d= -f2) && \
+sed -i 's/^Default=1/Default=0/g' ~/.config/zen/profiles.ini && \
+awk -v path="$PROFILE_PATH" '
+BEGIN{found=0}
+/^\[Profile/{section=$0}
+/^Path=/{if($0=="Path="path) found=1}
+/^Default/{if(found){print "Default=1"; found=0; next}}
+{print}
+' ~/.config/zen/profiles.ini > ~/.config/zen/profiles.ini.tmp && \
+sed -i "s/^Default=.*$/Default=CoelOS" ~/.config/zen/profiles.ini.tmp && \
+mv ~/.config/zen/profiles.ini.tmp ~/.config/zen/profiles.ini
 
+# - Profile Customization -
 sudo mkdir -p /etc/zen/policies
 sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/user.js
 sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
