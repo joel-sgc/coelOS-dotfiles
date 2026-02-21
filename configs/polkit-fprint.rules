@@ -1,0 +1,10 @@
+polkit.addRule(function(action, subject) {
+    if (
+        action.id === "net.reactivated.fprint.device.enroll" &&
+        subject.isLocal() &&
+        subject.active &&
+        subject.isInGroup("wheel")
+    ) {
+        return polkit.Result.YES;
+    }
+});

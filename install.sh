@@ -10,7 +10,11 @@ pacman_packages=(
 	swayidle
 	waybar 
 	sddm 
+	polkit
+	polkit-kde-agent
 	fprintd 
+	libfprint
+	pam
 	gnome-keyring 
 	networkmanager
 	base
@@ -23,6 +27,9 @@ pacman_packages=(
 	gtk4-layer-shell
 	poppler-glib
 	pipewire
+	pipewire-alsa
+	pipewire-pulse
+	wireplumber
 	noto-fonts-emoji
 	ttf-jetbrains-mono-nerd
 	woff2-font-awesome
@@ -73,8 +80,9 @@ yay -S --needed "${aur_packages[@]}" --noconfirm
 # Create Pictures and Videos directories for screenshots and screenrecordings
 mkdir -p ~/Pictures ~/Videos
 
-#Edit sudoers file to allow rofi shutdown and restart
-echo "%group_name ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown" | sudo EDITOR='tee -a' visudo
+sudo visudo -cf /etc/sudoers && \
+sudo grep -Fxq "$LINE" /etc/sudoers || \
+echo "%group_name ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown, /sbin/suspend" | sudo EDITOR='tee -a' visudo
 
 # Syslinks
 mkdir -p ~/.config/{hypr,rofi,fastfetch,waybar}
@@ -102,11 +110,31 @@ sudo ln -s ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css
 mkdir -p ~/.config/alacritty #alacritty
 ln -s ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml #alacritty
 
+# Fingerprint
+sudo cp ~/.coelOS-dotfiles/configs/polkit-fprint.rules /etc/polkit-1/rules.d/50-fprint.rules
+sudo chown root:root /etc/polkit-1/rules.d/50-fprint.rules
+sudo chmod 644 /etc/polkit-1/rules.d/50-fprint.rules
+sudo systemctl restart polkit
+
+PAM_SUDO="/etc/pam.d/sudo"
+FPRINT_LINE="auth sufficient pam_fprintd.so"
+
+if ! grep -q "^auth.*pam_fprintd.so" "$PAM_SUDO"; then
+	sudo sed -i "1i $FPRINT_LINE" "$PAM_SUDO"
+fi
+
+# Suspend & Powerbutton
+sudo mkdir -p /etc/systemd/logind.conf.d/
+sudo ln -s ~/.coelOS-dotfiles/configs/logind-power.conf /etc/systemd/logind.conf.d/10-powerkey.conf
+sudo systemctl mask poweroff.target
+sudo systemctl mask reboot.target
+sudo systemctl restart systemd-logind
+
 # Services
 sudo systemctl enable --now NetworkManager
-sudo systemctl enable --now gnome-keyring-daemon.service
 sudo systemctl enable --now power-profiles-daemon
 sudo systemctl enable --now fprintd
+systemctl --user enable --now pipewire pipewire-pulse wireplumber
 
 ## Disable systemd-networkd
 sudo systemctl disable --now systemd-networkd.service
@@ -147,6 +175,8 @@ done
 # Alias
 sed -i "/alias ls=/d" ~/.bashrc
 echo "alias ls='eza -l --header'" >> ~/.bashrc
+
+sudo ln -s ~/coelOS-dotfiles/.inputrc ~/.inputrc
 
 # Finally, enable sddm and go to desktop environment
 sudo systemctl enable --now sddm

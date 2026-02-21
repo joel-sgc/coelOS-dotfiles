@@ -19,6 +19,6 @@ case "$choice" in
 	*Monitors*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/monitors.conf;;
 	*Keybindings*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/keybindings.conf;;
 	*Input*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/input.conf;;
-	*Fingerprint*) echo 7;;
+	*Fingerprint*) alacritty --class com.joelsgc.floating -e ~/.coelOS-dotfiles/bin/fingerprint-enroll.sh;;
 	*Config*) exec ~/.coelOS-dotfiles/configs/rofi/config.sh;;
 esac
