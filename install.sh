@@ -189,18 +189,11 @@ fi
 
 # --- Zen Browser Setup ---
 # - Custom Profile -
-zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
-PROFILE_PATH=$(grep -A2 "Name=CoelOS" ~/.config/zen/profiles.ini | grep Path | cut -d= -f2) && \
-sed -i 's/^Default=1/Default=0/g' ~/.config/zen/profiles.ini && \
-awk -v path="$PROFILE_PATH" '
-BEGIN{found=0}
-/^\[Profile/{section=$0}
-/^Path=/{if($0=="Path="path) found=1}
-/^Default/{if(found){print "Default=1"; found=0; next}}
-{print}
-' ~/.config/zen/profiles.ini > ~/.config/zen/profiles.ini.tmp && \
-sed -i "s/^Default=.*$/Default=CoelOS" ~/.config/zen/profiles.ini.tmp && \
-mv ~/.config/zen/profiles.ini.tmp ~/.config/zen/profiles.ini
+[ -d "$HOME/.config/zen/CoelOS" ] || {
+  zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
+  zen-browser --headless &>/dev/null & sleep 2; kill $!
+  printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
+}
 
 # - Profile Customization -
 sudo mkdir -p /etc/zen/policies

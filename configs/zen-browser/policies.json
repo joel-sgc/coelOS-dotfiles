@@ -12,6 +12,7 @@
         }
       ]
     },
+    "OverrideFirstRunPage": "",
     "DisableTelemetry": true,
     "DisableFirefoxStudies": true,
     "DisablePocket": true,
