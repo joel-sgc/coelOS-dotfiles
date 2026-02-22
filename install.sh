@@ -17,10 +17,9 @@ pacman_packages=(
   hyprland
   hypridle
   hyprlock
-  hyprpaper
   hyprpicker
+  swww                     # Background manager
   sddm                     # Login manager
-  swayidle
   waybar                   # Status bar
   xdg-desktop-portal-hyprland
 
@@ -100,7 +99,7 @@ fi
 yay -S --needed "${aur_packages[@]}" --noconfirm
 
 # --- Directory Setup ---
-mkdir -p ~/Pictures ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty,micro/colorschemes}
+mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}
 
 # --- Sudoers NOPASSWD for Power Actions ---
 # This checks if the specific poweroff permission exists before adding it
@@ -116,13 +115,13 @@ ln -sf ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi
 ln -sf ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi
 ln -sf ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc
 ln -sf ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
-
-# --- Micro setup ---
-ln -sf ~/.coelOS-dotfiles/theme/micro/micro-theme.micro ~/.config/micro/colorschemes/CoelOS.micro
+ln -sf ~/.coelOS-dotfiles/theme/micro-theme.micro ~/.config/micro/colorschemes/CoelOS.micro
 ln -sf ~/.coelOS-dotfiles/configs/micro/settings.json ~/.config/micro/settings.json
+ln -sf ~/.coelOS-dotfiles/theme/swayosd.css ~/.config/swayosd/style.css
+ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
 
 # --- SDDM Setup ---
-# Permissions for SDDM to access themes in your home dir
+# - Permissions for SDDM to access themes in your home dir -
 sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
 sudo setfacl -m u:sddm:x ~
 sudo ln -sf ~/.coelOS-dotfiles/configs/sddm/sddm.conf /etc/sddm.conf
@@ -157,13 +156,19 @@ sudo udevadm trigger
 sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon
 systemctl --user enable --now pipewire pipewire-pulse wireplumber
 
-# Ensure systemd-networkd doesn't conflict with NetworkManager
+# --- Ensure systemd-networkd doesn't conflict with NetworkManager ---
 sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
 sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.service
 
-# NetworkManager Backend Config
+# --- NetworkManager Backend Config ---
 sudo mkdir -p /etc/NetworkManager/conf.d
 sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/NetworkManager/conf.d/wifi-backend.conf
+
+# --- Background ---
+for file in ~/.coelOS-dotfiles/theme/wallpapers/*; do
+    filename=$(basename "$file")
+    ln -s "$file" "$HOME/Pictures/Wallpapers/$filename"
+done
 
 # --- Fonts ---
 sudo mkdir -p /usr/share/fonts/local
@@ -185,7 +190,7 @@ done
 grep -q "alias ls=" ~/.bashrc && sed -i "/alias ls=/d" ~/.bashrc
 echo "alias ls='eza -l --header'" >> ~/.bashrc
 
-# Case-insensitive completion
+# - Case-insensitive completion -
 [[ -f ~/.inputrc ]] || touch ~/.inputrc
 grep -qxF "set completion-ignore-case on" ~/.inputrc || echo "set completion-ignore-case on" >> ~/.inputrc
 

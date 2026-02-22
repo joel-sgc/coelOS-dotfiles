@@ -148,9 +148,9 @@ This phase determines whether the system is usable on the go.
 
 - [ ] GTK theme applied everywhere
 - [ ] Icon theme consistent
-- [ ] Cursor theme consistent
+- [x] Cursor theme consistent
 - [ ] Fonts consistent across applications
-- [ ] Terminal theme matches desktop
+- [x] Terminal theme matches desktop
 - [x] Lock screen matches desktop theme
 - [x] Login screen matches desktop theme
 

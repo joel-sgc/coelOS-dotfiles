@@ -1,0 +1,33 @@
+# =========================
+# Global Settings
+# =========================
+font=Monoid 11
+width=300
+height=100
+margin=10
+padding=18,22
+
+# =========================
+# Theme (Base)
+# =========================
+# Background: #262626 at ~92% opacity
+background-color=#262626eb
+# Text: #d4d4d4
+text-color=#d4d4d4
+# Border: #7acdcd
+border-color=#7acdcd
+border-size=2
+border-radius=8
+
+# Optional: Match the progress bar (for notification timeouts)
+progress-color=source #ff99da80
+
+default-timeout=5000
+
+# =========================
+# High Urgency (Alerts)
+# =========================
+[urgency=high]
+border-color=#ff99da
+text-color=#d4d4d4
+default-timeout=0

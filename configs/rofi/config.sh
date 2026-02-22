@@ -2,7 +2,6 @@
 
 choice=$(printf \
 "   Hyprland\n\
-   Hyprpaper\n\
    Hyprlock\n\
    Hypridle\n\
  󱓞  Autostart\n\
