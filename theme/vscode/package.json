@@ -1,0 +1,21 @@
+{
+  "name": "vs-coel",
+  "displayName": "VS-Coel",
+  "description": "Custom dark theme for CoelOS",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.0.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "VS-Coel",
+        "uiTheme": "vs-dark",
+        "path": "./themes/theme.json"
+      }
+    ]
+  }
+}
