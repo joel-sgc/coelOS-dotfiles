@@ -46,12 +46,12 @@ If this phase is incomplete, the system will always feel broken.
 ### Checklist
 
 - [x] Lock screen works when launched manually
-- [ ] Screen locks automatically after inactivity
-- [ ] Screen locks before suspend
-- [ ] Screen locks when lid is closed
-- [ ] Screen blanks before locking
-- [ ] Resume from suspend returns to a locked screen
-- [ ] No freezes or black screens after resume
+- [x] Screen locks automatically after inactivity
+- [x] Screen locks before suspend
+- [x] Screen locks when lid is closed
+- [x] Screen blanks before locking
+- [x] Resume from suspend returns to a locked screen
+- [x] No freezes or black screens after resume
 
 This phase separates a usable system from an unsafe one.
 
@@ -126,8 +126,8 @@ Most of these problems are invisible until they break.
 
 ### Checklist
 
-- [ ] Suspend works reliably
-- [ ] Resume works reliably
+- [x] Suspend works reliably
+- [x] Resume works reliably
 - [ ] Power profiles switch correctly
 - [ ] CPU frequency scaling works
 - [ ] Fan behavior is sane
@@ -151,8 +151,8 @@ This phase determines whether the system is usable on the go.
 - [ ] Cursor theme consistent
 - [ ] Fonts consistent across applications
 - [ ] Terminal theme matches desktop
-- [ ] Lock screen matches desktop theme
-- [ ] Login screen matches desktop theme
+- [x] Lock screen matches desktop theme
+- [x] Login screen matches desktop theme
 
 This is where the system starts to feel polished.
 

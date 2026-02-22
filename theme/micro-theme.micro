@@ -1,0 +1,45 @@
+# Custom Micro Theme
+# Base:    #262626
+# Text:    #d4d4d4
+# Accent:  #7acdcd
+# Urgent:  #ff99da
+
+# --- Main Editor ---
+color-link default "#d4d4d4,#262626"
+color-link cursor-line "#262626,#333333"
+color-link color-column "#333333"
+
+# --- Syntax Highlighting ---
+color-link comment "#7c7c7c"
+color-link identifier "#7acdcd"
+color-link constant "#ff99da"
+color-link constant.string "#ff99da"
+color-link constant.number "#ff99da"
+color-link statement "#7acdcd"
+color-link symbol "#d4d4d4"
+color-link preproc "#7acdcd"
+color-link type "#7acdcd"
+color-link special "#ff99da"
+color-link underlined "underline #7acdcd"
+
+# --- Alerts & Errors ---
+color-link error "bold #262626,#ff99da"
+color-link todo "bold #ff99da,#262626"
+color-link gutter-error "#ff99da"
+color-link gutter-warning "#7acdcd"
+
+# --- UI Elements ---
+color-link statusline "#262626,#7acdcd"
+color-link tabbar "#d4d4d4,#333333"
+color-link indent-char "#444444"
+color-link line-number "#555555,#262626"
+color-link current-line-number "bold #7acdcd,#262626"
+
+# --- Git / Diff ---
+color-link diff-added "#7acdcd"
+color-link diff-modified "#d4d4d4"
+color-link diff-deleted "#ff99da"
+
+# --- Selection / Find ---
+color-link selection "#262626,#ff99da"
+color-link hlsearch "#262626,#7acdcd"

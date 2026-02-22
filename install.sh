@@ -100,7 +100,7 @@ fi
 yay -S --needed "${aur_packages[@]}" --noconfirm
 
 # --- Directory Setup ---
-mkdir -p ~/Pictures ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty}
+mkdir -p ~/Pictures ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty,micro/colorschemes}
 
 # --- Sudoers NOPASSWD for Power Actions ---
 # This checks if the specific poweroff permission exists before adding it
@@ -116,6 +116,10 @@ ln -sf ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi
 ln -sf ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi
 ln -sf ~/.coelOS-dotfiles/configs/fastfetch/fastfetch.jsonc ~/.config/fastfetch/config.jsonc
 ln -sf ~/.coelOS-dotfiles/configs/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
+
+# --- Micro setup ---
+ln -sf ~/.coelOS-dotfiles/theme/micro/micro-theme.micro ~/.config/micro/colorschemes/CoelOS.micro
+ln -sf ~/.coelOS-dotfiles/configs/micro/settings.json ~/.config/micro/settings.json
 
 # --- SDDM Setup ---
 # Permissions for SDDM to access themes in your home dir
@@ -160,12 +164,16 @@ sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.servic
 # NetworkManager Backend Config
 sudo mkdir -p /etc/NetworkManager/conf.d
 sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/NetworkManager/conf.d/wifi-backend.conf
-sudo systemctl restart NetworkManager
 
 # --- Fonts ---
 sudo mkdir -p /usr/share/fonts/local
 sudo cp ~/.coelOS-dotfiles/fonts/*.ttf /usr/share/fonts/local/ 2>/dev/null || true
 fc-cache -fv
+
+# --- Cursor ---
+mkdir -p ~/.local/share/icons
+tar -xf ~/.coelOS-dotfiles/theme/oreo-spark-light-pink-cursors.tar.gz
+mv oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
 
 # --- Cleanup .desktop clutter ---
 usrdesktops=(btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector wiremix xgps xgpsspeed)
@@ -201,4 +209,5 @@ sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/
 sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
 
 # --- Finalize ---
+sudo systemctl restart NetworkManager
 sudo systemctl enable --now sddm
