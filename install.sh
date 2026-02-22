@@ -172,8 +172,7 @@ fc-cache -fv
 
 # --- Cursor ---
 mkdir -p ~/.local/share/icons
-tar -xf ~/.coelOS-dotfiles/theme/oreo-spark-light-pink-cursors.tar.gz
-mv oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
+sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors/
 
 # --- Cleanup .desktop clutter ---
 usrdesktops=(btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector wiremix xgps xgpsspeed)
