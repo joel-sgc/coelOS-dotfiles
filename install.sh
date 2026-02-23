@@ -12,6 +12,7 @@ pacman_packages=(
   networkmanager
   power-profiles-daemon    # Power management
   zram-generator           # Optimized swap
+  plymouth                 # LUKS theme
 
   # --- Wayland & Hyprland Core ---
   hyprland
@@ -34,7 +35,7 @@ pacman_packages=(
   pipewire-alsa
   pipewire-pulse
   wireplumber
-  wiremix
+  wiremixT
   v4l-utils                # Video4Linux tools
 
   # --- Terminal & Shell Tools ---
@@ -58,6 +59,8 @@ pacman_packages=(
   python-gobject
 
   # --- UI, Menus & Notifications ---
+  swayosd
+  brightnessctl
   gtk4
   gtk4-layer-shell
   libnotify
@@ -75,6 +78,10 @@ pacman_packages=(
   noto-fonts-emoji
   ttf-jetbrains-mono-nerd
   woff2-font-awesome
+
+  # --- Other Software ---
+  chromium                 # Chromium for TUIs
+  gimp                     # Photo editing
 )
 
 aur_packages=(
@@ -119,6 +126,16 @@ ln -sf ~/.coelOS-dotfiles/theme/micro-theme.micro ~/.config/micro/colorschemes/C
 ln -sf ~/.coelOS-dotfiles/configs/micro/settings.json ~/.config/micro/settings.json
 ln -sf ~/.coelOS-dotfiles/theme/swayosd.css ~/.config/swayosd/style.css
 ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
+
+# --- Bootloader & LUKS Setup ---
+LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
+sudo cp ~/.coelOS-dotfiles/configs/limine.conf "$LIMINE_CONF"
+
+sudo mkdir -p /usr/share/plymouth/themes/
+sudo cp ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
+sudo sed -i '/^HOOKS=.*plymouth/! s/\bencrypt\b/plymouth encrypt/' /etc/mkinitcpio.conf
+sudo mkinitcpio -P
+sudo plymouth-set-default-theme -R coelos
 
 # --- SDDM Setup ---
 # - Permissions for SDDM to access themes in your home dir -
@@ -177,7 +194,7 @@ fc-cache -fv
 
 # --- Cursor ---
 mkdir -p ~/.local/share/icons
-sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors/
+sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
 
 # --- Cleanup .desktop clutter ---
 usrdesktops=(btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector wiremix xgps xgpsspeed)
@@ -202,7 +219,7 @@ fi
 # --- Zen Browser Setup ---
 # - Custom Profile -
 [ -d "$HOME/.config/zen/CoelOS" ] || {
-  zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
+  zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
   zen-browser --headless &>/dev/null & sleep 2; kill $!
   printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
 }
