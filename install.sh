@@ -132,7 +132,7 @@ LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
 sudo cp ~/.coelOS-dotfiles/configs/limine.conf "$LIMINE_CONF"
 
 sudo mkdir -p /usr/share/plymouth/themes/
-sudo cp ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
+sudo cp -R ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
 sudo sed -i '/^HOOKS=.*plymouth/! s/\bencrypt\b/plymouth encrypt/' /etc/mkinitcpio.conf
 sudo mkinitcpio -P
 sudo plymouth-set-default-theme -R coelos
