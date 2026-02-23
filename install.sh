@@ -106,7 +106,7 @@ fi
 yay -S --needed "${aur_packages[@]}" --noconfirm
 
 # --- Directory Setup ---
-mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.config/{hypr,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}
+mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.config/{zen/CoelOS,hypr,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}
 
 # --- Sudoers NOPASSWD for Power Actions ---
 # This checks if the specific poweroff permission exists before adding it
@@ -129,7 +129,8 @@ ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
 
 # --- Bootloader & LUKS Setup ---
 LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
-sudo cp ~/.coelOS-dotfiles/configs/limine.conf "$LIMINE_CONF"
+FOUND_UUID=$(grep -oP 'PARTUUID=\K[a-f0-9-]{36}' "$LIMINE_CONF")
+sudo sed "s/{{ROOT_UUID}}/$FOUND_UUID/g" ~/.coelOS-dotfiles/configs/limine.conf | sudo tee "$LIMINE_CONF" > /dev/null
 
 sudo mkdir -p /usr/share/plymouth/themes/
 sudo cp -R ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
