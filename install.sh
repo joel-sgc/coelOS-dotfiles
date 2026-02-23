@@ -35,7 +35,7 @@ pacman_packages=(
   pipewire-alsa
   pipewire-pulse
   wireplumber
-  wiremixT
+  wiremix
   v4l-utils                # Video4Linux tools
 
   # --- Terminal & Shell Tools ---
