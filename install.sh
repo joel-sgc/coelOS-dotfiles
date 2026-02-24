@@ -129,7 +129,7 @@ ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
 
 # --- Bootloader & LUKS Setup ---
 LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
-FOUND_UUID=$(grep -oP 'PARTUUID=\K[a-f0-9-]{36}' "$LIMINE_CONF")
+FOUND_UUID=$(grep -oP 'PARTUUID=\K[^:]+' "$LIMINE_CONF")
 sudo sed "s/{{ROOT_UUID}}/$FOUND_UUID/g" ~/.coelOS-dotfiles/configs/limine.conf | sudo tee "$LIMINE_CONF" > /dev/null
 
 sudo mkdir -p /usr/share/plymouth/themes/
