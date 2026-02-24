@@ -219,11 +219,9 @@ fi
 
 # --- Zen Browser Setup ---
 # - Custom Profile -
-[ -d "$HOME/.config/zen/CoelOS" ] || {
-  zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
-  zen-browser --headless &>/dev/null & sleep 2; kill $!
-  printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
-}
+zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
+zen-browser --headless &>/dev/null & sleep 2; kill $!
+printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
 
 # - Profile Customization -
 sudo mkdir -p /etc/zen/policies
@@ -231,5 +229,8 @@ sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/
 sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
 
 # --- Finalize ---
-sudo systemctl restart NetworkManager
+if ! journalctl -u NetworkManager -b -g supplicant >/dev/null 2>&1; then
+    sudo systemctl restart NetworkManager
+fi
+
 sudo systemctl enable --now sddm
