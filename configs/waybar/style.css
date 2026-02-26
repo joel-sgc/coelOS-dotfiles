@@ -2,8 +2,8 @@
 
 * {
   /* `otf-font-awesome` is required to be installed for icons */
-  font-family: FontAwesome, 'Monoid', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 12px;
+  font-family: FontAwesome, 'FiraCode Nerd Font Mono', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
   color: @text;
 }
 
@@ -78,7 +78,12 @@ button:hover {
 #pulseaudio,
 #cpu {
   padding: 0 8px;
+  font-size: 20px;
 }
 #cpu {
   padding-right: 16px;
+}
+
+#bluetooth {
+	font-size: 16px;
 }

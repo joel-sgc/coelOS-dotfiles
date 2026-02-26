@@ -22,6 +22,8 @@ get_rectangles() {
   hyprctl clients -j | jq -r --arg ws "$active_workspace" '.[] | select(.workspace.id == ($ws | tonumber)) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
 }
 
+sleep 0.05
+
 # Select based on mode
 case "$MODE" in
   region)

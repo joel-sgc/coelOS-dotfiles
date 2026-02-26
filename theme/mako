@@ -1,7 +1,7 @@
 # =========================
 # Global Defaults
 # =========================
-font=Monoid 11
+font=FiraCode Nerd Font Mono 11
 width=300
 height=100
 margin=10
@@ -30,4 +30,4 @@ anchor=bottom-center
 [app-name=osd]
 outer-margin=250
 [app-name=osd]
-font=Monoid 14
+font=FiraCode Nerd Font Mono 14

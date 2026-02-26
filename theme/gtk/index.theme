@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Skeuos-CoelOS-Dark
+Comment=Skeuos-CoelOS-Dark theme"
+Encoding=UTF-8
+
+
+[X-GNOME-Metatheme]
+GtkTheme=Skeuos-CoelOS-Dark
+MetacityTheme=Skeuos-CoelOS-Dark
+IconTheme=Flat-Remix-CoelOS-Dark
+CursorTheme=Adwaita
+ButtonLayout=:minimize,maximize,close

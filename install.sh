@@ -28,7 +28,7 @@ pacman_packages=(
   gnome-keyring
   pam
   polkit
-  polkit-kde-agent
+  polkit-gnome
 
   # --- Audio & Media ---
   pipewire
@@ -52,7 +52,6 @@ pacman_packages=(
   starship                 # Fast, customizable shell prompt
 
   # --- Development ---
-  code                     # VS Code
   git
   github-cli
   jq                       # JSON processor
@@ -78,8 +77,18 @@ pacman_packages=(
   noto-fonts-emoji
   ttf-jetbrains-mono-nerd
   woff2-font-awesome
+  ttf-firacode-nerd
+
+  # --- File Manager GUI ---
+  thunar
+  thunar-volman
+  thunar-archive-plugin
+  tumbler
+  gvfs
 
   # --- Other Software ---
+  tailscale
+  kdeconnect
   chromium                 # Chromium for TUIs
   gimp                     # Photo editing
 )
@@ -91,6 +100,7 @@ aur_packages=(
   privacy-dots             # Camera/Mic indicators
   wayfreeze-git            # Screen freeze tool
   zen-browser-bin
+  visual-studio-code-bin
 )
 
 # --- Install Pacman Packages ---
@@ -106,7 +116,7 @@ fi
 yay -S --needed "${aur_packages[@]}" --noconfirm
 
 # --- Directory Setup ---
-mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.config/{zen/CoelOS,hypr,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}
+mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}
 
 # --- Sudoers NOPASSWD for Power Actions ---
 # This checks if the specific poweroff permission exists before adding it
@@ -150,6 +160,10 @@ sudo rm -rf /etc/xdg/waybar/*
 sudo ln -sf ~/.coelOS-dotfiles/configs/waybar/config.jsonc /etc/xdg/waybar/config.jsonc
 sudo ln -sf ~/.coelOS-dotfiles/configs/waybar/style.css /etc/xdg/waybar/style.css
 
+# --- Netpala ---
+sudo rm -rf ~/.config/netpala/config.toml
+sudo ln -sf ~/.coelOS-dotfiles/configs/netpala.toml ~/.config/netpala/config.toml
+
 # --- Fingerprint & Polkit ---
 sudo cp ~/.coelOS-dotfiles/configs/polkit-fprint.rules /etc/polkit-1/rules.d/50-fprint.rules
 sudo chown root:root /etc/polkit-1/rules.d/50-fprint.rules
@@ -185,7 +199,7 @@ sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager/wifi-backend.conf /etc/Net
 # --- Background ---
 for file in ~/.coelOS-dotfiles/theme/wallpapers/*; do
     filename=$(basename "$file")
-    ln -s "$file" "$HOME/Pictures/Wallpapers/$filename"
+    ln -sf "$file" "$HOME/Pictures/Wallpapers/$filename"
 done
 
 # --- Fonts ---
@@ -197,8 +211,28 @@ fc-cache -fv
 mkdir -p ~/.local/share/icons
 sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
 
+# --- GTK Theme ---
+sudo cp -R ~/.coelOS-dotfiles/theme/gtk ~/.themes/CoelOS
+
 # --- Cleanup .desktop clutter ---
-usrdesktops=(btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector wiremix xgps xgpsspeed)
+usrdesktops=(
+	btopavahi-discover
+	bssh 
+	bvnc 
+	qv4l2 
+	qvidcap 
+	rofi 
+	rofi-theme-selector 
+	wiremix 
+	xgps 
+	xgpsspeed 
+	thunar-bulk-rename 
+	thunar-settings 
+	thunar-volman-settings
+	org.kde.kdeconnect.sms.desktop
+	org.kde.kdeconnect.nonplasma.desktop
+)
+
 for app in "${usrdesktops[@]}"; do
   sudo rm -f "/usr/share/applications/${app}.desktop"
 done

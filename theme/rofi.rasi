@@ -4,7 +4,7 @@
 	text: #d4d4d4;
 	base: #262626;
 	
-	font: "JetBrainsMonoNL Nerd Font 14, Monoid 14";
+	font: "JetBrainsMonoNL Nerd Font 24, FiraCode Nerd Font Mono 16";
 }
 
 window {

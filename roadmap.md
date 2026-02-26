@@ -28,7 +28,7 @@ Each phase builds on the previous one.
 - [x] Touchpad tap-to-click works
 - [x] Touchpad scrolling feels correct
 - [x] Touchpad disable-while-typing works
-- [ ] External mouse behaves correctly
+- [x] External mouse behaves correctly
 - [x] Laptop lid close suspends the system
 - [x] Power button performs expected action
 - [x] Resume from sleep works reliably
@@ -106,8 +106,8 @@ If this phase fails, the system feels fragile.
 
 ### Checklist
 
-- [ ] File manager opens correctly
-- [ ] File picker works in applications
+- [x] File manager opens correctly
+- [x] File picker works in applications
 - [x] Screenshot tool works
 - [x] Clipboard copy and paste works
 - [ ] Drag and drop works
@@ -146,10 +146,10 @@ This phase determines whether the system is usable on the go.
 
 ### Checklist
 
-- [ ] GTK theme applied everywhere
+- [x] GTK theme applied everywhere
 - [ ] Icon theme consistent
 - [x] Cursor theme consistent
-- [ ] Fonts consistent across applications
+- [x] Fonts consistent across applications
 - [x] Terminal theme matches desktop
 - [x] Lock screen matches desktop theme
 - [x] Login screen matches desktop theme
@@ -166,12 +166,12 @@ This is where the system starts to feel polished.
 
 ### Checklist
 
-- [ ] Boot splash displays correctly
-- [ ] No kernel spam during boot
-- [ ] Encryption prompt is clean
-- [ ] Login screen loads quickly
-- [ ] Desktop is ready immediately after login
-- [ ] No error popups on startup
+- [x] Boot splash displays correctly
+- [x] No kernel spam during boot
+- [x] Encryption prompt is clean
+- [x] Login screen loads quickly
+- [x] Desktop is ready immediately after login
+- [x] No error popups on startup
 
 This is where a system feels professional.
 

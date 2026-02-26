@@ -48,3 +48,7 @@ blue    = "#7acdcd"
 magenta = "#ff99da"
 cyan    = "#7acdcd"
 white   = "#ffffff"
+
+[window]
+padding = { x = 18, y = 18 }
+dynamic_padding = true
