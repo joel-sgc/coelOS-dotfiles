@@ -4,11 +4,20 @@
 # 1. INITIALIZATION & UI FRAMEWORK
 # ==============================================================================
 
-# Request sudo privileges upfront so the script doesn't hang invisibly later
+# Request sudo privileges upfront
+echo -e "\033[1;34m[~]\033[0m Enter your password to begin the unattended setup..."
 sudo -v
-# Keep sudo alive while the script is running
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
+# Create a temporary sudoers rule to prevent mid-script password prompts
+TEMP_SUDOERS="/etc/sudoers.d/99_temp_joelsgc_install"
+echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee "$TEMP_SUDOERS" > /dev/null
+sudo chmod 0440 "$TEMP_SUDOERS"
+
+# TRAP: This guarantees the temporary sudoers file is deleted the moment the 
+# script exits, errors out, or is interrupted (Ctrl+C). It keeps your system secure.
+trap 'sudo rm -f "$TEMP_SUDOERS"' EXIT
+
+# --- UI Colors & Variables ---
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 BLUE='\033[1;34m'
