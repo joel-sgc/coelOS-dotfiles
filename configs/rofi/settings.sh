@@ -17,7 +17,7 @@ case "$choice" in
 	*Audio*) exec alacritty --class com.joelsgc.floating -e pulseaudio;;
 	*WiFi*) exec alacritty --class com.joelsgc.floating -e netpala;;
 	*Bluetooth*) exec alacritty --class com.joelsgc.floating -e bluepala;;
-	*Power*) echo 4;;
+	*Power\ Profiles*) ~/.coelOS-dotfiles/configs/rofi/power-profiles.sh;;
 	*Monitors*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/monitors.conf;;
 	*Keybindings*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/keybindings.conf;;
 	*Input*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/input.conf;;

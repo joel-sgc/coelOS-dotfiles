@@ -1,0 +1,73 @@
+# Main background
+theme[main_bg]="#262626"
+
+# Main text color
+theme[main_fg]="#d4d4d4"
+
+# Title color for boxes (Shifted to Pink)
+theme[title]="#ff99da"
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="#7acdcd"
+
+# Background color of selected item in processes box (Shifted to Pink)
+theme[selected_bg]="#ff99da"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="#262626"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="#404040"
+
+# Color of text appearing on top of graphs
+theme[graph_text]="#d4d4d4"
+
+# Background color of the percentage meters
+theme[meter_bg]="#333333"
+
+# Misc colors for processes box
+theme[proc_misc]="#d4d4d4"
+
+# Muted box outlines for a cleaner look
+theme[cpu_box]="#555555"
+theme[mem_box]="#555555"
+theme[net_box]="#555555"
+theme[proc_box]="#555555"
+theme[div_line]="#404040"
+
+# All graphs now transition from Cyan -> Pink -> Pink
+theme[temp_start]="#7acdcd"
+theme[temp_mid]="#ff99da"
+theme[temp_end]="#ff99da"
+
+theme[cpu_start]="#7acdcd"
+theme[cpu_mid]="#ff99da"
+theme[cpu_end]="#ff99da"
+
+theme[free_start]="#7acdcd"
+theme[free_mid]="#d4d4d4"
+theme[free_end]="#d4d4d4"
+
+theme[cached_start]="#7acdcd"
+theme[cached_mid]="#ff99da"
+theme[cached_end]="#ff99da"
+
+theme[available_start]="#7acdcd"
+theme[available_mid]="#ff99da"
+theme[available_end]="#ff99da"
+
+theme[used_start]="#7acdcd"
+theme[used_mid]="#ff99da"
+theme[used_end]="#ff99da"
+
+theme[download_start]="#7acdcd"
+theme[download_mid]="#ff99da"
+theme[download_end]="#ff99da"
+
+theme[upload_start]="#7acdcd"
+theme[upload_mid]="#ff99da"
+theme[upload_end]="#ff99da"
+
+theme[process_start]="#7acdcd"
+theme[process_mid]="#ff99da"
+theme[process_end]="#ff99da"

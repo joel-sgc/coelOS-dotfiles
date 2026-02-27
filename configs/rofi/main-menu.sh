@@ -11,7 +11,7 @@ choice=$(printf \
  󰤆  System\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
 
 case "$choice" in
-	*Programs*) rofi -show drun -p "Launch..." -lines 10 -no-fixed-num-lines -i;;
+	*Programs*) rofi -show drun -p -lines 10 -no-fixed-num-lines -i;;
 	*Actions*) exec ~/.coelOS-dotfiles/configs/rofi/actions.sh;;
 	*Settings*) exec ~/.coelOS-dotfiles/configs/rofi/settings.sh;;
 	*Install*) exec ~/.coelOS-dotfiles/configs/rofi/install.sh;;

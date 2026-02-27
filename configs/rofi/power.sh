@@ -4,7 +4,7 @@ choice=$(printf \
 "   Lock\n\
  󰤄  Suspend\n\
    Restart\n\
- 󰤆  Shutdown\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
+ 󰤆  Shutdown\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Power")
 
  exit_code=$?
 

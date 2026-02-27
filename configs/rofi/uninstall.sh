@@ -4,7 +4,7 @@ choice=$(printf \
 " 󰣇  Pacman/Yay\n\
    TUI\n\
    Web App\n\
- 󰈷  Fingerprint\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
+ 󰈷  Fingerprint\n" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Uninstall")
 
 exit_code=$?
 

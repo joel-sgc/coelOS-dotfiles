@@ -7,7 +7,9 @@ choice=$(printf \
  󱓞  Autostart\n\
  󱂬  Window Rules\n\
  󰏘  Look & Feel\n\
- 󰌧  Waybar" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Main Menu")
+ 󰌧  Waybar" | rofi -dmenu -p -lines 10 -no-fixed-num-lines -i "Configs")
+
+exit_code=$?
 
 case "$choice" in
 	*Hyprland*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/hyprland.conf;;
@@ -19,3 +21,9 @@ case "$choice" in
 	*Look*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/look-and-feel.conf;;
 	*Waybar*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/waybar/config.jsonc;;
 esac
+
+if [ $exit_code -ne 0 ]; then
+    # Rofi was cancelled
+    ~/.coelOS-dotfiles/configs/rofi/settings.sh
+    exit 0
+fi

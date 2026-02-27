@@ -68,7 +68,7 @@ This phase separates a usable system from an unsafe one.
 - [x] Notifications appear reliably
 - [x] Volume changes show a popup
 - [x] Brightness changes show a popup
-- [ ] Media key presses show feedback
+- [x] Media key presses show feedback
 - [x] Mute states are clearly visible
 - [ ] No duplicate popups
 - [ ] Popups appear on the active monitor
@@ -128,11 +128,11 @@ Most of these problems are invisible until they break.
 
 - [x] Suspend works reliably
 - [x] Resume works reliably
-- [ ] Power profiles switch correctly
+- [x] Power profiles switch correctly
 - [ ] CPU frequency scaling works
 - [ ] Fan behavior is sane
 - [x] Battery percentage reporting is accurate
-- [ ] Battery drain during sleep is minimal
+- [x] Battery drain during sleep is minimal
 
 This phase determines whether the system is usable on the go.
 
@@ -187,6 +187,6 @@ This is where a system feels professional.
 
 - [ ] System snapshots enabled
 - [ ] Rollback works
-- [ ] Emergency TTY accessible
+- [x] Emergency TTY accessible
 - [ ] Logs are accessible
 - [ ] System can be repaired without reinstalling
