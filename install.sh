@@ -220,9 +220,9 @@ setup_theming() {
 
 cleanup_desktops() {
     local apps=(
-        btopavahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector 
-        wiremix xgps xgpsspeed thunar-bulk-rename thunar-settings 
-        thunar-volman-settings org.kde.kdeconnect.sms.desktop org.kde.kdeconnect.nonplasma.desktop
+        btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector 
+        wiremix xgps xgpsspeed thunar-bulk-rename thunar-settings thunar-volman-settings
+        org.kde.kdeconnect.sms.desktop org.kde.kdeconnect.nonplasma.desktop
     )
     for app in "${apps[@]}"; do
         sudo rm -f "/usr/share/applications/${app}.desktop"
