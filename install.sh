@@ -222,7 +222,7 @@ cleanup_desktops() {
     local apps=(
         btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector 
         wiremix xgps xgpsspeed thunar-bulk-rename thunar-settings thunar-volman-settings
-        org.kde.kdeconnect.sms.desktop org.kde.kdeconnect.nonplasma.desktop
+        org.kde.kdeconnect.nonplasma org.kde.kdeconnect.sms
     )
     for app in "${apps[@]}"; do
         sudo rm -f "/usr/share/applications/${app}.desktop"
@@ -261,43 +261,43 @@ finalize() {
 
 print_header
 
-print_section "System Updates & Package Installation"
-run_task "Updating package databases (pacman -Syu)" "sudo pacman -Syu --noconfirm"
-run_task "Installing standard repository packages" "install_pacman_pkgs"
-run_task "Checking and installing Yay (AUR Helper)" "install_yay"
-run_task "Installing AUR packages" "install_aur_pkgs"
-close_section
-
-print_section "Directory Setup & Base Permissions"
-run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}"
-run_task "Configuring sudoers NOPASSWD for power actions" "setup_sudoers"
-close_section
-
-print_section "Configuration & Dotfiles"
-run_task "Applying dotfile symlinks" "setup_symlinks"
-run_task "Configuring shell environment (Bash/Starship)" "setup_shell"
-run_task "Configuring Waybar system-wide" "setup_waybar"
-close_section
-
-print_section "Security, Boot & Authentication"
-run_task "Configuring Bootloader (Limine) & LUKS" "setup_bootloader"
-run_task "Setting up fingerprint daemon & Polkit rules" "setup_fprint"
-close_section
-
-print_section "Hardware & Services"
-run_task "Configuring power profiles & Framework buttons" "setup_power_fw"
-run_task "Managing system and network services" "setup_services"
-close_section
+# print_section "System Updates & Package Installation"
+# run_task "Updating package databases (pacman -Syu)" "sudo pacman -Syu --noconfirm"
+# run_task "Installing standard repository packages" "install_pacman_pkgs"
+# run_task "Checking and installing Yay (AUR Helper)" "install_yay"
+# run_task "Installing AUR packages" "install_aur_pkgs"
+# close_section
+# 
+# print_section "Directory Setup & Base Permissions"
+# run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}"
+# run_task "Configuring sudoers NOPASSWD for power actions" "setup_sudoers"
+# close_section
+# 
+# print_section "Configuration & Dotfiles"
+# run_task "Applying dotfile symlinks" "setup_symlinks"
+# run_task "Configuring shell environment (Bash/Starship)" "setup_shell"
+# run_task "Configuring Waybar system-wide" "setup_waybar"
+# close_section
+# 
+# print_section "Security, Boot & Authentication"
+# run_task "Configuring Bootloader (Limine) & LUKS" "setup_bootloader"
+# run_task "Setting up fingerprint daemon & Polkit rules" "setup_fprint"
+# close_section
+# 
+# print_section "Hardware & Services"
+# run_task "Configuring power profiles & Framework buttons" "setup_power_fw"
+# run_task "Managing system and network services" "setup_services"
+# close_section
 
 print_section "Desktop Environment & Theming"
-run_task "Configuring SDDM Login Manager" "setup_sddm"
-run_task "Applying GTK themes, cursors, and wallpapers" "setup_theming"
+# run_task "Configuring SDDM Login Manager" "setup_sddm"
+# run_task "Applying GTK themes, cursors, and wallpapers" "setup_theming"
 run_task "Cleaning up unused .desktop application files" "cleanup_desktops"
 close_section
 
-print_section "Application Configurations"
-run_task "Setting up Zen Browser custom profile" "setup_zen"
-run_task "Finalizing system states" "finalize"
-close_section
+# print_section "Application Configurations"
+# run_task "Setting up Zen Browser custom profile" "setup_zen"
+# run_task "Finalizing system states" "finalize"
+# close_section
 
 print_summary
