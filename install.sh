@@ -89,7 +89,7 @@ print_summary() {
 pacman_packages=(
   base base-devel fprintd libfprint networkmanager power-profiles-daemon 
   zram-generator plymouth hyprland hypridle hyprlock hyprpicker swww sddm 
-  waybar xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring pam polkit polkit-gnome 
+  waybar xdg-desktop-portal-hyprland gnome-keyring pam polkit polkit-gnome 
   pipewire pipewire-alsa pipewire-pulse wireplumber wiremix v4l-utils 
   alacritty btop eza fastfetch fzf gum less micro unzip wl-clipboard 
   starship git github-cli jq python-gobject swayosd brightnessctl gtk4 
