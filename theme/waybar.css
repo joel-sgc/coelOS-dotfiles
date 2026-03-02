@@ -73,6 +73,8 @@ button:hover {
   color: @urgent;
 }
 
+#custom-expand-icon,
+#tray,
 #bluetooth,
 #network,
 #pulseaudio,

@@ -17,13 +17,13 @@
         "custom/privacy-dots"
     ],
     "modules-right": [
+    	"group/tray-expander",
 		"bluetooth",
 		"network",
 		"pulseaudio",
 		"cpu",
 		"battery"
     ],
-
     "custom/launcher": {
         "format": "  ",
         "tooltip": false,
@@ -56,14 +56,6 @@
         }
         
     },
-    "tray": {
-        // "icon-size": 21,
-        "spacing": 10,
-        // "icons": {
-        //   "blueman": "bluetooth",
-        //   "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
-        // }
-    },
     "clock": {
         "timezone": "America/Chicago",
 		"format": "{:L%A @ %I:%M %p}",
@@ -92,6 +84,26 @@
     	"tooltip": true,
     	"escape": false,
     	"markup": "pango"
+    },
+    "group/tray-expander": {
+      "orientation": "inherit",
+      "drawer": {
+        "transition-duration": 600,
+        "children-class": "tray-group-item"
+      },
+      "modules": ["custom/expand-icon", "tray"]
+    },
+    "custom/expand-icon": {
+      "format": "",
+      "tooltip": false,
+      "on-scroll-up": "",
+      "on-scroll-down": "",
+      "on-scroll-left": "",
+      "on-scroll-right": ""
+    },
+    "tray": {
+      "icon-size": 12,
+      "spacing": 17
     },
 	"bluetooth": {
 		"format": "",

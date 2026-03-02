@@ -1,9 +1,10 @@
 @theme "theme/coel-theme"
 
 configuration {
-	font: "JetBrainsMono Nerd Font Mono";
+	font: "FiraCode Nerd Font Mono";
 
 	disable-history: true;
 	disable-sort: false;
 	matching: "normal";
+    scroll-method: 1;
 }

@@ -19,7 +19,7 @@ case "$choice" in
 	*Autostart*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/autostart.conf;;
 	*Window*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/window-rules.conf;;
 	*Look*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/look-and-feel.conf;;
-	*Waybar*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/waybar/config.jsonc;;
+	*Waybar*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/waybar.jsonc;;
 esac
 
 if [ $exit_code -ne 0 ]; then

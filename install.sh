@@ -9,7 +9,7 @@ echo -e "\033[1;34m[~]\033[0m Enter your password to begin the unattended setup.
 sudo -v
 
 # Create a temporary sudoers rule to prevent mid-script password prompts
-TEMP_SUDOERS="/etc/sudoers.d/99_temp_joelsgc_install"
+TEMP_SUDOERS="/etc/sudoers.d/99_temp_coelos_install"
 echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee "$TEMP_SUDOERS" > /dev/null
 sudo chmod 0440 "$TEMP_SUDOERS"
 
@@ -89,13 +89,14 @@ print_summary() {
 pacman_packages=(
   base base-devel fprintd libfprint networkmanager power-profiles-daemon 
   zram-generator plymouth hyprland hypridle hyprlock hyprpicker swww sddm 
-  waybar xdg-desktop-portal-hyprland gnome-keyring pam polkit polkit-gnome 
+  waybar xdg-desktop-portal-hyprland xdg-desktop-portal-gtk gnome-keyring pam polkit polkit-gnome 
   pipewire pipewire-alsa pipewire-pulse wireplumber wiremix v4l-utils 
   alacritty btop eza fastfetch fzf gum less micro unzip wl-clipboard 
   starship git github-cli jq python-gobject swayosd brightnessctl gtk4 
   gtk4-layer-shell libnotify mako rofi poppler-glib gpu-screen-recorder 
   grim slurp satty noto-fonts-emoji ttf-jetbrains-mono-nerd woff2-font-awesome 
   ttf-firacode-nerd thunar thunar-volman thunar-archive-plugin tumbler gvfs 
+  qemu-desktop libvirt dnsmasq dmidecode virt-manager
   tailscale kdeconnect chromium gimp
 )
 
@@ -191,13 +192,14 @@ setup_power_fw() {
 }
 
 setup_services() {
-    sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon
+    sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon tailscaled virtqemud.socket virtstoraged.socket virtnetworkd.socket
     systemctl --user enable --now pipewire pipewire-pulse wireplumber
     sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
     sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.service
     
     sudo mkdir -p /etc/NetworkManager/conf.d
     sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager.conf /etc/NetworkManager/conf.d/wifi-backend.conf
+    sudo tailscale set --operator=$USER
 }
 
 setup_theming() {
@@ -252,7 +254,8 @@ finalize() {
     if ! journalctl -u NetworkManager -b -g supplicant >/dev/null 2>&1; then
         sudo systemctl restart NetworkManager
     fi
-    sudo systemctl enable --now sddm
+    sudo systemctl enable sddm
+    sudo reboot
 }
 
 # ==============================================================================
@@ -261,43 +264,43 @@ finalize() {
 
 print_header
 
-# print_section "System Updates & Package Installation"
-# run_task "Updating package databases (pacman -Syu)" "sudo pacman -Syu --noconfirm"
-# run_task "Installing standard repository packages" "install_pacman_pkgs"
-# run_task "Checking and installing Yay (AUR Helper)" "install_yay"
-# run_task "Installing AUR packages" "install_aur_pkgs"
-# close_section
-# 
-# print_section "Directory Setup & Base Permissions"
-# run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}"
-# run_task "Configuring sudoers NOPASSWD for power actions" "setup_sudoers"
-# close_section
-# 
-# print_section "Configuration & Dotfiles"
-# run_task "Applying dotfile symlinks" "setup_symlinks"
-# run_task "Configuring shell environment (Bash/Starship)" "setup_shell"
-# run_task "Configuring Waybar system-wide" "setup_waybar"
-# close_section
-# 
-# print_section "Security, Boot & Authentication"
-# run_task "Configuring Bootloader (Limine) & LUKS" "setup_bootloader"
-# run_task "Setting up fingerprint daemon & Polkit rules" "setup_fprint"
-# close_section
-# 
-# print_section "Hardware & Services"
-# run_task "Configuring power profiles & Framework buttons" "setup_power_fw"
-# run_task "Managing system and network services" "setup_services"
-# close_section
+print_section "System Updates & Package Installation"
+run_task "Updating package databases (pacman -Syu)" "sudo pacman -Syu --noconfirm"
+run_task "Installing standard repository packages" "install_pacman_pkgs"
+run_task "Checking and installing Yay (AUR Helper)" "install_yay"
+run_task "Installing AUR packages" "install_aur_pkgs"
+close_section
+
+print_section "Directory Setup & Base Permissions"
+run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}"
+run_task "Configuring sudoers NOPASSWD for power actions" "setup_sudoers"
+close_section
+
+print_section "Configuration & Dotfiles"
+run_task "Applying dotfile symlinks" "setup_symlinks"
+run_task "Configuring shell environment (Bash/Starship)" "setup_shell"
+run_task "Configuring Waybar system-wide" "setup_waybar"
+close_section
+
+print_section "Security, Boot & Authentication"
+run_task "Configuring Bootloader (Limine) & LUKS" "setup_bootloader"
+run_task "Setting up fingerprint daemon & Polkit rules" "setup_fprint"
+close_section
+
+print_section "Hardware & Services"
+run_task "Configuring power profiles & Framework buttons" "setup_power_fw"
+run_task "Managing system and network services" "setup_services"
+close_section
 
 print_section "Desktop Environment & Theming"
-# run_task "Configuring SDDM Login Manager" "setup_sddm"
-# run_task "Applying GTK themes, cursors, and wallpapers" "setup_theming"
+run_task "Configuring SDDM Login Manager" "setup_sddm"
+run_task "Applying GTK themes, cursors, and wallpapers" "setup_theming"
 run_task "Cleaning up unused .desktop application files" "cleanup_desktops"
 close_section
 
-# print_section "Application Configurations"
-# run_task "Setting up Zen Browser custom profile" "setup_zen"
-# run_task "Finalizing system states" "finalize"
-# close_section
+print_section "Application Configurations"
+run_task "Setting up Zen Browser custom profile" "setup_zen"
+run_task "Finalizing system states" "finalize"
+close_section
 
 print_summary
