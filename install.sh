@@ -33,53 +33,53 @@ LOG_FILE="coelos_install_$(date +%s).log"
 echo "=== CoelOS Setup Log Started at $(date) ===" > "$LOG_FILE"
 
 print_header() {
-    clear
-    echo -e "${BOLD}${BLUE}=========================================${NC}"
-    echo -e "${BOLD}         CoelOS System Installer         ${NC}"
-    echo -e "${BOLD}${BLUE}=========================================${NC}\n"
+  clear
+  echo -e "${BOLD}${BLUE}=========================================${NC}"
+  echo -e "${BOLD}         CoelOS System Installer         ${NC}"
+  echo -e "${BOLD}${BLUE}=========================================${NC}\n"
 }
 
 print_section() {
-    echo -e "${BLUE}┌── ${BOLD}$1${NC}"
-    echo -e "${BLUE}│${NC}"
+  echo -e "${BLUE}┌── ${BOLD}$1${NC}"
+  echo -e "${BLUE}│${NC}"
 }
 
 run_task() {
-    local task_name="$1"
-    local command="$2"
-    
-    ((TOTAL_COUNT++))
-    echo -ne "${BLUE}├──${NC} ${YELLOW}[~]${NC} $task_name..."
-    echo -e "\n[EXECUTING]: $task_name" >> "$LOG_FILE"
-    
-    if eval "$command" >> "$LOG_FILE" 2>&1; then
-        ((SUCCESS_COUNT++))
-        echo -e "\r${BLUE}├──${NC} ${GREEN}[✔]${NC} $task_name                                        "
-    else
-        ((FAIL_COUNT++))
-        echo -e "\r${BLUE}├──${NC} ${RED}[✘]${NC} $task_name (Failed)                               "
-    fi
+  local task_name="$1"
+  local command="$2"
+  
+  ((TOTAL_COUNT++))
+  echo -ne "${BLUE}├──${NC} ${YELLOW}[~]${NC} $task_name..."
+  echo -e "\n[EXECUTING]: $task_name" >> "$LOG_FILE"
+  
+  if eval "$command" >> "$LOG_FILE" 2>&1; then
+    ((SUCCESS_COUNT++))
+    echo -e "\r${BLUE}├──${NC} ${GREEN}[✔]${NC} $task_name                                        "
+  else
+    ((FAIL_COUNT++))
+    echo -e "\r${BLUE}├──${NC} ${RED}[✘]${NC} $task_name (Failed)                               "
+  fi
 }
 
 close_section() {
-    echo -e "${BLUE}└── ${GREEN}Done${NC}\n"
+  echo -e "${BLUE}└── ${GREEN}Done${NC}\n"
 }
 
 print_summary() {
-    echo -e "${BOLD}${BLUE}=========================================${NC}"
-    echo -e "${BOLD}              Setup Summary              ${NC}"
-    echo -e "${BOLD}${BLUE}=========================================${NC}"
-    echo -e "  Total Tasks:  ${TOTAL_COUNT}"
-    echo -e "  ${GREEN}Successful:   ${SUCCESS_COUNT}${NC}"
+  echo -e "${BOLD}${BLUE}=========================================${NC}"
+  echo -e "${BOLD}              Setup Summary              ${NC}"
+  echo -e "${BOLD}${BLUE}=========================================${NC}"
+  echo -e "  Total Tasks:  ${TOTAL_COUNT}"
+  echo -e "  ${GREEN}Successful:   ${SUCCESS_COUNT}${NC}"
     
-    if [ "$FAIL_COUNT" -gt 0 ]; then
-        echo -e "  ${RED}Failed:       ${FAIL_COUNT}${NC}"
-        echo -e "\n  ${YELLOW}Please check ${BOLD}$LOG_FILE${NC}${YELLOW} for error details.${NC}"
-    else
-        echo -e "  ${RED}Failed:       ${FAIL_COUNT}${NC}"
-        echo -e "\n  ${GREEN}All tasks completed successfully!${NC}"
-    fi
-    echo -e "${BOLD}${BLUE}=========================================${NC}\n"
+  if [ "$FAIL_COUNT" -gt 0 ]; then
+    echo -e "  ${RED}Failed:       ${FAIL_COUNT}${NC}"
+    echo -e "\n  ${YELLOW}Please check ${BOLD}$LOG_FILE${NC}${YELLOW} for error details.${NC}"
+  else
+    echo -e "  ${RED}Failed:       ${FAIL_COUNT}${NC}"
+    echo -e "\n  ${GREEN}All tasks completed successfully!${NC}"
+  fi
+  echo -e "${BOLD}${BLUE}=========================================${NC}\n"
 }
 
 # ==============================================================================
@@ -91,9 +91,9 @@ pacman_packages=(
   zram-generator plymouth hyprland hypridle hyprlock hyprpicker swww sddm 
   waybar xdg-desktop-portal-hyprland gnome-keyring pam polkit polkit-gnome 
   pipewire pipewire-alsa pipewire-pulse wireplumber wiremix v4l-utils 
-  alacritty btop eza fastfetch fzf gum less micro unzip wl-clipboard 
+  alacritty btop eza fastfetch fzf gum less unzip wl-clipboard 
   starship git github-cli jq python-gobject swayosd brightnessctl gtk4 
-  gtk4-layer-shell libnotify mako rofi poppler-glib gpu-screen-recorder 
+  gtk4-layer-shell libnotify mako rofi rofi-emoji poppler-glib gpu-screen-recorder 
   grim slurp satty noto-fonts-emoji ttf-jetbrains-mono-nerd woff2-font-awesome 
   ttf-firacode-nerd thunar thunar-volman thunar-archive-plugin tumbler gvfs 
   qemu-desktop libvirt dnsmasq dmidecode virt-manager
@@ -101,8 +101,8 @@ pacman_packages=(
 )
 
 aur_packages=(
-  bluepala clipvault netpala privacy-dots wayfreeze-git 
-  zen-browser-bin visual-studio-code-bin
+  netpala bluepala clipvault privacy-dots wayfreeze-git 
+  zen-browser-bin visual-studio-code-bin fresh-editor-bin
 )
 
 # ==============================================================================
@@ -110,152 +110,151 @@ aur_packages=(
 # ==============================================================================
 
 install_pacman_pkgs() {
-    sudo pacman -S --needed "${pacman_packages[@]}" --noconfirm
+  sudo pacman -S --needed "${pacman_packages[@]}" --noconfirm
 }
 
 install_yay() {
-    if ! command -v yay &> /dev/null; then
-        git clone https://aur.archlinux.org/yay-bin.git
-        cd yay-bin && makepkg -si --noconfirm
-        cd .. && rm -rf yay-bin
-    fi
+  if ! command -v yay &> /dev/null; then
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin && makepkg -si --noconfirm
+    cd .. && rm -rf yay-bin
+  fi
 }
 
 install_aur_pkgs() {
-    yay -S --needed "${aur_packages[@]}" --noconfirm
+  yay -S --needed "${aur_packages[@]}" --noconfirm
 }
 
 setup_sudoers() {
-    SUDO_LINE="%wheel ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown, /sbin/suspend"
-    sudo grep -qxF "$SUDO_LINE" /etc/sudoers || echo "$SUDO_LINE" | sudo EDITOR='tee -a' visudo
+  SUDO_LINE="%wheel ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown, /sbin/suspend"
+  sudo grep -qxF "$SUDO_LINE" /etc/sudoers || echo "$SUDO_LINE" | sudo EDITOR='tee -a' visudo
 }
 
 setup_symlinks() {
-    ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
-    ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf
-    ln -sf ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf
-    ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprpaper.conf ~/.config/hypr/hyprpaper.conf
-    ln -sf ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi
-    ln -sf ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi
-    ln -sf ~/.coelOS-dotfiles/configs/fastfetch.jsonc ~/.config/fastfetch/config.jsonc
-    ln -sf ~/.coelOS-dotfiles/configs/alacritty.toml ~/.config/alacritty/alacritty.toml
-    ln -sf ~/.coelOS-dotfiles/theme/micro-theme.micro ~/.config/micro/colorschemes/CoelOS.micro
-    ln -sf ~/.coelOS-dotfiles/configs/micro.json ~/.config/micro/settings.json
-    ln -sf ~/.coelOS-dotfiles/theme/swayosd.css ~/.config/swayosd/style.css
-    ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
-    ln -sf ~/.coelOS-dotfiles/configs/netpala.toml ~/.config/netpala/config.toml
-    ln -sf ~/.coelOS-dotfiles/configs/starship.toml ~/.config/starship.toml 
-    ln -sf ~/.coelOS-dotfiles/theme/btop.theme ~/.config/btop/themes/CoelOS.theme
+  ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
+  ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprlock.conf ~/.config/hypr/hyprlock.conf
+  ln -sf ~/.coelOS-dotfiles/configs/hypr/hypridle.conf ~/.config/hypr/hypridle.conf
+  ln -sf ~/.coelOS-dotfiles/configs/hypr/hyprpaper.conf ~/.config/hypr/hyprpaper.conf
+  ln -sf ~/.coelOS-dotfiles/configs/rofi/config.rasi ~/.config/rofi/config.rasi
+  ln -sf ~/.coelOS-dotfiles/theme/rofi.rasi ~/.config/rofi/theme/coel-theme.rasi
+  ln -sf ~/.coelOS-dotfiles/configs/fastfetch.jsonc ~/.config/fastfetch/config.jsonc
+  ln -sf ~/.coelOS-dotfiles/configs/alacritty.toml ~/.config/alacritty/alacritty.toml
+  ln -sf ~/.coelOS-dotfiles/theme/swayosd.css ~/.config/swayosd/style.css
+  ln -sf ~/.coelOS-dotfiles/theme/mako ~/.config/mako/config
+  ln -sf ~/.coelOS-dotfiles/configs/netpala.toml ~/.config/netpala/config.toml
+  ln -sf ~/.coelOS-dotfiles/configs/starship.toml ~/.config/starship.toml 
+  ln -sf ~/.coelOS-dotfiles/theme/btop.theme ~/.config/btop/themes/CoelOS.theme
+  ln -sf ~/.coelOS-dotfiles/configs/fresh.json ~/.config/fresh/config.json
 }
 
 setup_bootloader() {
-    LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
-    FOUND_UUID=$(grep -oP 'PARTUUID=\K[^:]+' "$LIMINE_CONF")
-    sudo sed "s/{{ROOT_UUID}}/$FOUND_UUID/g" ~/.coelOS-dotfiles/configs/limine.conf | sudo tee "$LIMINE_CONF" > /dev/null
+  LIMINE_CONF=$(find "/boot" -type f -name limine.conf 2>/dev/null)
+  FOUND_UUID=$(grep -oP 'PARTUUID=\K[^:]+' "$LIMINE_CONF")
+  sudo sed "s/{{ROOT_UUID}}/$FOUND_UUID/g" ~/.coelOS-dotfiles/configs/limine.conf | sudo tee "$LIMINE_CONF" > /dev/null
 
-    sudo mkdir -p /usr/share/plymouth/themes/
-    sudo cp -R ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
-    sudo sed -i '/^HOOKS=.*plymouth/! s/\bencrypt\b/plymouth encrypt/' /etc/mkinitcpio.conf
-    sudo mkinitcpio -P
-    sudo plymouth-set-default-theme -R coelos
+  sudo mkdir -p /usr/share/plymouth/themes/
+  sudo cp -R ~/.coelOS-dotfiles/configs/plymouth /usr/share/plymouth/themes/coelos
+  sudo sed -i '/^HOOKS=.*plymouth/! s/\bencrypt\b/plymouth encrypt/' /etc/mkinitcpio.conf
+  sudo mkinitcpio -P
+  sudo plymouth-set-default-theme -R coelos
 }
 
 setup_sddm() {
-    sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
-    sudo setfacl -m u:sddm:x ~
-    sudo ln -sf ~/.coelOS-dotfiles/configs/sddm.conf /etc/sddm.conf
-    sudo ln -sf ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm
+  sudo setfacl -R -m u:sddm:rx ~/.coelOS-dotfiles
+  sudo setfacl -m u:sddm:x ~
+  sudo ln -sf ~/.coelOS-dotfiles/configs/sddm.conf /etc/sddm.conf
+  sudo ln -sf ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm
 }
 
 setup_waybar() {
-    sudo rm -rf /etc/xdg/waybar/*
-    sudo ln -sf ~/.coelOS-dotfiles/configs/waybar.jsonc /etc/xdg/waybar/config.jsonc
-    sudo ln -sf ~/.coelOS-dotfiles/theme/waybar.css /etc/xdg/waybar/style.css
+  sudo rm -rf /etc/xdg/waybar/*
+  sudo ln -sf ~/.coelOS-dotfiles/configs/waybar.jsonc /etc/xdg/waybar/config.jsonc
+  sudo ln -sf ~/.coelOS-dotfiles/theme/waybar.css /etc/xdg/waybar/style.css
 }
 
 setup_fprint() {
-    sudo cp ~/.coelOS-dotfiles/configs/polkit-fprint.rules /etc/polkit-1/rules.d/50-fprint.rules
-    sudo chown root:root /etc/polkit-1/rules.d/50-fprint.rules
-    sudo chmod 644 /etc/polkit-1/rules.d/50-fprint.rules
+  sudo cp ~/.coelOS-dotfiles/configs/polkit-fprint.rules /etc/polkit-1/rules.d/50-fprint.rules
+  sudo chown root:root /etc/polkit-1/rules.d/50-fprint.rules
+  sudo chmod 644 /etc/polkit-1/rules.d/50-fprint.rules
 
-    PAM_SUDO="/etc/pam.d/sudo"
-    FPRINT_LINE="auth sufficient pam_fprintd.so"
-    grep -q "pam_fprintd.so" "$PAM_SUDO" || sudo sed -i "1i $FPRINT_LINE" "$PAM_SUDO"
+  PAM_SUDO="/etc/pam.d/sudo"
+  FPRINT_LINE="auth sufficient pam_fprintd.so"
+  grep -q "pam_fprintd.so" "$PAM_SUDO" || sudo sed -i "1i $FPRINT_LINE" "$PAM_SUDO"
 }
 
 setup_power_fw() {
-    sudo mkdir -p /etc/systemd/logind.conf.d/ /etc/udev/hwdb.d/
-    sudo ln -sf ~/.coelOS-dotfiles/configs/power/logind-power.conf /etc/systemd/logind.conf.d/10-power.conf
-    sudo ln -sf ~/.coelOS-dotfiles/configs/power/70-framework-power.hwdb /etc/udev/hwdb.d/70-framework-power.hwdb
-    sudo systemd-hwdb update
-    sudo udevadm trigger
+  sudo mkdir -p /etc/systemd/logind.conf.d/ /etc/udev/hwdb.d/
+  sudo ln -sf ~/.coelOS-dotfiles/configs/power/logind-power.conf /etc/systemd/logind.conf.d/10-power.conf
+  sudo ln -sf ~/.coelOS-dotfiles/configs/power/70-framework-power.hwdb /etc/udev/hwdb.d/70-framework-power.hwdb
+  sudo systemd-hwdb update
+  sudo udevadm trigger
 }
 
 setup_services() {
-    sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon tailscaled virtqemud.socket virtstoraged.socket virtnetworkd.socket
-    systemctl --user enable --now pipewire pipewire-pulse wireplumber
-    sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
-    sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.service
-    
-    sudo mkdir -p /etc/NetworkManager/conf.d
-    sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager.conf /etc/NetworkManager/conf.d/wifi-backend.conf
-    sudo tailscale set --operator=$USER
+  sudo systemctl enable --now NetworkManager fprintd power-profiles-daemon tailscaled virtqemud.socket virtstoraged.socket virtnetworkd.socket virtnodedevd
+  systemctl --user enable --now pipewire pipewire-pulse wireplumber
+  sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
+  sudo systemctl mask systemd-networkd.service systemd-networkd-wait-online.service
+  
+  sudo mkdir -p /etc/NetworkManager/conf.d
+  sudo ln -sf ~/.coelOS-dotfiles/configs/networkmanager.conf /etc/NetworkManager/conf.d/wifi-backend.conf
+  sudo tailscale set --operator=$USER
 }
 
 setup_theming() {
-    # Btop Theme String
-    sed -i "s|^color_theme\s*=.*|color_theme = \"$HOME/.config/btop/themes/CoelOS.theme\"|" ~/.config/btop/btop.conf || touch ~/.config/btop/btop.conf
+  # Btop Theme String
+  sed -i "s|^color_theme\s*=.*|color_theme = \"$HOME/.config/btop/themes/CoelOS.theme\"|" ~/.config/btop/btop.conf || touch ~/.config/btop/btop.conf
     
-    # Wallpapers
-    for file in ~/.coelOS-dotfiles/theme/wallpapers/*; do
-        if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            ln -sf "$file" "$HOME/Pictures/Wallpapers/$filename"
-        fi
-    done
+  # Wallpapers
+  for file in ~/.coelOS-dotfiles/theme/wallpapers/*; do
+    if [ -f "$file" ]; then
+      filename=$(basename "$file")
+      ln -sf "$file" "$HOME/Pictures/Wallpapers/$filename"
+    fi
+  done
 
-    # Cursor & GTK
-    mkdir -p ~/.local/share/icons
-    sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
-    sudo cp -R ~/.coelOS-dotfiles/theme/gtk ~/.themes/CoelOS
+  # Cursor & GTK
+  mkdir -p ~/.local/share/icons
+  sudo ln -sf ~/.coelOS-dotfiles/theme/oreo_spark_light_pink_cursors/ ~/.local/share/icons/oreo_spark_light_pink_cursors
+  sudo cp -R ~/.coelOS-dotfiles/theme/gtk ~/.themes/CoelOS
 }
 
 cleanup_desktops() {
-    local apps=(
-        btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector 
-        wiremix xgps xgpsspeed thunar-bulk-rename thunar-settings thunar-volman-settings
-        org.kde.kdeconnect.nonplasma org.kde.kdeconnect.sms
-    )
-    for app in "${apps[@]}"; do
-        sudo rm -f "/usr/share/applications/${app}.desktop"
-    done
+  local apps=(
+    btop avahi-discover bssh bvnc qv4l2 qvidcap rofi rofi-theme-selector 
+    wiremix xgps xgpsspeed thunar-bulk-rename thunar-settings thunar-volman-settings
+    org.kde.kdeconnect.nonplasma org.kde.kdeconnect.sms
+  )
+  for app in "${apps[@]}"; do
+    sudo rm -f "/usr/share/applications/${app}.desktop"
+  done
 }
 
 setup_shell() {
-    grep -q "alias ls=" ~/.bashrc && sed -i "/alias ls=/d" ~/.bashrc
-    echo "alias ls='eza -l --header'" >> ~/.bashrc
-    [[ -f ~/.inputrc ]] || touch ~/.inputrc
-    grep -qxF "set completion-ignore-case on" ~/.inputrc || echo "set completion-ignore-case on" >> ~/.inputrc
-    if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
-        echo 'eval "$(starship init bash)"' >> ~/.bashrc
-    fi
+  grep -q "alias ls=" ~/.bashrc && sed -i "/alias ls=/d" ~/.bashrc
+  echo "alias ls='eza -l --header'" >> ~/.bashrc
+  [[ -f ~/.inputrc ]] || touch ~/.inputrc
+  grep -qxF "set completion-ignore-case on" ~/.inputrc || echo "set completion-ignore-case on" >> ~/.inputrc
+  if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
+    echo 'eval "$(starship init bash)"' >> ~/.bashrc
+  fi
 }
 
 setup_zen() {
-    zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
-    zen-browser --headless &>/dev/null & sleep 2; kill $!
-    printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
-    sudo mkdir -p /etc/zen/policies
-    sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/user.js
-    sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
+  zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
+  zen-browser --headless &>/dev/null & sleep 2; kill $!
+  printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
+  sudo mkdir -p /etc/zen/policies
+  sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/user.js ~/.config/zen/CoelOS/user.js
+  sudo ln -sf ~/.coelOS-dotfiles/configs/zen-browser/policies.json /etc/zen/policies/policies.json
 }
 
 finalize() {
-    if ! journalctl -u NetworkManager -b -g supplicant >/dev/null 2>&1; then
-        sudo systemctl restart NetworkManager
-    fi
-    sudo systemctl enable sddm
-    sudo reboot
+  if ! journalctl -u NetworkManager -b -g supplicant >/dev/null 2>&1; then
+      sudo systemctl restart NetworkManager
+  fi
+  sudo systemctl enable sddm
+  sudo reboot
 }
 
 # ==============================================================================

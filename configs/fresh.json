@@ -1,0 +1,40 @@
+{
+  "theme": "high-contrast",
+  "file_explorer": {
+    "show_gitignored": true,
+    "show_hidden": true
+  },
+  "file_browser": {
+    "show_hidden": true
+  },
+  "keybindings": [
+    {
+      "key": "Up",
+      "modifiers": [
+        "ctrl",
+        "shift"
+      ],
+      "action": "add_cursor_above",
+      "when": "normal"
+    },
+    {
+      "key": "Down",
+      "modifiers": [
+        "ctrl",
+        "shift"
+      ],
+      "action": "add_cursor_below",
+      "when": "normal"
+    },
+    {
+      "key": ",",
+      "modifiers": [
+        "ctrl"
+      ],
+      "action": "open_settings"
+    }
+  ],
+  "editor": {
+    "tab_size": 2
+  }
+}

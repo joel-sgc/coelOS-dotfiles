@@ -2,19 +2,19 @@
 size = 10.0
 
 [font.normal]
-family = "JetBrainsMono Nerd Font Mono"
+family = "FiraCode Nerd Font Mono"
 style = "Regular"
 
 [font.bold]
-family = "JetBrainsMono Nerd Font Mono"
+family = "FiraCode Nerd Font Mono"
 style = "Bold"
 
 [font.italic]
-family = "JetBrainsMono Nerd Font Mono"
+family = "FiraCode Nerd Font Mono"
 style = "Italic"
 
 [font.bold_italic]
-family = "JetBrainsMono Nerd Font Mono"
+family = "FiraCode Nerd Font Mono"
 style = "Bold Italic"
 
 [colors.primary]

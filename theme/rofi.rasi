@@ -54,7 +54,7 @@ element-icon {
 
 icon-current-entry {
 	expand: false;
-	size: 50%;
+	size: 35%;
 }
 
 inputbar {
