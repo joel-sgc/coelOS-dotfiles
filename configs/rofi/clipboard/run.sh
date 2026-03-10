@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 clip_count=$(clipvault list | wc -l)
 if (( clip_count < 10)); then
 	lines=$clip_count

@@ -52,3 +52,7 @@ white   = "#ffffff"
 [window]
 padding = { x = 18, y = 17 }
 dynamic_padding = true
+
+[cursor.style]
+shape = "Beam"
+blinking = "Off"

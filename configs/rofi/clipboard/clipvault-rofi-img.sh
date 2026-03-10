@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Custom mode for `rofi`, including image preview.
 # Usage: rofi -modi clipboard:/path/to/clipvault_rofi.sh -show clipboard -show-icons
 

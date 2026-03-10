@@ -97,7 +97,7 @@ pacman_packages=(
   grim slurp satty noto-fonts-emoji ttf-jetbrains-mono-nerd woff2-font-awesome 
   ttf-firacode-nerd thunar thunar-volman thunar-archive-plugin tumbler gvfs 
   qemu-desktop libvirt dnsmasq dmidecode virt-manager
-  tailscale kdeconnect chromium gimp
+  tailscale kdeconnect chromium gimp zsh
 )
 
 aur_packages=(
@@ -231,13 +231,8 @@ cleanup_desktops() {
 }
 
 setup_shell() {
-  grep -q "alias ls=" ~/.bashrc && sed -i "/alias ls=/d" ~/.bashrc
-  echo "alias ls='eza -l --header'" >> ~/.bashrc
-  [[ -f ~/.inputrc ]] || touch ~/.inputrc
-  grep -qxF "set completion-ignore-case on" ~/.inputrc || echo "set completion-ignore-case on" >> ~/.inputrc
-  if ! grep -q 'eval "$(starship init bash)"' ~/.bashrc; then
-    echo 'eval "$(starship init bash)"' >> ~/.bashrc
-  fi
+  ln -sf ~/.coelOS-dotfiles/config/.zshrc ~/.zshrc
+  sudo usermod -s $(which zsh) $USER
 }
 
 setup_zen() {

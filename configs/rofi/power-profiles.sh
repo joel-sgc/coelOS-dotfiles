@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
-
-#!/bin/bash
+#!/usr/bin/bash
 
 profiles=$(powerprofilesctl list | awk '/:$/ {gsub("\\*",""); gsub(":",""); print $1}')
 

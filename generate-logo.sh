@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # Usage:
 # ./generate-logo.sh ascii-name.txt logo.png "#ff99da"
