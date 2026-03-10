@@ -231,7 +231,7 @@ cleanup_desktops() {
 }
 
 setup_shell() {
-  ln -sf ~/.coelOS-dotfiles/config/.zshrc ~/.zshrc
+  ln -sf ~/.coelOS-dotfiles/configs/.zshrc ~/.zshrc
   sudo usermod -s $(which zsh) $USER
 }
 

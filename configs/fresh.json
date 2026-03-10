@@ -35,6 +35,7 @@
     }
   ],
   "editor": {
-    "tab_size": 2
+    "tab_size": 2,
+    "cursor_style": "steady_bar"
   }
 }

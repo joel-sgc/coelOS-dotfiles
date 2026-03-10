@@ -18,9 +18,9 @@ case "$choice" in
 	*WiFi*) exec alacritty --class com.joelsgc.floating -e netpala;;
 	*Bluetooth*) exec alacritty --class com.joelsgc.floating -e bluepala;;
 	*Power\ Profiles*) ~/.coelOS-dotfiles/configs/rofi/power-profiles.sh;;
-	*Monitors*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/monitors.conf;;
-	*Keybindings*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/keybindings.conf;;
-	*Input*) exec alacritty -e micro ~/.coelOS-dotfiles/configs/hypr/input.conf;;
+	*Monitors*) exec alacritty -e fresh ~/.coelOS-dotfiles/configs/hypr/monitors.conf;;
+	*Keybindings*) exec alacritty -e fresh ~/.coelOS-dotfiles/configs/hypr/keybindings.conf;;
+	*Input*) exec alacritty -e fresh ~/.coelOS-dotfiles/configs/hypr/input.conf;;
 	*Fingerprint*) alacritty --class com.joelsgc.floating -e ~/.coelOS-dotfiles/bin/fingerprint-enroll.sh;;
 	*Config*) exec ~/.coelOS-dotfiles/configs/rofi/config.sh;;
 esac
