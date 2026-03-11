@@ -32,6 +32,36 @@
         "ctrl"
       ],
       "action": "open_settings"
+    },
+    {
+      "key": "z",
+      "modifiers": [
+        "alt"
+      ],
+      "action": "toggle_line_wrap"
+    },
+    {
+      "key": "/",
+      "modifiers": [
+        "ctrl"
+      ],
+      "action": "noop",
+      "when": "normal"
+    },
+    {
+      "key": "/",
+      "modifiers": [
+        "ctrl"
+      ],
+      "action": "noop",
+      "when": "normal"
+    },
+    {
+      "key": "/",
+      "modifiers": [
+        "ctrl"
+      ],
+      "action": "toggle_comment"
     }
   ],
   "editor": {

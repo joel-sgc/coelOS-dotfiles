@@ -122,10 +122,15 @@ bindkey '^[[1;6D' shift-backward-word  # Shift+Ctrl+Left
 bindkey '^[[1;6C' shift-forward-word   # Shift+Ctrl+Right
 
 # -----------------------------------------------------------------------------
-# 5. ALIASES
+# 5. ALIASES & UTILITIES
 # -----------------------------------------------------------------------------
 alias ls='eza -l --header'
 alias grep='grep --color=auto'
+
+# NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
 # -----------------------------------------------------------------------------
 # 6. PROMPTS (MUST BE LOADED LAST)

@@ -24,10 +24,10 @@ border-color=#ff99da
 # =========================
 # The SwayOSD Mode
 # =========================
-# This block should ONLY trigger when you run 'makoctl mode -a swayosd'
-[app-name=osd]
-anchor=bottom-center
-[app-name=osd]
-outer-margin=250
-[app-name=osd]
+[app-name="swayosd"]
 font=FiraCode Nerd Font Mono 14
+anchor=center
+padding=35,32
+margin=895
+height=140
+width=340
