@@ -266,7 +266,7 @@ run_task "Installing AUR packages" "install_aur_pkgs"
 close_section
 
 print_section "Directory Setup & Base Permissions"
-run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,micro/colorschemes}"
+run_task "Creating local directory structure" "mkdir -p ~/Pictures/Wallpapers ~/Videos ~/.themes ~/.config/{zen/CoelOS,hypr,btop/themes,rofi/theme,fastfetch,waybar,alacritty,swayosd,mako,netpala,fresh}"
 run_task "Configuring sudoers NOPASSWD for power actions" "setup_sudoers"
 close_section
 
