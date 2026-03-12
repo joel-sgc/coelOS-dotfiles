@@ -10,7 +10,7 @@ choice=$(printf \
 case "$choice" in
 	*Screenshot*) exec ~/.coelOS-dotfiles/bin/screenshot.sh;;
 	*Record*) exec ~/.coelOS-dotfiles/bin/screenrecord.sh;;
-	*Color*) exec hyprpicker -a;;
+	*Color*) exec bash -c "sleep 0.15 && hyprpicker -a";;
 esac
 
  if [ $exit_code -ne 0 ]; then
