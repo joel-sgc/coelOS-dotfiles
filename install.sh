@@ -144,7 +144,8 @@ setup_symlinks() {
   ln -sf ~/.coelOS-dotfiles/configs/netpala.toml ~/.config/netpala/config.toml
   ln -sf ~/.coelOS-dotfiles/configs/starship.toml ~/.config/starship.toml 
   ln -sf ~/.coelOS-dotfiles/theme/btop.theme ~/.config/btop/themes/CoelOS.theme
-  ln -sf ~/.coelOS-dotfiles/configs/fresh.json ~/.config/fresh/config.json
+  ln -sf ~/.coelOS-dotfiles/configs/btop.conf ~/.config/btop/btop.conf  
+  ln -sf ~/.coelOS-dotfiles/configs/fresh.json ~/.config/fresh/config.json  
 }
 
 setup_bootloader() {
@@ -202,9 +203,6 @@ setup_services() {
 }
 
 setup_theming() {
-  # Btop Theme String
-  sed -i "s|^color_theme\s*=.*|color_theme = \"$HOME/.config/btop/themes/CoelOS.theme\"|" ~/.config/btop/btop.conf || touch ~/.config/btop/btop.conf
-    
   # Wallpapers
   for file in ~/.coelOS-dotfiles/theme/wallpapers/*; do
     if [ -f "$file" ]; then
@@ -245,6 +243,8 @@ setup_zen() {
 }
 
 finalize() {
+  chmod +x ~/.coelOS-dotfiles/bin/swww-cycle.sh
+  
   if ! journalctl -u NetworkManager -b -g supplicant >/dev/null 2>&1; then
       sudo systemctl restart NetworkManager
   fi
