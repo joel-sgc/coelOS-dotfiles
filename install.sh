@@ -167,6 +167,11 @@ setup_sddm() {
   sudo ln -sf ~/.coelOS-dotfiles/theme/sddm /usr/share/sddm/themes/coel-sddm
 }
 
+setup_username_configs() {
+  sed -i 's|\$HOME|'"$HOME"'|g' ~/.coelOS-dotfiles/configs/sddm.conf
+  sed -i 's|\$HOME|'"$HOME"'|g' ~/.coelOS-dotfiles/theme/waybar.css
+}
+
 setup_waybar() {
   sudo rm -rf /etc/xdg/waybar/*
   sudo ln -sf ~/.coelOS-dotfiles/configs/waybar.jsonc /etc/xdg/waybar/config.jsonc
@@ -234,7 +239,7 @@ setup_shell() {
 }
 
 setup_zen() {
-  zen-browser --no-remote -CreateProfile "CoelOS /home/joelsgc/.config/zen/CoelOS"
+  zen-browser --no-remote -CreateProfile "CoelOS $HOME/.config/zen/CoelOS"
   zen-browser --headless &>/dev/null & sleep 2; kill $!
   printf "%s\nDefault=CoelOS\nLocked=1\n\n[Profile0]\nName=CoelOS\nPath=CoelOS\nIsRelative=1\nDefault=1\n\n[General]\nStartWithLastProfile=1\nVersion=2\n" "$(grep -m1 '^\[Install' "$HOME/.config/zen/profiles.ini")" > "$HOME/.config/zen/profiles.ini"
   sudo mkdir -p /etc/zen/policies
@@ -279,6 +284,7 @@ close_section
 print_section "Security, Boot & Authentication"
 run_task "Configuring Bootloader (Limine) & LUKS" "setup_bootloader"
 run_task "Setting up fingerprint daemon & Polkit rules" "setup_fprint"
+run_task "Configuring user account" "setup_username_configs"
 close_section
 
 print_section "Hardware & Services"

@@ -27,7 +27,7 @@ fi
 if [[ -n $CUSTOM_EXEC ]]; then
   EXEC_COMMAND="$CUSTOM_EXEC"
 else
-  EXEC_COMMAND="/home/joelsgc/.coelOS-dotfiles/bin/webapp-launch.sh $APP_URL"
+  EXEC_COMMAND="$HOME/.coelOS-dotfiles/bin/webapp-launch.sh $APP_URL"
 fi
 
 # Create application .desktop file
