@@ -1,0 +1,92 @@
+@import '/home/joelsgc/.coelOS-dotfiles/theme/colors.css';
+
+* {
+  /* `otf-font-awesome` is required to be installed for icons */
+  font-family:
+    FontAwesome, 'FiraCode Nerd Font Mono', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: @text;
+}
+
+window#waybar {
+  background-color: @base;
+  color: @text;
+  border: 1px solid @accent;
+  border-radius: 8px;
+  font-weight: 900;
+
+  transition-property: background-color;
+  transition-duration: 0.5s;
+}
+
+window#waybar.hidden {
+  opacity: 0.2;
+}
+
+tooltip {
+  background-color: @base;
+  border: 1px solid @accent;
+  font-size: 12px;
+}
+
+#custom-launcher {
+  font-size: 14px;
+  background-image: url('/home/joelsgc/.coelOS-dotfiles/Coel.svg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+
+  margin-left: 16px;
+  margin-right: 8px;
+}
+
+button {
+  border: none;
+  border-radius: 0;
+  padding: 0 4px;
+}
+
+button:hover {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+#workspaces button.empty label {
+  color: alpha(@urgent, 0.5);
+}
+
+#workspaces button label {
+  background-color: transparent;
+  color: alpha(@urgent, 0.75);
+}
+
+#workspaces button:hover label {
+  color: alpha(@urgent, 0.75);
+  border-top: unset;
+}
+
+#workspaces button.active label {
+  color: @accent;
+}
+
+#workspaces button.urgent label {
+  color: @urgent;
+}
+
+#custom-expand-icon,
+#tray,
+#bluetooth,
+#network,
+#pulseaudio,
+#cpu {
+  padding: 0 8px;
+  font-size: 20px;
+}
+#cpu {
+  padding-right: 16px;
+}
+
+#bluetooth {
+  font-size: 16px;
+}

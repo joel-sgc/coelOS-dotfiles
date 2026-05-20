@@ -1,0 +1,39 @@
+/* =========================
+   Main OSD Window
+========================= */
+window {
+  background-color: rgba(38, 38, 38, 0.92);
+  border-radius: 8px;
+  border: 1px solid #7acdcd;
+  padding: 18px 22px;
+}
+
+/* =========================
+   Label (percentage text)
+========================= */
+label {
+  color: #d4d4d4;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* =========================
+   Progress Bar Container
+========================= */
+progressbar {
+  min-height: 14px;
+  min-width: 220px;
+  border-radius: 12px;
+}
+
+/* Empty background */
+progressbar trough {
+  background-color: #ff99da80;
+  border-radius: 12px;
+}
+
+/* Filled portion */
+progressbar progress {
+  background-color: #7acdcd;
+  border-radius: 12px;
+}

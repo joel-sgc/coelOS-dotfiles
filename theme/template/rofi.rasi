@@ -1,0 +1,76 @@
+* {
+	urgent: #ff99da;
+	accent: #7acdcd;
+	text: #d4d4d4;
+	base: #262626;
+	
+	font: "JetBrainsMonoNL Nerd Font 24, FiraCode Nerd Font Mono 16";
+}
+
+window {
+	width: 512px;
+	border-radius: 8px;
+	border: 2px;
+	border-color: @accent;
+	padding: 48px;
+	background-color: #262626dd;
+}
+
+wrap {
+	expand: false;
+	children: [inputbar];
+}
+
+mainbox, listview, element, element-text, entry, wrap, listview-split, icon-current-entry {
+	background-color: transparent;
+}
+
+listview {
+	spacing: 16px;
+	padding: 16px 0 0 0;
+}
+
+listview-split {
+	orientation: horizontal;
+	spacing: 24px;
+	children: [listview, icon-current-entry];
+}
+
+element {
+	padding: 8px;
+}
+
+element-text {
+	text-color: @accent;
+}
+
+element-text selected {
+	text-color: @urgent;
+}
+
+element-icon {
+	size: 0px;
+}
+
+icon-current-entry {
+	expand: false;
+	size: 35%;
+}
+
+inputbar {
+	padding: 12px;
+	children: [ entry ];
+	background-color: @base;
+}
+
+entry {
+	placeholder: "Go...";
+	placeholder-color: @text;
+	text-color: @text;
+}
+
+@media ( enabled: env(PREVIEW, false)) {
+	window {
+		children: [wrap, listview-split];
+	}
+}

@@ -1,0 +1,33 @@
+# =========================
+# Global Defaults
+# =========================
+font=FiraCode Nerd Font Mono 11
+width=300
+height=100
+margin=10
+padding=18,22
+layer=overlay
+anchor=top-right
+background-color=#262626eb
+text-color=#d4d4d4
+border-color=#7acdcd
+border-size=2
+border-radius=8
+default-timeout=5000
+
+# =========================
+# High Urgency
+# =========================
+[urgency=high]
+border-color=#ff99da
+
+# =========================
+# The SwayOSD Mode
+# =========================
+[app-name="swayosd"]
+font=FiraCode Nerd Font Mono 14
+anchor=center
+padding=35,32
+margin=895
+height=140
+width=340

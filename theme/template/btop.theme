@@ -1,0 +1,85 @@
+# Main background
+theme[main_bg]="#1e1e24"
+
+# Main text color
+theme[main_fg]="#e0def4"
+
+# Title color for boxes (Pastel Blue for a calm UI element)
+theme[title]="#b4d4ff"
+
+# Highlight color for keyboard shortcuts (Pastel Yellow pops nicely)
+theme[hi_fg]="#fdfd96"
+
+# Background color of selected item in processes box (Pastel Blue)
+theme[selected_bg]="#b4d4ff"
+
+# Foreground color of selected item in processes box (Deep Crust for contrast)
+theme[selected_fg]="#18181d"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="#908caa"
+
+# Color of text appearing on top of graphs
+theme[graph_text]="#e0def4"
+
+# Background color of the percentage meters
+theme[meter_bg]="#2b2b36"
+
+# Misc colors for processes box (Pastel Magenta for a little flair)
+theme[proc_misc]="#ffb4e6"
+
+# Muted box outlines for a cleaner look
+theme[cpu_box]="#2b2b36"
+theme[mem_box]="#2b2b36"
+theme[net_box]="#2b2b36"
+theme[proc_box]="#2b2b36"
+theme[div_line]="#2b2b36"
+
+# ==========================================
+# Expanded Color Gradients
+# ==========================================
+
+# Temp: Transitions from Green (cool) -> Yellow -> Red (hot)
+theme[temp_start]="#b4eeb4"
+theme[temp_mid]="#fdfd96"
+theme[temp_end]="#ffb4b4"
+
+# CPU: Transitions from Cyan -> Blue -> Magenta
+theme[cpu_start]="#b4ffff"
+theme[cpu_mid]="#b4d4ff"
+theme[cpu_end]="#ffb4e6"
+
+# Free memory: Soft Green -> Cyan
+theme[free_start]="#b4eeb4"
+theme[free_mid]="#b4ffff"
+theme[free_end]="#b4ffff"
+
+# Cached memory: Blue -> Magenta
+theme[cached_start]="#b4d4ff"
+theme[cached_mid]="#ffb4e6"
+theme[cached_end]="#ffb4e6"
+
+# Available memory: Yellow -> Green
+theme[available_start]="#fdfd96"
+theme[available_mid]="#b4eeb4"
+theme[available_end]="#b4eeb4"
+
+# Used memory: Warning colors, Yellow -> Red
+theme[used_start]="#fdfd96"
+theme[used_mid]="#ffb4b4"
+theme[used_end]="#ffb4b4"
+
+# Download: Cyan -> Blue
+theme[download_start]="#b4ffff"
+theme[download_mid]="#b4d4ff"
+theme[download_end]="#b4d4ff"
+
+# Upload: Magenta -> Red
+theme[upload_start]="#ffb4e6"
+theme[upload_mid]="#ffb4b4"
+theme[upload_end]="#ffb4b4"
+
+# Processes: Cyan -> Green
+theme[process_start]="#b4ffff"
+theme[process_mid]="#b4eeb4"
+theme[process_end]="#b4eeb4"

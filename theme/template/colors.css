@@ -1,0 +1,49 @@
+/* ========================================== */
+/* Base Backgrounds (Soft Dark Mode)          */
+/* ========================================== */
+@define-color bg-base #1e1e24;       /* Main desktop/terminal background */
+@define-color bg-surface #2b2b36;    /* Slightly lighter for panels/floating windows */
+@define-color bg-crust #18181d;      /* Very dark for shadows or inner borders */
+
+/* ========================================== */
+/* Text Colors                                */
+/* ========================================== */
+@define-color text-main #e0def4;     /* Primary text (soft, warm white) */
+@define-color text-muted #908caa;    /* Secondary text (comments, inactive workspaces) */
+
+/* ========================================== */
+/* Pastel Accents (The Core Palette)          */
+/* ========================================== */
+@define-color pastel-red #ffb4b4;    /* Errors, close buttons, critical alerts */
+@define-color pastel-green #b4eeb4;  /* Success, add, safe states */
+@define-color pastel-yellow #fdfd96; /* Warnings, modified files */
+@define-color pastel-blue #b4d4ff;   /* Primary UI accent, active elements */
+@define-color pastel-magenta #ffb4e6;/* Urgent states, secondary flair */
+@define-color pastel-cyan #b4ffff;   /* Alternate accent, links */
+
+/* ========================================== */
+/* UI Specific Elements                       */
+/* ========================================== */
+@define-color border-active #b4d4ff;   /* Mapped to pastel-blue */
+@define-color border-inactive #2b2b36; /* Mapped to bg-surface */
+@define-color border-urgent #ffb4e6;   /* Mapped to pastel-magenta */
+
+/* ========================================== */
+/* Terminal 16-Color Mapping                  */
+/* ========================================== */
+@define-color color0 #2b2b36;        /* Black */
+@define-color color1 #ffb4b4;        /* Red */
+@define-color color2 #b4eeb4;        /* Green */
+@define-color color3 #fdfd96;        /* Yellow */
+@define-color color4 #b4d4ff;        /* Blue */
+@define-color color5 #ffb4e6;        /* Magenta */
+@define-color color6 #b4ffff;        /* Cyan */
+@define-color color7 #e0def4;        /* White */
+@define-color color8 #908caa;        /* Bright Black */
+@define-color color9 #ffc4c4;        /* Bright Red */
+@define-color color10 #c4fec4;       /* Bright Green */
+@define-color color11 #ffffb6;       /* Bright Yellow */
+@define-color color12 #c4e4ff;       /* Bright Blue */
+@define-color color13 #ffc4f6;       /* Bright Magenta */
+@define-color color14 #c4ffff;       /* Bright Cyan */
+@define-color color15 #ffffff;       /* Bright White */
