@@ -21,11 +21,14 @@
   	pkgs.xclip        # The clipboard provider for X11
   	pkgs.eza
     pkgs.starship
+    pkgs.orca-slicer
+    pkgs.sshfs
   ];
 
   home.sessionVariables = {
   	TERMINAL = "ghostty";
   	EDITOR = "micro";
   	VISUAL = "micro";
+  	GTK_THEME = "Adwaita:dark";
   };
 }

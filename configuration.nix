@@ -10,9 +10,35 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
+  networking.hostName = "coelos"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
+	# Tailscale
+	services.tailscale.enable = true;
+  networking.firewall.allowedUDPPorts = [ 41641 ];
+  networking.firewall.trustedInterfaces = [ "tailscale0" ];
+
+  # Personal Server sshfs
+  programs.fuse.userAllowOther = true;
+  fileSystems."/home/joelsgc/server" = {
+    device = "joel@jsgc-server:/files";
+    fsType = "fuse.sshfs";
+    options = [
+      "x-systemd.automount"
+      "_netdev"
+      "port=2222"
+      "IdentityFile=/home/joelsgc/.ssh/id_ed25519_coelos_server"
+      "IdentitiesOnly=yes"
+      "StrictHostKeyChecking=accept-new"
+      "allow_other"
+      "uid=1000" 
+      "gid=100"  
+      "reconnect"
+      "ServerAliveInterval=15"
+      "ServerAliveCountMax=3"
+    ];
+  };
+  
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
@@ -77,6 +103,7 @@
   # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
   services.libinput.touchpad.naturalScrolling = true;
+  services.fprintd.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users."joelsgc" = {
@@ -100,6 +127,7 @@
   environment.systemPackages = with pkgs; [
     micro
     git
+    sshfs
   ];
 
 	# Zsh basic config here
