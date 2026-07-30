@@ -10,12 +10,12 @@
 
   programs.git = {
     enable = true;
-		userName = "joel-sgc";
-		userEmail = "joeloultook@gmail.com";
-    
-    extraConfig = {
-      # This tells Git to use the GitHub CLI to authenticate your pushes
+    settings = {
       credential.helper = "${pkgs.gh}/bin/gh auth git-credential";
-    };
+    	user = {
+    		name = "joel-sgc";
+    		email = "joeloultook@gmail.com";
+    	};
+    };    
   };
  }
