@@ -4,6 +4,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      ./home/kdeconnect.nix
     ];
 
   # Bootloader.
@@ -111,7 +112,6 @@
     description = "JoelSGC";
     extraGroups = [ "networkmanager" "wheel" ];
     packages = with pkgs; [
-      kdePackages.kate
     #  thunderbird
     ];
   };
@@ -171,7 +171,7 @@
   services.xserver.excludePackages = [ pkgs.xterm ];
 
   # Exclude Konsole from the default KDE Plasma installation
-  environment.plasma6.excludePackages = [ pkgs.kdePackages.konsole ];
+  environment.plasma6.excludePackages = with pkgs.kdePackages; [ konsole elisa kwallet kwalletmanager ];
 
 	# Configure plymouth and boot configs
 	boot.plymouth = {

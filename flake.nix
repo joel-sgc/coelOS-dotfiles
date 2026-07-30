@@ -13,11 +13,13 @@
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    
+    opencode.url = "github:GutMutCode/opencode-nix";
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, opencode, ... }:
   {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+    nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
       modules = [
@@ -30,7 +32,7 @@
 				  home-manager.useUserPackages = true;
 
 				  home-manager.users.joelsgc = import ./home.nix;
-
+				  
 				  home-manager.extraSpecialArgs = {
 				    inherit inputs;
 				  };

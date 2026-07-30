@@ -14,7 +14,13 @@
 		./home/ghostty.nix
 		./home/zsh.nix
 		./home/git.nix
+    inputs.opencode.homeManagerModules.default
   ];
+
+  services.opencode = {
+    enable = true;
+    package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+  };
 
   home.packages = [
   	pkgs.wl-clipboard # The clipboard provider for Wayland
@@ -22,6 +28,8 @@
   	pkgs.eza
     pkgs.starship
     pkgs.orca-slicer
+    pkgs.nerd-fonts.fira-code
+    pkgs.vscode-fhs
     pkgs.sshfs
   ];
 
