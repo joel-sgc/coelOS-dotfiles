@@ -13,6 +13,7 @@
 		./home/zen-browser.nix
 		./home/ghostty.nix
 		./home/zsh.nix
+		./home/git.nix
   ];
 
   home.packages = [
