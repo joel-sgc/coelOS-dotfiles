@@ -1,11 +1,8 @@
 { config, pkgs, ... }:
 
 {
-  programs.nodejs = {
-    enable = true;
-	};
-
-	programs.pnpm = {
-		enable = true;
-	};
+  imports = [
+    ./git.nix
+    ./pnpm.nix
+  ];
 }

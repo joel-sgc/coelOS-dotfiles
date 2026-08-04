@@ -26,12 +26,9 @@
       PNPM_HOME = "$HOME/.local/share/pnpm";
     };
 
-    # Prepends PNPM to PATH securely
+    # Prepends PNPM and local bin to PATH securely
     envExtra = ''
-      case ":$PATH:" in
-        *":$PNPM_HOME:"*) ;;
-        *) export PATH="$PNPM_HOME:$PATH" ;;
-      esac
+      export PATH="$HOME/.local/bin:$HOME/.local/share/pnpm/bin:$PNPM_HOME:$PATH"
     '';
 
     # 3. ZLE WIDGETS & 4. KEYBINDINGS (Injected at the end of .zshrc)

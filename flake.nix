@@ -15,16 +15,17 @@
     };
     
     opencode.url = "github:GutMutCode/opencode-nix";
+
+		nix-flatpak.url = "github:gmodena/nix-flatpak";
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, opencode, ... }:
   {
     nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-
+			specialArgs = { inherit inputs; };
       modules = [
         ./configuration.nix
-
         home-manager.nixosModules.home-manager
 
 				{

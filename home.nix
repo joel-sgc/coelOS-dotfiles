@@ -9,12 +9,16 @@
   programs.home-manager.enable = true;
 
   imports = [
-  	./home/micro.nix
 		./home/zen-browser.nix
+
+  	./home/micro.nix
 		./home/ghostty.nix
 		./home/zsh.nix
-		./home/git.nix
+    ./home/development.nix
     inputs.opencode.homeManagerModules.default
+    
+		./home/flatpak.nix
+    inputs.nix-flatpak.homeManagerModules.nix-flatpak 
   ];
 
   services.opencode = {
@@ -31,6 +35,10 @@
     pkgs.nerd-fonts.fira-code
     pkgs.vscode-fhs
     pkgs.sshfs
+    pkgs.wireguard-tools pkgs.proton-vpn
+    pkgs.stremio-linux-shell
+    pkgs.john
+    # pkgs.spotify
   ];
 
   home.sessionVariables = {

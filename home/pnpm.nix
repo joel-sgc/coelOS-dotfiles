@@ -13,12 +13,13 @@
   home.sessionPath = [
     "$HOME/.local/bin"
     "$HOME/.local/share/pnpm"
+    "$HOME/.local/share/pnpm/bin"
   ];
 
-  xdg.configFile."pnpm/rc".text = ''
-    global-bin-dir=$HOME/.local/bin
-    global-dir=$HOME/.local/share/pnpm/global
-    state-dir=$HOME/.local/state/pnpm
-    cache-dir=$HOME/.cache/pnpm
+  home.file.".npmrc".text = ''
+    global-bin-dir=/home/joelsgc/.local/bin
+    global-dir=/home/joelsgc/.local/share/pnpm/global
+    state-dir=/home/joelsgc/.local/state/pnpm
+    cache-dir=/home/joelsgc/.cache/pnpm
   '';
 }

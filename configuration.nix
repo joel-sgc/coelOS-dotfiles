@@ -12,12 +12,22 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "coelos"; # Define your hostname.
+  networking.firewall.checkReversePath = false;	# Something for ProtonVPN
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
 	# Tailscale
-	services.tailscale.enable = true;
+  services.tailscale.enable = true;
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
+
+  # Enable Bluetooth support
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true; # Powers up the default Bluetooth Controller on boot
+  
+  # Optional: Enable Blueman GUI manager (recommended for desktop environments)
+  # services.blueman.enable = true;
+
+	services.flatpak.enable = true;
 
   # Personal Server sshfs
   programs.fuse.userAllowOther = true;
@@ -39,7 +49,7 @@
       "ServerAliveCountMax=3"
     ];
   };
-  
+
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
@@ -117,7 +127,7 @@
   };
 
   # Install firefox.
-  programs.firefox.enable = true;
+  programs.firefox.enable = false;
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;

@@ -1,16 +1,14 @@
-{ inputs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
-  imports = [ inputs.nix-flatpak.nixosModules.nix-flatpak ];
-
   services.flatpak = {
     enable = true;
-    remotes = [{
-      name = "flathub";
-      location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
-    }];
+    
+    # Automatically update flatpaks when you rebuild your system
+    update.onActivation = true; 
+    
     packages = [
-      "flathub:org.vinegarhq.Sober"
+      "org.vinegarhq.Sober"
     ];
   };
 }
