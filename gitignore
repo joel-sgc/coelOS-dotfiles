@@ -1,0 +1,7 @@
+# nixos-rebuild build output symlink
+result
+result-*
+
+# editor/OS cruft
+*.swp
+.DS_Store

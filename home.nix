@@ -9,16 +9,17 @@
   programs.home-manager.enable = true;
 
   imports = [
-		./home/zen-browser.nix
+    ./home/zen-browser.nix
 
-  	./home/micro.nix
-		./home/ghostty.nix
-		./home/zsh.nix
+    ./home/micro.nix
+    ./home/ghostty.nix
+    ./home/zsh.nix
     ./home/development.nix
+    ./home/globalprotect.nix
     inputs.opencode.homeManagerModules.default
-    
-		./home/flatpak.nix
-    inputs.nix-flatpak.homeManagerModules.nix-flatpak 
+
+    ./home/flatpak.nix
+    inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
 
   services.opencode = {
@@ -27,9 +28,9 @@
   };
 
   home.packages = [
-  	pkgs.wl-clipboard # The clipboard provider for Wayland
-  	pkgs.xclip        # The clipboard provider for X11
-  	pkgs.eza
+    pkgs.wl-clipboard # The clipboard provider for Wayland
+    pkgs.xclip        # The clipboard provider for X11
+    pkgs.eza
     pkgs.starship
     pkgs.orca-slicer
     pkgs.nerd-fonts.fira-code
@@ -42,9 +43,9 @@
   ];
 
   home.sessionVariables = {
-  	TERMINAL = "ghostty";
-  	EDITOR = "micro";
-  	VISUAL = "micro";
-  	GTK_THEME = "Adwaita:dark";
+    TERMINAL = "ghostty";
+    EDITOR = "micro";
+    VISUAL = "micro";
+    GTK_THEME = "Adwaita:dark";
   };
 }

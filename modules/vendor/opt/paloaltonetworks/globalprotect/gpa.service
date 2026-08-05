@@ -1,0 +1,13 @@
+[Unit]
+Description=GlobalProtect VPN client Agent
+
+[Service]
+Type=simple
+ExecStart=/opt/paloaltonetworks/globalprotect/PanGPA start
+Restart=on-failure
+RestartSec=1
+WorkingDirectory=/opt/paloaltonetworks/globalprotect
+
+[Install]
+WantedBy=default.target
+

@@ -5,6 +5,7 @@
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./home/kdeconnect.nix
+      ./modules/globalprotect.nix
     ];
 
   # Bootloader.
@@ -120,10 +121,8 @@
   users.users."joelsgc" = {
     isNormalUser = true;
     description = "JoelSGC";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-    #  thunderbird
-    ];
+    extraGroups = [ "networkmanager" "wheel" "globalprotect" ];
+    packages = with pkgs; [];
   };
 
   # Install firefox.
