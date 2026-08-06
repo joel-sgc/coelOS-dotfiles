@@ -1,46 +1,81 @@
 { inputs, config, pkgs, ... }:
 
 {
+  ##############################################################################
+  # Identity
+  ##############################################################################
+
   home.username = "joelsgc";
   home.homeDirectory = "/home/joelsgc";
-
   home.stateVersion = "26.05";
 
   programs.home-manager.enable = true;
 
-  imports = [
-    ./home/zen-browser.nix
+  ##############################################################################
+  # Module Imports
+  ##############################################################################
 
+  imports = [
+    # Programs
+    ./home/zsh.nix
     ./home/micro.nix
     ./home/ghostty.nix
-    ./home/zsh.nix
     ./home/development.nix
-    ./home/globalprotect.nix
-    inputs.opencode.homeManagerModules.default
+    ./home/zen-browser.nix
+    ./home/hyprland.nix
 
+    # Services / integrations
+    ./home/globalprotect.nix
     ./home/flatpak.nix
+    inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
+
+  ##############################################################################
+  # Services
+  ##############################################################################
 
   services.opencode = {
     enable = true;
     package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
   };
 
+  ##############################################################################
+  # Packages
+  ##############################################################################
+
   home.packages = [
-    pkgs.wl-clipboard # The clipboard provider for Wayland
-    pkgs.xclip        # The clipboard provider for X11
+    # Clipboard (Wayland + X11)
+    pkgs.wl-clipboard
+    pkgs.xclip
+
+    # CLI / shell tools
     pkgs.eza
     pkgs.starship
+
+    # Desktop apps
     pkgs.orca-slicer
-    pkgs.nerd-fonts.fira-code
     pkgs.vscode-fhs
-    pkgs.sshfs
-    pkgs.wireguard-tools pkgs.proton-vpn
     pkgs.stremio-linux-shell
-    pkgs.john
+    pkgs.waybar
+    pkgs.rofi
     # pkgs.spotify
+
+    # Fonts
+    pkgs.nerd-fonts.fira-code
+
+    # Networking / VPN
+    pkgs.sshfs
+    pkgs.wireguard-tools
+    pkgs.proton-vpn
+
+    # Security tools
+    pkgs.john
   ];
+
+  ##############################################################################
+  # Session Variables
+  ##############################################################################
 
   home.sessionVariables = {
     TERMINAL = "ghostty";

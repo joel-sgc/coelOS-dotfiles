@@ -10,6 +10,7 @@ let
     value = {
       install_url = "https://addons.mozilla.org/en-US/firefox/downloads/latest/${shortId}/latest.xpi";
       installation_mode = "normal_installed";
+      default_area = "navbar"; # Pins the toolbar button by default
     };
   };
 
@@ -96,7 +97,7 @@ in
               {
               	Name = "Youtube";
               	URLTemplate = "https://www.youtube.com/results?search_query={searchTerms}";
-              	IconURL = "https://www.youtube.com/favicon.ioco";
+              	IconURL = "https://www.youtube.com/favicon.ico";
               	Alias = "y";
               }
             ];

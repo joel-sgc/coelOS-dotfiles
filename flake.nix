@@ -13,32 +13,32 @@
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    
+
     opencode.url = "github:GutMutCode/opencode-nix";
 
-		nix-flatpak.url = "github:gmodena/nix-flatpak";
+    nix-flatpak.url = "github:gmodena/nix-flatpak";
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, opencode, ... }:
   {
     nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-			specialArgs = { inherit inputs; };
+      specialArgs = { inherit inputs; };
       modules = [
         ./configuration.nix
         home-manager.nixosModules.home-manager
 
-				{
-				  home-manager.useGlobalPkgs = true;
-				  home-manager.useUserPackages = true;
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
 
-				  home-manager.users.joelsgc = import ./home.nix;
-				  
-				  home-manager.extraSpecialArgs = {
-				    inherit inputs;
-				  };
-				}
-		  ];
+          home-manager.users.joelsgc = import ./home.nix;
+
+          home-manager.extraSpecialArgs = {
+            inherit inputs;
+          };
+        }
+      ];
     };
   };
 }

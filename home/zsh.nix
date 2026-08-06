@@ -23,13 +23,7 @@
     sessionVariables = {
       WORDCHARS = "";
       NVM_DIR = "$HOME/.nvm";
-      PNPM_HOME = "$HOME/.local/share/pnpm";
     };
-
-    # Prepends PNPM and local bin to PATH securely
-    envExtra = ''
-      export PATH="$HOME/.local/bin:$HOME/.local/share/pnpm/bin:$PNPM_HOME:$PATH"
-    '';
 
     # 3. ZLE WIDGETS & 4. KEYBINDINGS (Injected at the end of .zshrc)
     initContent = ''

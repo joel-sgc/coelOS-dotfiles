@@ -9,9 +9,10 @@
     # Use the Hyprland package/session registered by programs.hyprland.enable
     # in configuration.nix instead of installing a second copy here.
     package = null;
+		configType = "hyprlang";
 
     settings = {
-      monitor = [ ",preferred,auto,auto" ];
+      monitor = [ ",preferred,auto,1" ];
 
       "$terminal" = "ghostty";
       "$mainMod" = "SUPER";
@@ -22,12 +23,30 @@
         border_size = 2;
       };
 
+      input = {
+        touchpad = {
+          natural_scroll = true;
+        };
+      };
+
+      # workspace_swipe/workspace_swipe_fingers were removed upstream in 0.51 —
+      # gestures are now declared with the top-level `gesture` directive instead.
+      gesture = [
+        "3, horizontal, workspace"
+      ];
+
+      exec-once = [
+        "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
+        "${pkgs.waybar}/bin/waybar"
+      ];
+
       bind =
         [
-          "$mainMod, Return, exec, $terminal"
+          "$mainMod, T, exec, $terminal"
+          "$mainMod, space, exec, ${pkgs.rofi}/bin/rofi -show drun"
           "$mainMod, Q, killactive"
           "$mainMod SHIFT, M, exit"
-          "$mainMod, V, togglefloating"
+          "$mainMod, F, togglefloating"
           "$mainMod, left, movefocus, l"
           "$mainMod, right, movefocus, r"
           "$mainMod, up, movefocus, u"
@@ -37,13 +56,15 @@
           builtins.genList (
             i:
             let
-              ws = toString (i + 1);
+              ws = i + 1;
+              key = if ws == 10 then "0" else toString ws;
+              wsStr = toString ws;
             in
             [
-              "$mainMod, ${ws}, workspace, ${ws}"
-              "$mainMod SHIFT, ${ws}, movetoworkspace, ${ws}"
+              "$mainMod, ${key}, workspace, ${wsStr}"
+              "$mainMod SHIFT, ${key}, movetoworkspace, ${wsStr}"
             ]
-          ) 9
+          ) 10
         );
     };
   };

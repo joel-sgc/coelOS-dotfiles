@@ -1,36 +1,71 @@
-{ inputs, config, pkgs, ... }:
+{ inputs, config, pkgs, lib, ... }:
 
+let
+  # Flip this to false to fully disable the ClamAV experiment we added
+  # while trying to satisfy LUC's GlobalProtect HIP compliance check.
+  # Leaves the actual GlobalProtect packaging (modules/globalprotect.nix)
+  # untouched either way.
+  enableGpHipComplianceExperiment = false;
+in
 {
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      ./home/kdeconnect.nix
-      ./modules/globalprotect.nix
-    ];
+  imports = [
+    ./hardware-configuration.nix
+    ./modules/kdeconnect.nix
+    ./modules/globalprotect.nix
+  ];
 
-  # Bootloader.
+  ##############################################################################
+  # Boot / Bootloader
+  ##############################################################################
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.timeout = 0;
 
-  networking.hostName = "coelos"; # Define your hostname.
-  networking.firewall.checkReversePath = false;	# Something for ProtonVPN
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  boot.kernelParams = [ "quiet" "splash" ];
+  boot.initrd.kernelModules = [ "amdgpu" ];
 
-	# Tailscale
+  boot.plymouth = {
+    enable = true;
+    theme = "coelos";
+    themePackages = [
+      (pkgs.stdenv.mkDerivation {
+        pname = "coelos-plymouth-theme";
+        version = "1.0";
+        # Points to the folder containing the CoelOS theme files
+        src = ./coelos-theme;
+
+        installPhase = ''
+          mkdir -p $out/share/plymouth/themes/coelos
+          cp * $out/share/plymouth/themes/coelos/
+
+          sed -i "s@^ImageDir=.*@ImageDir=$out/share/plymouth/themes/coelos@" $out/share/plymouth/themes/coelos/coelos.plymouth
+          sed -i "s@^ScriptFile=.*@ScriptFile=$out/share/plymouth/themes/coelos/coelos.script@" $out/share/plymouth/themes/coelos/coelos.plymouth
+        '';
+      })
+    ];
+  };
+
+  ##############################################################################
+  # Networking
+  ##############################################################################
+
+  networking.hostName = "coelos";
+  networking.networkmanager.enable = true;
+  networking.firewall.checkReversePath = false; # Needed for ProtonVPN
+
+  # Tailscale
   services.tailscale.enable = true;
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
-  # Enable Bluetooth support
-  hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = true; # Powers up the default Bluetooth Controller on boot
-  
-  # Optional: Enable Blueman GUI manager (recommended for desktop environments)
-  # services.blueman.enable = true;
+  # Open ports in the firewall.
+  # networking.firewall.allowedTCPPorts = [ ... ];
+  # networking.firewall.allowedUDPPorts = [ ... ];
+  # Or disable the firewall altogether.
+  # networking.firewall.enable = false;
 
-	services.flatpak.enable = true;
-
-  # Personal Server sshfs
+  # Personal server sshfs mount
   programs.fuse.userAllowOther = true;
   fileSystems."/home/joelsgc/server" = {
     device = "joel@jsgc-server:/files";
@@ -43,60 +78,85 @@
       "IdentitiesOnly=yes"
       "StrictHostKeyChecking=accept-new"
       "allow_other"
-      "uid=1000" 
-      "gid=100"  
+      "uid=1000"
+      "gid=100"
       "reconnect"
       "ServerAliveInterval=15"
       "ServerAliveCountMax=3"
     ];
   };
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  ##############################################################################
+  # GlobalProtect HIP compliance experiment (toggleable)
+  #
+  # Added while trying to satisfy LUC's GlobalProtect firewall/antivirus HIP
+  # check. So far it has NOT changed the gateway's compliance verdict, so this
+  # is a candidate for full removal once LUC IT responds with what's actually
+  # required. Set enableGpHipComplianceExperiment = false above to disable
+  # everything in this block without deleting it.
+  ##############################################################################
 
-  # Enable networking
-  networking.networkmanager.enable = true;
-
-  # Set your time zone.
-  time.timeZone = "America/Chicago";
-
-  # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
+  services.clamav = lib.mkIf enableGpHipComplianceExperiment {
+    daemon.enable = true;
+    updater.enable = true;
   };
 
-  # Enable the X11 windowing system.
-  # You can disable this if you're only using the Wayland session.
-  services.xserver.enable = true;
+  ##############################################################################
+  # Desktop Environment
+  ##############################################################################
 
-  # Enable the KDE Plasma Desktop Environment.
+  services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
-	# Linking Ghostty to DBus
-	services.dbus.packages = [ pkgs.ghostty ];
+  # Hyprland, added alongside Plasma as a second selectable SDDM session
+  # while migrating. Phase 1: bare compositor only — portals, bars, and
+  # the rest of the tray/applet stack land in later phases.
+  programs.hyprland.enable = true;
 
-  # Configure keymap in X11
   services.xserver.xkb = {
     layout = "us";
     variant = "";
   };
 
-  # Enable CUPS to print documents.
+  services.xserver.desktopManager.xterm.enable = false;
+  services.xserver.excludePackages = [ pkgs.xterm ];
+
+  environment.plasma6.excludePackages = with pkgs.kdePackages; [
+    konsole
+    elisa
+    kwallet
+    kwalletmanager
+    kate
+  ];
+
+  # Linking Ghostty to DBus
+  services.dbus.packages = [ pkgs.ghostty ];
+
+  # Keyring (GNOME Keyring for Secret Service / credentials in VS Code, etc.)
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.sddm.enableGnomeKeyring = true;
+
+  # XDG Portals
+  xdg.portal = {
+    enable = true;
+    extraPortals = [
+      pkgs.xdg-desktop-portal-hyprland
+      pkgs.xdg-desktop-portal-gtk
+    ];
+    config.common.default = "*";
+  };
+
+  ##############################################################################
+  # Hardware
+  ##############################################################################
+
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true;
+  # services.blueman.enable = true; # Optional GUI Bluetooth manager
+
   services.printing.enable = true;
 
-  # Enable sound with pipewire.
   services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {
@@ -104,112 +164,66 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
+    # jack.enable = true; # Uncomment for JACK applications
   };
 
-  # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
   services.libinput.touchpad.naturalScrolling = true;
   services.fprintd.enable = true;
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
+  ##############################################################################
+  # Users & Shell
+  ##############################################################################
+
   users.users."joelsgc" = {
     isNormalUser = true;
     description = "JoelSGC";
     extraGroups = [ "networkmanager" "wheel" "globalprotect" ];
-    packages = with pkgs; [];
+    shell = pkgs.zsh;
   };
 
-  # Install firefox.
-  programs.firefox.enable = false;
+  programs.zsh.enable = true;
 
-  # Allow unfree packages
+  ##############################################################################
+  # System Packages & Nix Settings
+  ##############################################################################
+
   nixpkgs.config.allowUnfree = true;
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
+
   environment.systemPackages = with pkgs; [
     micro
     git
     sshfs
   ];
 
-	# Zsh basic config here
-  programs.zsh.enable = true;
-  users.users.joelsgc.shell = pkgs.zsh;
+  services.flatpak.enable = true;
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
+  ##############################################################################
+  # Other Services
+  ##############################################################################
 
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  nix.settings.experimental-features = [
-		"nix-command"
-		"flakes"
-  ];
+  programs.firefox.enable = false;
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
+  ##############################################################################
+  # Locale / Time
+  ##############################################################################
 
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "26.05"; # Did you read the comment?
+  time.timeZone = "America/Chicago";
+  i18n.defaultLocale = "en_US.UTF-8";
 
-  # Disable xterm
-  services.xserver.desktopManager.xterm.enable = false;
-  services.xserver.excludePackages = [ pkgs.xterm ];
+  ##############################################################################
+  # State Version
+  ##############################################################################
 
-  # Exclude Konsole from the default KDE Plasma installation
-  environment.plasma6.excludePackages = with pkgs.kdePackages; [ konsole elisa kwallet kwalletmanager ];
-
-	# Configure plymouth and boot configs
-	boot.plymouth = {
-     enable = true;
-     theme = "coelos"; 
-     themePackages = [
-       (pkgs.stdenv.mkDerivation {
-         pname = "coelos-plymouth-theme";
-         version = "1.0";
-         # This points to the folder containing your CoelOS theme files
-         src = ./coelos-theme;
- 
-         installPhase = ''
-           # Create the correct directory structure in the Nix store
-           mkdir -p $out/share/plymouth/themes/coelos
-           
-           # Copy all pngs, scripts, and plymouth files over
-           cp * $out/share/plymouth/themes/coelos/
-           
-           # Dynamically patch the absolute paths in your .plymouth file
-           sed -i "s@^ImageDir=.*@ImageDir=$out/share/plymouth/themes/coelos@" $out/share/plymouth/themes/coelos/coelos.plymouth
-           sed -i "s@^ScriptFile=.*@ScriptFile=$out/share/plymouth/themes/coelos/coelos.script@" $out/share/plymouth/themes/coelos/coelos.plymouth
-         '';
-       })
-     ];
-   };
- 
-   # Ensure the kernel parameters are set to show the splash screen
-   boot.kernelParams = [ "quiet" "splash" ];
-	 boot.initrd.kernelModules = [ "amdgpu" ];
-   boot.loader.timeout = 0;
+  # This value determines the NixOS release from which the default settings
+  # for stateful data, like file locations and database versions, were taken.
+  # Leave this at the release version of the first install of this system.
+  system.stateVersion = "26.05";
 }
