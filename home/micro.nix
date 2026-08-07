@@ -3,6 +3,15 @@
 {
   programs.micro = {
     enable = true;
+    package = pkgs.micro.overrideAttrs (old: {
+      postInstall = (old.postInstall or "") + ''
+        if [ -f $out/share/applications/micro.desktop ]; then
+          substituteInPlace $out/share/applications/micro.desktop \
+            --replace "Terminal=true" "Terminal=false" \
+            --replace "Exec=micro" "Exec=ghostty -e micro"
+        fi
+      '';
+    });
 
     settings = {
       autosave = true;

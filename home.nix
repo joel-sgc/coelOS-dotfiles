@@ -23,6 +23,12 @@
     ./home/development.nix
     ./home/zen-browser.nix
     ./home/hyprland.nix
+    ./home/mako.nix
+    ./home/hypridle.nix
+    ./home/wallpaper.nix
+    ./home/swayosd.nix
+    ./home/clipboard.nix
+    ./home/rofi.nix
 
     # Services / integrations
     ./home/globalprotect.nix
@@ -52,13 +58,13 @@
     # CLI / shell tools
     pkgs.eza
     pkgs.starship
+    pkgs.steam-run # run non-NixOS/dynamically-linked binaries: steam-run <cmd>
 
     # Desktop apps
     pkgs.orca-slicer
     pkgs.vscode-fhs
     pkgs.stremio-linux-shell
     pkgs.waybar
-    pkgs.rofi
     # pkgs.spotify
 
     # Fonts
@@ -71,6 +77,10 @@
 
     # Security tools
     pkgs.john
+
+    # Hyprland session utilities (media keys, notifications)
+    pkgs.playerctl
+    pkgs.libnotify
   ];
 
   ##############################################################################
@@ -82,5 +92,12 @@
     EDITOR = "micro";
     VISUAL = "micro";
     GTK_THEME = "Adwaita:dark";
+
+    # nixpkgs.config.allowUnfree in configuration.nix only applies to the
+    # pkgs instance NixOS builds for this flake — plain `nix build/shell/run
+    # nixpkgs#...` instantiates a fresh nixpkgs straight from the registry
+    # and never sees it. This env var is the actual designed escape hatch for
+    # that case (flakes intentionally ignore ~/.config/nixpkgs/config.nix).
+    NIXPKGS_ALLOW_UNFREE = "1";
   };
 }

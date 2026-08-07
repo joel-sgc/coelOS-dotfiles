@@ -137,14 +137,33 @@ in
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.sddm.enableGnomeKeyring = true;
 
+  # Required for hyprlock to actually authenticate (Hyprland's lock screen,
+  # separate from Plasma's own kscreenlocker/PAM service).
+  security.pam.services.hyprlock = { };
+
+  # Grants the `video` group write access to /sys/class/backlight so swayosd
+  # (Hyprland session's volume/brightness OSD) can adjust brightness without
+  # running as root.
+  services.udev.packages = [ pkgs.swayosd ];
+
   # XDG Portals
+  #
+  # Per-desktop backend selection instead of a flat wildcard default, so
+  # screen sharing / file pickers / etc. resolve to the *actual* running
+  # session's backend rather than whichever portal implementation happens
+  # to be found first. Matched against $XDG_CURRENT_DESKTOP (case-insensitive):
+  # Hyprland sets "Hyprland", Plasma sets "KDE".
   xdg.portal = {
     enable = true;
     extraPortals = [
       pkgs.xdg-desktop-portal-hyprland
       pkgs.xdg-desktop-portal-gtk
     ];
-    config.common.default = "*";
+    config = {
+      hyprland.default = [ "hyprland" "gtk" ];
+      kde.default = [ "kde" ];
+      common.default = [ "gtk" ];
+    };
   };
 
   ##############################################################################
@@ -154,6 +173,10 @@ in
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   # services.blueman.enable = true; # Optional GUI Bluetooth manager
+
+  # Backs the power-profile switcher in the ported rofi settings menu
+  # (powerprofilesctl) — see home/rofi.nix.
+  services.power-profiles-daemon.enable = true;
 
   services.printing.enable = true;
 
@@ -178,7 +201,7 @@ in
   users.users."joelsgc" = {
     isNormalUser = true;
     description = "JoelSGC";
-    extraGroups = [ "networkmanager" "wheel" "globalprotect" ];
+    extraGroups = [ "networkmanager" "wheel" "globalprotect" "video" ];
     shell = pkgs.zsh;
   };
 
@@ -199,6 +222,23 @@ in
     micro
     git
     sshfs
+
+    # Basic CLI utilities NixOS doesn't ship by default (unlike most
+    # distros' base install)
+    file
+    tree
+    binutils-unwrapped # strings, nm, objdump, readelf, etc.
+    unzip
+    zip
+    which
+    lsof
+    psmisc # killall, pstree, fuser
+    pciutils # lspci
+    usbutils # lsusb
+    dnsutils # dig, nslookup, host
+    btop
+    ripgrep
+    fd
   ];
 
   services.flatpak.enable = true;
