@@ -1,4 +1,4 @@
-{ inputs, config, pkgs, lib, ... }:
+{ inputs, config, pkgs, ... }:
 
 {
   ##############################################################################
@@ -8,17 +8,6 @@
   home.username = "joelsgc";
   home.homeDirectory = "/home/joelsgc";
   home.stateVersion = "26.05";
-
-  # Declaratively manage KWin script and shortcuts
-  xdg.configFile."kglobalshortcutsrc".source = ./home/kglobalshortcutsrc;
-  xdg.dataFile."kwin/scripts/normalize-minimize/metadata.json".source = ./home/kwin-scripts/normalize-minimize/metadata.json;
-  xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
-
-  # Use a Home Manager activation script to safely enable the KWin script.
-  # This modifies the kwinrc file in place, which is the correct approach.
-  home.activation.enableNormalizeMinimize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD ${pkgs.kconfig}/bin/kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true
-  '';
 
   programs.home-manager.enable = true;
 
@@ -40,6 +29,8 @@
     ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/rofi.nix
+    ./home/kde-window-shortcuts.nix
+    ./home/kde-shortcuts.nix
 
     # Services / integrations
     ./home/globalprotect.nix

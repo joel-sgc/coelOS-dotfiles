@@ -41,4 +41,20 @@ in
   home.activation.enableWinMaxMin = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kwinrc --group Plugins --key kwin-snap-keysEnabled true
   '';
+
+  # The script's own registerShortcut() calls pass "Meta+Up"/"Meta+Down" as
+  # a suggested default, but the upstream README documents these as
+  # non-default -- they don't actually get bound to anything until you
+  # assign them yourself in System Settings. Doing that assignment here
+  # instead. Confirmed the exact group by binding these manually once and
+  # reading it back: [kwin], keyed by the internal action name passed as
+  # registerShortcut's first argument. The middle field (the "default") has
+  # to stay "none" -- that's what a real manual bind produces (the script
+  # itself is the source of truth for its own default, which is "none" per
+  # the README), and writing a non-none value there caused kglobalaccel to
+  # disregard the whole entry rather than just override the active binding.
+  home.activation.bindWinMaxMinShortcuts = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "WindowsLikeMaximize" "Meta+Up,none,Windows-Like Maximize"
+    $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "WindowsLikeMinimize" "Meta+Down,none,Windows-Like Minimize"
+  '';
 }
