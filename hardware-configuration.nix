@@ -13,15 +13,36 @@
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
+  boot.initrd.luks.devices."luks-root".device = "/dev/disk/by-uuid/e5e26cad-5394-4351-a7b4-d2f44f8f4972";
+
   fileSystems."/" =
-    { device = "/dev/mapper/luks-b56780ae-2fec-4bdd-9a45-8472b4e0d540";
+    { device = "/dev/mapper/luks-root";
+      fsType = "btrfs";
+      options = [ "subvol=/" ];
+    };
+
+  fileSystems."/nix" =
+    { device = "/dev/mapper/luks-root";
+      fsType = "btrfs";
+      options = [ "subvol=/nix" ];
+    };
+
+  # /home, added during the impermanence/reinstall-survivability research —
+  # was a stale LUKS partition from a previous install (nvme0n1p3), wiped
+  # and reformatted, being migrated in manually. See home-migration.md at
+  # the repo root for the full runbook. Do NOT rebuild+reboot with this
+  # active until the mkfs + rsync migration steps are done, or this mount
+  # will shadow the real (still root-partition-resident) home data with an
+  # empty filesystem.
+  boot.initrd.luks.devices."luks-home".device = "/dev/disk/by-uuid/2ad05545-2e7b-4191-93ad-3f654549bb9d";
+
+  fileSystems."/home" =
+    { device = "/dev/mapper/luks-home";
       fsType = "ext4";
     };
 
-  boot.initrd.luks.devices."luks-b56780ae-2fec-4bdd-9a45-8472b4e0d540".device = "/dev/disk/by-uuid/b56780ae-2fec-4bdd-9a45-8472b4e0d540";
-
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/B3E9-E6CE";
+    { device = "/dev/disk/by-uuid/26C3-0F77";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
