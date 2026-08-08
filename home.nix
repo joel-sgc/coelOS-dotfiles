@@ -9,17 +9,16 @@
   home.homeDirectory = "/home/joelsgc";
   home.stateVersion = "26.05";
 
-  # Declaratively manage the KWin script and shortcuts.
+  # Declaratively manage KWin script and shortcuts
   xdg.configFile."kglobalshortcutsrc".source = ./home/kglobalshortcutsrc;
   xdg.dataFile."kwin/scripts/normalize-minimize/metadata.json".source = ./home/kwin-scripts/normalize-minimize/metadata.json;
   xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
 
-  # Declaratively enable the KWin script. This is more robust than an activation script.
-  plasma.kwin.config = {
-    Plugins = {
-      "normalize-minimizeEnabled" = true;
-    };
-  };
+  # Correct way to declaratively merge settings into kwinrc
+  home.file.".config/kwinrc".text = ''
+    [Plugins]
+    normalize-minimizeEnabled=true
+  '';
 
   programs.home-manager.enable = true;
 
