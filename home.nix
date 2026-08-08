@@ -9,17 +9,17 @@
   home.homeDirectory = "/home/joelsgc";
   home.stateVersion = "26.05";
 
-  xdg.configFile."kglobalshortcutsrc" = {
-    source = ./home/kglobalshortcutsrc;
-    force = true;
-  };
-
+  # Declaratively manage the KWin script and shortcuts.
+  xdg.configFile."kglobalshortcutsrc".source = ./home/kglobalshortcutsrc;
   xdg.dataFile."kwin/scripts/normalize-minimize/metadata.json".source = ./home/kwin-scripts/normalize-minimize/metadata.json;
   xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
 
-  home.activation.enableNormalizeMinimize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true || true
-  '';
+  # Declaratively enable the KWin script. This is more robust than an activation script.
+  programs.plasma.kwin.config = {
+    Plugins = {
+      "normalize-minimizeEnabled" = true;
+    };
+  };
 
   programs.home-manager.enable = true;
 
