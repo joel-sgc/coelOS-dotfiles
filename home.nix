@@ -9,6 +9,11 @@
   home.homeDirectory = "/home/joelsgc";
   home.stateVersion = "26.05";
 
+  xdg.configFile."kglobalshortcutsrc" = {
+    source = ./home/kglobalshortcutsrc;
+    force = true;
+  };
+
   programs.home-manager.enable = true;
 
   ##############################################################################
