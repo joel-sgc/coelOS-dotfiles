@@ -1,4 +1,4 @@
-{ inputs, config, pkgs, ... }:
+{ inputs, config, pkgs, lib, ... }:
 
 {
   ##############################################################################
@@ -13,6 +13,13 @@
     source = ./home/kglobalshortcutsrc;
     force = true;
   };
+
+  xdg.dataFile."kwin/scripts/normalize-minimize/metadata.json".source = ./home/kwin-scripts/normalize-minimize/metadata.json;
+  xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
+
+  home.activation.enableNormalizeMinimize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true || true
+  '';
 
   programs.home-manager.enable = true;
 
