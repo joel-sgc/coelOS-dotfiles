@@ -17,7 +17,7 @@
   # Use a Home Manager activation script to safely enable the KWin script.
   # This modifies the kwinrc file in place, which is the correct approach.
   home.activation.enableNormalizeMinimize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true
+    $DRY_RUN_CMD ${pkgs.kconfig}/bin/kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true
   '';
 
   programs.home-manager.enable = true;
