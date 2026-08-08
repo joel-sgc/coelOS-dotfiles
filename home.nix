@@ -14,10 +14,10 @@
   xdg.dataFile."kwin/scripts/normalize-minimize/metadata.json".source = ./home/kwin-scripts/normalize-minimize/metadata.json;
   xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
 
-  # Correct way to declaratively merge settings into kwinrc
-  home.file.".config/kwinrc".text = ''
-    [Plugins]
-    normalize-minimizeEnabled=true
+  # Use a Home Manager activation script to safely enable the KWin script.
+  # This modifies the kwinrc file in place, which is the correct approach.
+  home.activation.enableNormalizeMinimize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD kwriteconfig6 --file kwinrc --group Plugins --key normalize-minimizeEnabled true
   '';
 
   programs.home-manager.enable = true;
