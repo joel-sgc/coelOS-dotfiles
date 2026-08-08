@@ -15,7 +15,7 @@
   xdg.dataFile."kwin/scripts/normalize-minimize/contents/code/main.js".source = ./home/kwin-scripts/normalize-minimize/contents/code/main.js;
 
   # Declaratively enable the KWin script. This is more robust than an activation script.
-  programs.plasma.kwin.config = {
+  plasma.kwin.config = {
     Plugins = {
       "normalize-minimizeEnabled" = true;
     };
