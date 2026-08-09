@@ -29,6 +29,9 @@
     ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/rofi.nix
+    ./home/udiskie.nix
+    ./home/poweralertd.nix
+    ./home/kanshi.nix
     ./home/kde-window-shortcuts.nix
     ./home/kde-shortcuts.nix
 
@@ -64,13 +67,14 @@
 
     # Desktop apps
     pkgs.orca-slicer
-    pkgs.vscode-fhs
+    pkgs.vscode
     pkgs.stremio-linux-shell
     pkgs.waybar
     # pkgs.spotify
 
     # Fonts
     pkgs.nerd-fonts.fira-code
+    pkgs.noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
 
     # Networking / VPN
     pkgs.sshfs
@@ -83,6 +87,11 @@
     # Hyprland session utilities (media keys, notifications)
     pkgs.playerctl
     pkgs.libnotify
+
+    # General utility -- cross-referenced against a couple of well-known
+    # Hyprland rices' package lists (JaKooLit, HyDE), both include it as a
+    # baseline dependency
+    pkgs.imagemagick
   ];
 
   ##############################################################################
@@ -94,6 +103,15 @@
     EDITOR = "micro";
     VISUAL = "micro";
     GTK_THEME = "Adwaita:dark";
+
+    # Makes Electron apps (VS Code) and Firefox-based browsers (Zen) render
+    # natively on Wayland instead of falling back to XWayland. Matters more
+    # than usual here since XWayland has no real fractional-scaling support
+    # -- at the monitor's 1.17 scale factor, XWayland-rendered apps look
+    # pixelated. Benefits both Hyprland and Plasma (also Wayland-native), so
+    # this is global rather than Hyprland-only.
+    NIXOS_OZONE_WL = "1";
+    MOZ_ENABLE_WAYLAND = "1";
 
     # nixpkgs.config.allowUnfree in configuration.nix only applies to the
     # pkgs instance NixOS builds for this flake — plain `nix build/shell/run

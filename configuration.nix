@@ -12,6 +12,7 @@ in
     ./hardware-configuration.nix
     ./modules/kdeconnect.nix
     ./modules/globalprotect.nix
+    ./modules/nix-ld.nix
   ];
 
   ##############################################################################
@@ -194,6 +195,37 @@ in
   services.libinput.touchpad.naturalScrolling = true;
   services.fprintd.enable = true;
 
+  # Lets the wheel group enroll fingerprints without the enroll-itself-
+  # needs-auth chicken/egg problem (enrolling normally requires an already-
+  # authenticated session, which is circular the first time). Ported from
+  # the old dotfiles' configs/polkit-fprint.rules.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (
+        action.id === "net.reactivated.fprint.device.enroll" &&
+        subject.isLocal() &&
+        subject.active &&
+        subject.isInGroup("wheel")
+      ) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
+  # Lid-close behavior, ported from the old dotfiles' configs/power/logind-power.conf.
+  # Deliberately suspends even on AC power (not the usual NixOS/systemd
+  # default, which normally ignores lid-close while plugged in) -- matches
+  # what was explicitly set up before. Power-key handling is intentionally
+  # not touched here: it's already covered separately, but only within the
+  # Hyprland session (see the systemd-inhibit + coel-power-menu bind in
+  # home/hyprland.nix) -- under Plasma, the physical power key still uses
+  # whatever systemd's own default is.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "suspend";
+    HandleLidSwitchDocked = "ignore";
+  };
+
   ##############################################################################
   # Users & Shell
   ##############################################################################
@@ -239,6 +271,7 @@ in
     btop
     ripgrep
     fd
+    ncdu
   ];
 
   services.flatpak.enable = true;

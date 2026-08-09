@@ -30,8 +30,23 @@
     package = null;
 		configType = "hyprlang";
 
+    # Defaults to false. Without it, apps that rely on the standard XDG
+    # autostart mechanism (a .desktop file in ~/.config/autostart or
+    # /etc/xdg/autostart) to launch themselves at login never do -- Plasma
+    # and GNOME both honor this automatically, Hyprland doesn't unless told.
+    systemd.enableXdgAutostart = true;
+
     settings = {
-      monitor = [ ",preferred,auto,1" ];
+      monitor = [ ",preferred,auto,1.17" ];
+
+      # Also set here (not just home.sessionVariables) per the Hyprland
+      # wiki's own recommendation -- Hyprland's env directive guarantees
+      # this reaches everything it execs, rather than depending on how
+      # session-startup environment inheritance happens to work.
+      env = [
+        "NIXOS_OZONE_WL,1"
+        "MOZ_ENABLE_WAYLAND,1"
+      ];
 
       "$terminal" = "ghostty";
       "$mainMod" = "SUPER";
