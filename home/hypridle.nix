@@ -1,5 +1,9 @@
-{ config, pkgs, ... }:
+{ lib, ... }:
 
+let
+  theme = import ./theme/everforest.nix;
+  strip = lib.removePrefix "#";
+in
 {
   # Idle + lock screen. Timings match the old Arch/Omarchy setup:
   # 5min -> lock, 10min -> screen off, 20min -> suspend.
@@ -33,8 +37,17 @@
     };
   };
 
-  # No visual config yet (defaults render a plain lock screen) — theming
-  # comes later. Requires security.pam.services.hyprlock in configuration.nix
-  # for the password prompt to actually authenticate.
-  programs.hyprlock.enable = true;
+  # Requires security.pam.services.hyprlock in configuration.nix for the
+  # password prompt to actually authenticate.
+  programs.hyprlock = {
+    enable = true;
+    settings = {
+      background.color = "rgba(${strip theme.bg0}ee)";
+      "input-field" = {
+        outer_color = "rgb(${strip theme.green})";
+        inner_color = "rgba(${strip theme.bg0}cc)";
+        font_color = "rgb(${strip theme.fg})";
+      };
+    };
+  };
 }

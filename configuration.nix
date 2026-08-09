@@ -272,6 +272,7 @@ in
     ripgrep
     fd
     ncdu
+    jq
   ];
 
   services.flatpak.enable = true;

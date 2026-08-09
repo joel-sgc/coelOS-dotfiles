@@ -1,5 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
+let
+  theme = import ./theme/everforest.nix;
+  strip = lib.removePrefix "#";
+in
 {
   # Scope every Wayland user service (hypridle, swayosd, awww, cliphist, ...)
   # to Hyprland's own session target instead of the generic
@@ -37,7 +41,7 @@
     systemd.enableXdgAutostart = true;
 
     settings = {
-      monitor = [ ",preferred,auto,1.17" ];
+      monitor = [ "eDP-1,2256x1504@59.999,0x0,1" ];
 
       # Also set here (not just home.sessionVariables) per the Hyprland
       # wiki's own recommendation -- Hyprland's env directive guarantees
@@ -55,6 +59,10 @@
         gaps_in = 4;
         gaps_out = 8;
         border_size = 2;
+
+        # Everforest: green -> blue gradient on focus, muted grey when idle.
+        "col.active_border" = "rgba(${strip theme.green}ee) rgba(${strip theme.blue}ee) 45deg";
+        "col.inactive_border" = "rgba(${strip theme.grey1}aa)";
       };
 
       input = {
@@ -71,6 +79,23 @@
       ];
 
       windowrule = [
+        {
+          # Ported from the old Arch/Omarchy dotfiles' window-rules.conf.
+          # `ghostty --class=com.joelsgc.floating -e <cmd>` (see home/rofi.nix)
+          # opens a one-off utility terminal (fingerprint enroll/delete,
+          # coel-update, pulsemixer, ...) that should float instead of tiling.
+          name = "float-utility-terminal";
+          "match:class" = "^com\\.joelsgc\\.floating$";
+          float = true;
+        }
+        {
+          # Same idea, but for the fastfetch "About" popup, which also had a
+          # fixed size in the original dotfiles.
+          name = "float-info-terminal";
+          "match:class" = "^com\\.joelsgc\\.info$";
+          float = true;
+          size = "778 506";
+        }
         {
           # Ignore maximize requests from all apps.
           name = "suppress-maximize-events";

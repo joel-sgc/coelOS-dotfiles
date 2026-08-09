@@ -1,6 +1,10 @@
 { config, pkgs, lib, ... }:
 
 let
+  inherit (config.lib.formats.rasi) mkLiteral;
+
+  theme = import ./theme/everforest.nix;
+
   # --- Menu scripts -----------------------------------------------------
   # Ported from the old Arch/Omarchy dotfiles' configs/rofi/*.sh. Every menu
   # entry from the originals is present here — anything without a real Nix
@@ -37,19 +41,23 @@ let
     '';
   };
 
+  # `--class=com.joelsgc.floating`/`com.joelsgc.info` below tag one-off
+  # utility ghostty windows so home/hyprland.nix's windowrules float them
+  # instead of tiling -- ported from the old dotfiles' equivalent
+  # `alacritty --class com.joelsgc.floating -e ...` convention.
   mainMenu = pkgs.writeShellApplication {
     name = "coel-main-menu";
     runtimeInputs = [ pkgs.rofi ];
     text = ''
       choice=$(printf \
-      " 󰀻  Programs\n\
-       Actions\n\
-         Settings\n\
-       󱧘  Install\n\
-       󱧙  Uninstall\n\
-         Update\n\
-         About\n\
-       System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
+      "󰀻  Programs\n\
+󱓞  Actions\n\
+  Settings\n\
+󱧘  Install\n\
+󱧙  Uninstall\n\
+  Update\n\
+  About\n\
+󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
 
       case "$choice" in
       	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
@@ -57,8 +65,8 @@ let
       	*Settings*) exec coel-settings-menu ;;
       	*Install*) exec coel-todo "Nix has no imperative package installer menu — add the package to home.nix or configuration.nix and rebuild instead." ;;
       	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
-      	*Update*) exec ghostty -e coel-update ;;
-      	*About*) exec ghostty -e bash -c "fastfetch; read -n1 -r" ;;
+      	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
+      	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
       	*System*) exec coel-power-menu ;;
       esac
     '';
@@ -81,10 +89,10 @@ let
   powerMenu = pkgs.writeShellScriptBin "coel-power-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \
-    "   Lock\n\
-     Suspend\n\
-       Restart\n\
-     Shutdown\n" | rofi -dmenu -i -p "Power" -lines 10 -no-fixed-num-lines)
+    "  Lock\n\
+󰤄  Suspend\n\
+  Restart\n\
+󰤆  Shutdown\n" | rofi -dmenu -i -p "Power" -lines 10 -no-fixed-num-lines)
 
     exit_code=$?
 
@@ -103,9 +111,9 @@ let
   actionsMenu = pkgs.writeShellScriptBin "coel-actions-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \
-    " 󰄀  Screenshot\n\
-     Screen Record\n\
-     Color\n" | rofi -dmenu -i -p "Actions" -lines 10 -no-fixed-num-lines)
+    "󰄀  Screenshot\n\
+  Screen Record\n\
+  Color\n" | rofi -dmenu -i -p "Actions" -lines 10 -no-fixed-num-lines)
 
     exit_code=$?
 
@@ -123,20 +131,20 @@ let
   settingsMenu = pkgs.writeShellScriptBin "coel-settings-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \
-    "   Audio\n\
-     󰖩  WiFi\n\
-     󰂯  Bluetooth\n\
-     󱐋  Power Profiles\n\
-     󰍹  Monitors\n\
-       Keybindings\n\
-     󰍽  Input\n\
-     󰈷  Fingerprint\n\
-       Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
+    "  Audio\n\
+󰖩  WiFi\n\
+󰂯  Bluetooth\n\
+󱐋  Power Profiles\n\
+󰍹  Monitors\n\
+  Keybindings\n\
+󰍽  Input\n\
+󰈷  Fingerprint\n\
+  Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
 
     exit_code=$?
 
     case "$choice" in
-    	*Audio*) exec ghostty -e pulsemixer ;;
+    	*Audio*) exec ghostty --class=com.joelsgc.floating -e pulsemixer ;;
     	*WiFi*) exec coel-todo "WiFi (netpala) isn't adapted to NixOS yet." ;;
     	*Bluetooth*) exec coel-todo "Bluetooth (bluepala) isn't adapted to NixOS yet." ;;
     	*Power\ Profiles*) exec coel-power-profiles-menu ;;
@@ -160,13 +168,13 @@ let
   configMenu = pkgs.writeShellScriptBin "coel-config-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \
-    "   Hyprland\n\
-       Hyprlock\n\
-       Hypridle\n\
-     󱓞  Autostart\n\
-     󱂬  Window Rules\n\
-     󰏘  Look & Feel\n\
-     󰌧  Waybar\n" | rofi -dmenu -i -p "Config" -lines 10 -no-fixed-num-lines)
+    "  Hyprland\n\
+  Hyprlock\n\
+  Hypridle\n\
+󱓞  Autostart\n\
+󱂬  Window Rules\n\
+󰏘  Look & Feel\n\
+󰌧  Waybar" | rofi -dmenu -i -p "Config" -lines 10 -no-fixed-num-lines)
 
     exit_code=$?
 
@@ -491,8 +499,8 @@ let
     exit_code=$?
 
     case "$choice" in
-    	*Enroll*) exec ghostty -e coel-fingerprint-enroll ;;
-    	*Delete*) exec ghostty -e coel-fingerprint-delete ;;
+    	*Enroll*) exec ghostty --class=com.joelsgc.floating -e coel-fingerprint-enroll ;;
+    	*Delete*) exec ghostty --class=com.joelsgc.floating -e coel-fingerprint-delete ;;
     esac
 
     if [ "$exit_code" -ne 0 ]; then
@@ -508,6 +516,117 @@ in
     enable = true;
     package = pkgs.rofi;
     plugins = [ pkgs.rofi-emoji ];
+
+    # Ported structurally verbatim from the old Arch/Omarchy dotfiles'
+    # theme/rofi.rasi (window/listview/element layout, spacing, the
+    # icon-current-entry preview pane, etc.) -- only the color source
+    # changed. The original hardcoded `* { urgent: #ff99da; accent:
+    # #7acdcd; text: #d4d4d4; base: #262626; }` at the top of the same
+    # file; those four vars are now sourced from the static Everforest
+    # palette (home/theme/everforest.nix) instead, so @urgent/@accent/
+    # @text/@base below resolve the same way they did against the inline
+    # block originally.
+    #
+    # Not ported: an `@media (enabled: env(PREVIEW, false))` block that
+    # swapped in a split icon-preview layout. That's Omarchy's own
+    # rofi-theme-selector preview tooling reaching into an env var we have
+    # no equivalent producer for, and `@media`/`env()` conditionals aren't
+    # common enough rofi syntax to risk shipping unverified -- dropped
+    # rather than guessed at.
+    theme = {
+      "*" = {
+        # Single font, matching `font` below -- the original dotfiles'
+        # theme/rofi.rasi declared `"JetBrainsMonoNL Nerd Font 24, FiraCode
+        # Nerd Font Mono 16"` here, which is not a valid Pango font
+        # description (only one trailing size is recognized; a second size
+        # embedded mid-string gets swallowed into the first family name,
+        # e.g. "JetBrainsMonoNL Nerd Font 24" as a literal, nonexistent
+        # family). That's almost certainly why icons rendered inconsistently
+        # -- font resolution for the first fallback was silently broken.
+        # Standardized on FiraCode Nerd Font Mono (matching home/ghostty.nix)
+        # instead of JetBrainsMono -- one Nerd Font across the whole desktop.
+        font = "FiraCode Nerd Font Mono 20";
+        urgent = mkLiteral theme.orange;
+        accent = mkLiteral theme.green;
+        text = mkLiteral theme.fg;
+        base = mkLiteral theme.bg0;
+      };
+
+      window = {
+        width = mkLiteral "512px";
+        "border-radius" = mkLiteral "8px";
+        border = mkLiteral "2px";
+        "border-color" = mkLiteral "@accent";
+        padding = mkLiteral "48px";
+        "background-color" = mkLiteral "@base";
+      };
+
+      wrap = {
+        expand = false;
+        children = [ (mkLiteral "inputbar") ];
+      };
+
+      "mainbox, listview, element, element-text, entry, wrap, listview-split, icon-current-entry" = {
+        "background-color" = mkLiteral "transparent";
+      };
+
+      listview = {
+        spacing = mkLiteral "16px";
+        padding = mkLiteral "16px 0 0 0";
+      };
+
+      "listview-split" = {
+        orientation = mkLiteral "horizontal";
+        spacing = mkLiteral "24px";
+        children = map mkLiteral [ "listview" "icon-current-entry" ];
+      };
+
+      element = {
+        padding = mkLiteral "8px";
+      };
+
+      "element-text" = {
+        "text-color" = mkLiteral "@accent";
+      };
+
+      "element-text selected" = {
+        "text-color" = mkLiteral "@urgent";
+      };
+
+      "element-icon" = {
+        size = mkLiteral "0px";
+      };
+
+      "icon-current-entry" = {
+        expand = false;
+        size = mkLiteral "35%";
+      };
+
+      inputbar = {
+        padding = mkLiteral "12px";
+        children = [ (mkLiteral "entry") ];
+        "background-color" = mkLiteral "@base";
+      };
+
+      entry = {
+        placeholder = "Go...";
+        "placeholder-color" = mkLiteral "@text";
+        "text-color" = mkLiteral "@text";
+      };
+    };
+
+    # Ported from the old config.rasi's `configuration { ... }` block,
+    # except the size: the original left it unsized here while theme/rofi.rasi
+    # set a (broken, see above) JetBrainsMono-based font -- two different
+    # fonts for the same UI. Normalized to the single font above so every
+    # rofi surface resolves identically.
+    font = "FiraCode Nerd Font Mono 20";
+    extraConfig = {
+      "disable-history" = true;
+      "disable-sort" = false;
+      matching = "normal";
+      "scroll-method" = 1;
+    };
   };
 
   home.packages = [
@@ -528,6 +647,5 @@ in
     fingerprintMenu
     pkgs.hyprpicker
     pkgs.pulsemixer
-    pkgs.fastfetch
   ];
 }

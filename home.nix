@@ -26,6 +26,8 @@
     ./home/mako.nix
     ./home/hypridle.nix
     ./home/wallpaper.nix
+    ./home/theme.nix
+    ./home/fastfetch.nix
     ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/rofi.nix
@@ -73,7 +75,7 @@
     # pkgs.spotify
 
     # Fonts
-    pkgs.nerd-fonts.fira-code
+    pkgs.nerd-fonts.fira-code # rofi + ghostty (home/rofi.nix, home/ghostty.nix)
     pkgs.noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
 
     # Networking / VPN
@@ -83,6 +85,7 @@
 
     # Security tools
     pkgs.john
+    pkgs.nautilus
 
     # Hyprland session utilities (media keys, notifications)
     pkgs.playerctl
