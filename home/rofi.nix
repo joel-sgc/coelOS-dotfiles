@@ -45,6 +45,10 @@ let
   # utility ghostty windows so home/hyprland.nix's windowrules float them
   # instead of tiling -- ported from the old dotfiles' equivalent
   # `alacritty --class com.joelsgc.floating -e ...` convention.
+
+  # Place these 2 in between "Settings" and "Update" when ready
+  # 󱧘  Install\n\
+  # 󱧙  Uninstall\n\
   mainMenu = pkgs.writeShellApplication {
     name = "coel-main-menu";
     runtimeInputs = [ pkgs.rofi ];
@@ -53,8 +57,6 @@ let
       "󰀻  Programs\n\
 󱓞  Actions\n\
   Settings\n\
-󱧘  Install\n\
-󱧙  Uninstall\n\
   Update\n\
   About\n\
 󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
@@ -63,7 +65,7 @@ let
       	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
       	*Actions*) exec coel-actions-menu ;;
       	*Settings*) exec coel-settings-menu ;;
-      	*Install*) exec coel-todo "Nix has no imperative package installer menu — add the package to home.nix or configuration.nix and rebuild instead." ;;
+      	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
       	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
       	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
       	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
@@ -83,6 +85,86 @@ let
       echo
       read -n 1 -s -r -p "Done. Press any key to close..."
       echo
+    '';
+  };
+
+  # Nix has no imperative installer, so this is a *search*, not an install:
+  # look up a package and copy the resolved `pkgs.<attr>` path(s) to the
+  # clipboard so they can be pasted straight into home.nix's/
+  # configuration.nix's package lists.
+  #
+  # `nix search nixpkgs` (local eval of every one of ~108k package
+  # attributes) was tried first and genuinely wasn't good enough: no
+  # up-front narrowing meant "tests.*" internal test derivations and other
+  # junk cluttered results, and naive substring matching against the whole
+  # line meant queries like "ncdu" could match unrelated packages whose
+  # *description* happened to mention it. Rebuilt instead on `nix-search`
+  # (nixpkgs' `nix-search-cli`), which queries the same relevance-ranked
+  # Elasticsearch index behind search.nixos.org -- same backend the
+  # official website uses, so junk/false-positive filtering is already
+  # solved upstream instead of hand-rolled here.
+  #
+  # fzf's `--disabled` + `change:reload` is the standard pattern for a live
+  # external-search UI: fzf stops doing its own local filtering entirely
+  # and just displays whatever coel-package-search-query returns for the
+  # current query text ({q}), re-run on every keystroke -- true
+  # search-as-you-type against the real API, no local package list at all.
+  packageSearchQuery = pkgs.writeShellApplication {
+    name = "coel-package-search-query";
+    runtimeInputs = [ pkgs.nix-search-cli pkgs.jq pkgs.gawk ];
+    text = ''
+      query="''${1:-}"
+      if [ -z "$query" ]; then
+        exit 0
+      fi
+
+      # Channel matches this flake's nixpkgs input (flake.nix: nixos-26.05)
+      # as closely as search.nixos.org's indexed channels allow -- attribute
+      # names/paths are stable enough across a release line that an exact
+      # revision match isn't necessary for this to be useful.
+      nix-search --channel=26.05 --search "$query" --json --max-results 60 2>/dev/null | jq -r '
+        [.package_attr_name, (.package_pversion // "?"), (.package_description // "no description")]
+        | @tsv
+      ' | awk -F'\t' '{ printf "%-40s  %-16s  %s\n", $1, $2, $3 }'
+    '';
+  };
+
+  # Modeled on the old Arch/Omarchy dotfiles' bin/pacman-install.sh and
+  # bin/yay-install.sh: an fzf TUI with a live preview pane, multi-select
+  # (tab), and pointer/marker colored to match the theme -- run inside a
+  # floating ghostty (see home/hyprland.nix's `com.joelsgc.floating`
+  # windowrule) rather than a rofi popup. `pointer:green,marker:green` below
+  # is fzf's *named* ANSI color, not a literal hex -- it resolves through
+  # ghostty's Everforest palette (ANSI 2 = theme.green), so no hardcoded
+  # color needs to track theme changes.
+  packageSearch = pkgs.writeShellApplication {
+    name = "coel-package-search";
+    runtimeInputs = [ pkgs.fzf pkgs.gawk pkgs.wl-clipboard showDone packageSearchQuery ];
+    text = ''
+      selection=$(fzf \
+        --disabled \
+        --multi \
+        --prompt 'Search nixpkgs> ' \
+        --bind 'change:reload:sleep 0.15; coel-package-search-query {q}' \
+        --preview 'printf "Package: %s\nVersion: %s\n\n%s\n" {1} {2} {3..}' \
+        --preview-label='tab: multi-select, alt-p: toggle description, alt-j/k: scroll' \
+        --preview-label-pos='bottom' \
+        --preview-window 'down:40%:wrap' \
+        --bind 'alt-p:toggle-preview' \
+        --bind 'alt-j:preview-down,alt-k:preview-up' \
+        --color 'pointer:green,marker:green')
+
+      if [ -z "$selection" ]; then
+        exit 0
+      fi
+
+      copy_text=$(echo "$selection" | awk '{print "pkgs." $1}')
+      printf '%s' "$copy_text" | wl-copy
+
+      echo
+      echo "Copied to clipboard -- paste into home.nix or configuration.nix and rebuild:"
+      echo "$copy_text"
+      exec coel-show-done
     '';
   };
 
@@ -633,6 +715,8 @@ in
     todo
     mainMenu
     update
+    packageSearchQuery
+    packageSearch
     powerMenu
     actionsMenu
     settingsMenu
