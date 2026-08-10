@@ -17,17 +17,72 @@ let
       fi
     '';
   };
+
+  # Home-grown replacement for the old dotfiles' "custom/privacy-dots"
+  # module, whose `exec: "privacy-dots"` was some external Arch/AUR tool
+  # with no NixOS equivalent. Polled every 3s (matching the original
+  # module's own `interval`), same as coel-screenrecording-indicator above.
+  #
+  # Mic: PipeWire's own object graph (`pw-dump`) is checked directly rather
+  # than going through the pulseaudio-compat `pactl` (not installed here) --
+  # any node classed "Stream/Input/Audio" that's actually "running" (not
+  # just idle/suspended) means something is actively recording.
+  #
+  # Camera: checked at the device level (`fuser` on /dev/video*) rather than
+  # via PipeWire, since not every app that grabs a webcam routes through
+  # PipeWire's camera portal -- some open /dev/video* directly. This catches
+  # both cases; PipeWire-only camera streams still end up holding the
+  # device open too.
+  privacyDots = pkgs.writeShellApplication {
+    name = "coel-privacy-dots";
+    runtimeInputs = [ pkgs.pipewire pkgs.jq pkgs.psmisc ];
+    text = ''
+      mic_active=false
+      if pw-dump 2>/dev/null | jq -e '
+        any(.[]?; (.info.props["media.class"]? // "") == "Stream/Input/Audio" and .info.state == "running")
+      ' >/dev/null 2>&1; then
+        mic_active=true
+      fi
+
+      camera_active=false
+      shopt -s nullglob
+      for dev in /dev/video*; do
+        if fuser "$dev" >/dev/null 2>&1; then
+          camera_active=true
+          break
+        fi
+      done
+      shopt -u nullglob
+
+      text=""
+      tooltip_lines=()
+
+      if [ "$mic_active" = true ]; then
+        text+=" "
+        tooltip_lines+=("Microphone in use")
+      fi
+
+      if [ "$camera_active" = true ]; then
+        text+=""
+        tooltip_lines+=("Camera in use")
+      fi
+
+      tooltip=$(printf '%s\n' "''${tooltip_lines[@]-}")
+      jq -nc --arg text "$text" --arg tooltip "$tooltip" '{text: $text, tooltip: $tooltip}'
+    '';
+  };
 in
 {
   # Ported structurally from the old Arch/Omarchy dotfiles' configs/waybar.jsonc
   # -- layout/modules/formats unchanged, only command targets adapted:
   #   - alacritty -> ghostty (our terminal)
   #   - absolute ~/.coelOS-dotfiles paths -> our real coel-* commands
-  # Not styled on purpose (no `style` set below) -- theming comes later.
+  # Not styled beyond the launcher logo below on purpose -- colors/fonts/
+  # borders etc. are still deferred, that theming pass comes later.
   #
-  # Not ported: "custom/privacy-dots" (was in modules-center). Its
-  # `exec: "privacy-dots"` was some external Arch/AUR tool with no NixOS
-  # package found -- dropped rather than left as a broken module reference.
+  # "custom/privacy-dots" (modules-center) is our own coel-privacy-dots
+  # (defined above) rather than the original's `exec: "privacy-dots"` --
+  # that was some external Arch/AUR tool with no NixOS package found.
   #
   # Bluetooth/network on-click point at coel-todo, matching the exact
   # "isn't adapted to NixOS yet" stubs already in home/rofi.nix's
@@ -38,19 +93,19 @@ in
       mainBar = {
         layer = "top";
         height = 40;
-        margin-left = 32;
-        margin-right = 32;
+        margin-left = 16;
+        margin-right = 16;
         margin-top = 16;
         spacing = 4;
 
         modules-left = [
           "custom/launcher"
-          "custom/separator"
           "hyprland/workspaces"
         ];
         modules-center = [
           "clock"
           "custom/screenrecording-indicator"
+          "custom/privacy-dots"
         ];
         modules-right = [
           "group/tray-expander"
@@ -61,14 +116,14 @@ in
           "battery"
         ];
 
+        # Original had a hamburger-style glyph here (format = "  "); swapped
+        # for the actual Coel.svg logo instead -- waybar custom modules can
+        # only render text/Pango markup, not an image, directly from JSON,
+        # so the image itself is a `background-image` CSS rule below.
         "custom/launcher" = {
           format = "  ";
           tooltip = false;
           on-click = "coel-main-menu";
-        };
-
-        "custom/separator" = {
-          format = "|";
         };
 
         "hyprland/workspaces" = {
@@ -117,6 +172,13 @@ in
           exec = "coel-screenrecording-indicator";
           signal = 8;
           return-type = "json";
+        };
+
+        "custom/privacy-dots" = {
+          exec = "coel-privacy-dots";
+          return-type = "json";
+          interval = 3;
+          tooltip = true;
         };
 
         "group/tray-expander" = {
@@ -207,7 +269,52 @@ in
         };
       };
     };
+
+    # Beyond the launcher logo and the transparent-bar/floating-bubble
+    # layout below, this is intentionally unstyled -- colors/fonts/etc.
+    # for individual modules are still deferred to a later theming pass.
+    # The rgba(0, 0, 0, 0.4) bubble background is a neutral placeholder,
+    # not a real theme color -- swap it out whenever that pass happens.
+    style = ''
+      window#waybar {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      /* "Bubble" look: each real module floats on its own rounded
+         background instead of sitting on one continuous opaque bar.
+         custom/separator is deliberately left out -- it's just a thin
+         divider glyph, not something that reads as its own module. */
+      #custom-launcher,
+      #workspaces,
+      #clock,
+      #custom-screenrecording-indicator,
+      #custom-privacy-dots,
+      #group-tray-expander,
+      #bluetooth,
+      #network,
+      #pulseaudio,
+      #cpu,
+      #battery {
+        background-color: rgba(0, 0, 0, 0.4);
+        border-radius: 16px;
+        padding: 4px 12px;
+      }
+
+      /* The url() below is a Nix path interpolation, resolved to the
+         logo's actual Nix store path at build time -- GTK's CSS url()
+         loads that directly, no separate xdg.configFile copy needed. */
+      #custom-launcher {
+        background-image: url("${./assets/Coel.svg}");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 20px 20px;
+        min-width: 40px;
+        min-height: 20px;
+      }
+    '';
   };
 
-  home.packages = [ screenrecordingIndicator pkgs.pamixer ];
+  home.packages = [ screenrecordingIndicator privacyDots pkgs.pamixer ];
 }

@@ -57,6 +57,11 @@ in
 
   # Tailscale
   services.tailscale.enable = true;
+  # Lets joelsgc run `tailscale up/down/set/...` without sudo. Applied via a
+  # oneshot systemd unit (tailscaled-set, from the tailscale module itself)
+  # that runs `tailscale set --operator=joelsgc` automatically after every
+  # boot -- equivalent to running that command by hand, just declarative.
+  services.tailscale.extraSetFlags = [ "--operator=joelsgc" ];
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 

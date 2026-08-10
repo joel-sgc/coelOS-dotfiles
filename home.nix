@@ -31,6 +31,7 @@
     ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/rofi.nix
+    ./home/waybar.nix
     ./home/udiskie.nix
     ./home/poweralertd.nix
     ./home/kanshi.nix
@@ -71,7 +72,6 @@
     pkgs.orca-slicer
     pkgs.vscode
     pkgs.stremio-linux-shell
-    pkgs.waybar
     # pkgs.spotify
 
     # Fonts

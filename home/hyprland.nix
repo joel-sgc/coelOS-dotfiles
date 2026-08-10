@@ -56,8 +56,8 @@ in
       "$mainMod" = "SUPER";
 
       general = {
-        gaps_in = 4;
-        gaps_out = 8;
+        gaps_in = 16;
+        gaps_out = 16;
         border_size = 2;
 
         # Everforest: green -> blue gradient on focus, muted grey when idle.
