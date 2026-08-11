@@ -80,11 +80,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1786477577,
-        "narHash": "sha256-BNkviWCOKLkPAMi4P4PW5+ZswNJVG7ev5LKI4s6rCdE=",
+        "lastModified": 1786479040,
+        "narHash": "sha256-jCsHho5bdiDI0tNCNHMiWDRyFHrdeYihG1Fr8RbZwPU=",
         "owner": "joel-sgc",
         "repo": "fresh",
-        "rev": "2c704dfc72fefe29254bcc99cd509056a8d5b2f7",
+        "rev": "d9207c62f4f081467040ef3d97f43a07d661c643",
         "type": "github"
       },
       "original": {

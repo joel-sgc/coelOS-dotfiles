@@ -20,7 +20,6 @@
     ./home/zsh.nix
     ./home/micro.nix
     ./home/fresh.nix
-    ./home/neovim.nix
     ./home/ghostty.nix
     ./home/development.nix
     ./home/zen-browser.nix
