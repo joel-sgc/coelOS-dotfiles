@@ -17,6 +17,19 @@
     opencode.url = "github:GutMutCode/opencode-nix";
 
     nix-flatpak.url = "github:gmodena/nix-flatpak";
+
+    # Not in nixpkgs yet; the project ships its own flake (crane + fenix,
+    # pins its own Rust toolchain independent of nixpkgs' rustc), so this is
+    # a real declarative build straight from source, not a wrapped installer
+    # script. First build compiles a substantial Rust codebase from
+    # scratch -- expect it to take a while.
+    #
+    # Pinned to our own fork/branch rather than upstream: .tsx/.jsx files
+    # were being parsed with the plain (non-JSX-capable) TypeScript grammar,
+    # which broke JSX tag/attribute highlighting and indentation. Fix is up
+    # as https://github.com/joel-sgc/fresh/tree/fix/tsx-grammar-and-jsx-indent
+    # (not yet merged upstream) -- revert to sinelaw/fresh once it lands there.
+    fresh.url = "github:joel-sgc/fresh/fix/tsx-grammar-and-jsx-indent";
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, opencode, ... }:
