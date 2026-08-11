@@ -1,6 +1,8 @@
 { pkgs, ... }:
 
 let
+  theme = import ./theme/onedark.nix;
+
   # Ported from the old Arch/Omarchy dotfiles' bin/screenrecording-indicator.sh
   # -- reports current recording state to the custom/screenrecording-indicator
   # module below via waybar's `return-type: json` custom-module protocol.
@@ -77,8 +79,9 @@ in
   # -- layout/modules/formats unchanged, only command targets adapted:
   #   - alacritty -> ghostty (our terminal)
   #   - absolute ~/.coelOS-dotfiles paths -> our real coel-* commands
-  # Not styled beyond the launcher logo below on purpose -- colors/fonts/
-  # borders etc. are still deferred, that theming pass comes later.
+  # Bubble/text colors below are the One Dark palette (home/theme/onedark.nix),
+  # matching the rest of the desktop -- layout/fonts/borders beyond that are
+  # still deferred, a deeper styling pass comes later.
   #
   # "custom/privacy-dots" (modules-center) is our own coel-privacy-dots
   # (defined above) rather than the original's `exec: "privacy-dots"` --
@@ -156,13 +159,11 @@ in
           tooltip-format = "{calendar}";
           calendar = {
             mode = "month";
-            # Colors below are the *old* Arch/Omarchy palette, left
-            # untouched on purpose -- not themed yet.
             format = {
-              months = "<span color='#d4d4d4'><b>{}</b></span>\n--------------------";
-              days = "<span color='#d4d4d4'><b>{}</b></span>";
-              weekdays = "<span color='#ff99da'><b>{}</b></span>";
-              today = "<span color='#7acdcd'><b>{}</b></span>";
+              months = "<span color='${theme.fg}'><b>{}</b></span>\n--------------------";
+              days = "<span color='${theme.fg}'><b>{}</b></span>";
+              weekdays = "<span color='${theme.yellow}'><b>{}</b></span>";
+              today = "<span color='${theme.blue}'><b>{}</b></span>";
             };
           };
         };
@@ -270,11 +271,10 @@ in
       };
     };
 
-    # Beyond the launcher logo and the transparent-bar/floating-bubble
-    # layout below, this is intentionally unstyled -- colors/fonts/etc.
-    # for individual modules are still deferred to a later theming pass.
-    # The rgba(0, 0, 0, 0.4) bubble background is a neutral placeholder,
-    # not a real theme color -- swap it out whenever that pass happens.
+    # Beyond the launcher logo, the transparent-bar/floating-bubble layout,
+    # and the bubble/calendar colors below, this is intentionally unstyled
+    # -- fonts/borders/spacing etc. for individual modules are still
+    # deferred to a later, deeper theming pass.
     style = ''
       window#waybar {
         background: transparent;
@@ -297,7 +297,10 @@ in
       #pulseaudio,
       #cpu,
       #battery {
-        background-color: rgba(0, 0, 0, 0.4);
+        /* rgba(), not an 8-digit #RRGGBBAA hex -- GTK's CSS engine doesn't
+           support that newer hex-alpha syntax ("Junk at end of value").
+           64, 71, 84 is theme.surface (#404754) in decimal. */
+        background-color: rgba(64, 71, 84, 0.8);
         border-radius: 16px;
         padding: 4px 12px;
       }

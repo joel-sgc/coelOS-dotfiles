@@ -3,7 +3,7 @@
 let
   inherit (config.lib.formats.rasi) mkLiteral;
 
-  theme = import ./theme/everforest.nix;
+  theme = import ./theme/onedark.nix;
 
   # --- Menu scripts -----------------------------------------------------
   # Ported from the old Arch/Omarchy dotfiles' configs/rofi/*.sh. Every menu
@@ -57,6 +57,7 @@ let
       "󰀻  Programs\n\
 󱓞  Actions\n\
   Settings\n\
+  Rebuild\n\
   Update\n\
   About\n\
 󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
@@ -67,6 +68,7 @@ let
       	*Settings*) exec coel-settings-menu ;;
       	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
       	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
+      	*Rebuild*) exec ghostty --class=com.joelsgc.floating -e coel-rebuild ;;
       	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
       	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
       	*System*) exec coel-power-menu ;;
@@ -74,14 +76,30 @@ let
     '';
   };
 
-  # `Update` in the old menu ran a pacman/yay/flatpak wrapper script. The
-  # direct Nix equivalent is a flake rebuild — same command as ~/reload-nix.sh.
-  update = pkgs.writeShellApplication {
-    name = "coel-update";
+  # `Update` in the old menu ran a pacman/yay/flatpak wrapper script. Split
+  # into two here since Nix distinguishes "rebuild from the current
+  # flake.lock" from "pull newer flake inputs first, then rebuild": Rebuild
+  # is the direct equivalent (same command as ~/reload-nix.sh), Update is
+  # the same thing plus `--upgrade` to update flake inputs (nixpkgs, etc.)
+  # before building.
+  rebuild = pkgs.writeShellApplication {
+    name = "coel-rebuild";
     text = ''
       echo "Rebuilding CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos"
       echo
       sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos"
+      echo
+      read -n 1 -s -r -p "Done. Press any key to close..."
+      echo
+    '';
+  };
+
+  update = pkgs.writeShellApplication {
+    name = "coel-update";
+    text = ''
+      echo "Updating CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos --upgrade"
+      echo
+      sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos" --upgrade
       echo
       read -n 1 -s -r -p "Done. Press any key to close..."
       echo
@@ -135,8 +153,9 @@ let
   # floating ghostty (see home/hyprland.nix's `com.joelsgc.floating`
   # windowrule) rather than a rofi popup. `pointer:green,marker:green` below
   # is fzf's *named* ANSI color, not a literal hex -- it resolves through
-  # ghostty's Everforest palette (ANSI 2 = theme.green), so no hardcoded
-  # color needs to track theme changes.
+  # whatever ghostty theme is active (ANSI 2), so no hardcoded color needs
+  # to track theme changes. Proven when this went from Everforest to
+  # Dracula with zero changes needed here.
   packageSearch = pkgs.writeShellApplication {
     name = "coel-package-search";
     runtimeInputs = [ pkgs.fzf pkgs.gawk pkgs.wl-clipboard showDone packageSearchQuery ];
@@ -200,8 +219,8 @@ let
     exit_code=$?
 
     case "$choice" in
-    	*Screenshot*) exec coel-screenshot ;;
-    	*Record*) exec coel-screenrecord ;;
+    	*Screenshot*) exec bash -c "sleep 0.15 && coel-screenshot" ;;
+    	*Record*) exec bash -c "sleep 0.15 && coel-screenrecord" ;;
     	*Color*) exec bash -c "sleep 0.15 && hyprpicker -a" ;;
     esac
 
@@ -604,8 +623,8 @@ in
     # icon-current-entry preview pane, etc.) -- only the color source
     # changed. The original hardcoded `* { urgent: #ff99da; accent:
     # #7acdcd; text: #d4d4d4; base: #262626; }` at the top of the same
-    # file; those four vars are now sourced from the static Everforest
-    # palette (home/theme/everforest.nix) instead, so @urgent/@accent/
+    # file; those four vars are now sourced from the static One Dark
+    # palette (home/theme/onedark.nix) instead, so @urgent/@accent/
     # @text/@base below resolve the same way they did against the inline
     # block originally.
     #
@@ -628,10 +647,10 @@ in
         # Standardized on FiraCode Nerd Font Mono (matching home/ghostty.nix)
         # instead of JetBrainsMono -- one Nerd Font across the whole desktop.
         font = "FiraCode Nerd Font Mono 20";
-        urgent = mkLiteral theme.orange;
-        accent = mkLiteral theme.green;
+        urgent = mkLiteral theme.yellow;
+        accent = mkLiteral theme.blue;
         text = mkLiteral theme.fg;
-        base = mkLiteral theme.bg0;
+        base = mkLiteral theme.bg;
       };
 
       window = {
@@ -714,6 +733,7 @@ in
   home.packages = [
     todo
     mainMenu
+    rebuild
     update
     packageSearchQuery
     packageSearch

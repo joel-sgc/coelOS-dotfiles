@@ -32,6 +32,7 @@
     ./home/clipboard.nix
     ./home/rofi.nix
     ./home/waybar.nix
+    ./home/desktop-entries.nix
     ./home/udiskie.nix
     ./home/poweralertd.nix
     ./home/kanshi.nix

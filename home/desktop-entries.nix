@@ -41,7 +41,9 @@
     # every one of upstream's ~40 per-locale translations.
     "org.kde.qrca" = {
       name = "Qrca";
-      genericName = "Barcode Scanner";
+      # Original GenericName was "Barcode Scanner" -- also contains "code"
+      # (inside "Barcode"), same problem as Comment below.
+      genericName = "QR Scanner";
       comment = "Scan and create QR pictures";
       icon = "org.kde.qrca";
       exec = "qrca";

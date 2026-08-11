@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  theme = import ./theme/everforest.nix;
+  theme = import ./theme/onedark.nix;
   strip = lib.removePrefix "#";
 in
 {
@@ -60,9 +60,11 @@ in
         gaps_out = 16;
         border_size = 2;
 
-        # Everforest: green -> blue gradient on focus, muted grey when idle.
-        "col.active_border" = "rgba(${strip theme.green}ee) rgba(${strip theme.blue}ee) 45deg";
-        "col.inactive_border" = "rgba(${strip theme.grey1}aa)";
+        # One Dark (tal7aouy): blue -> red (coral) gradient on focus (the two
+        # most emphasized colors in the real theme), muted comment-grey when
+        # idle.
+        "col.active_border" = "rgba(${strip theme.blue}ee) rgba(${strip theme.red}ee) 45deg";
+        "col.inactive_border" = "rgba(${strip theme.comment}aa)";
       };
 
       input = {

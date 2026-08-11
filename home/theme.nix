@@ -1,13 +1,13 @@
 { config, pkgs, lib, ... }:
 
 let
-  theme = import ./theme/everforest.nix;
+  theme = import ./theme/onedark.nix;
 
   qtctColors = pkgs.writeText "qtct-colors.conf" ''
     [ColorScheme]
-    active_colors=${theme.fg}, ${theme.bg1}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg0}, ${theme.bg0}, ${theme.bg_dim}, ${theme.bg_green}, ${theme.green}, ${theme.blue}, ${theme.green}, ${theme.bg1}, ${theme.bg_dim}, ${theme.bg1}, ${theme.fg}, ${theme.blue}
-    disabled_colors=${theme.fg}, ${theme.bg1}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg0}, ${theme.bg0}, ${theme.bg_dim}, ${theme.bg_green}, ${theme.green}, ${theme.blue}, ${theme.green}, ${theme.bg1}, ${theme.bg_dim}, ${theme.bg1}, ${theme.fg}, ${theme.blue}
-    inactive_colors=${theme.fg}, ${theme.bg1}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg0}, ${theme.bg0}, ${theme.bg_dim}, ${theme.bg_green}, ${theme.green}, ${theme.blue}, ${theme.green}, ${theme.bg1}, ${theme.bg_dim}, ${theme.bg1}, ${theme.fg}, ${theme.blue}
+    active_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
+    disabled_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
+    inactive_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
   '';
 
   # Walks through every surface this theme touches so a palette change can be
@@ -22,9 +22,9 @@ let
       echo
 
       echo "== Mako =="
-      notify-send -a "CoelOS" "Theme Test" "Normal notification -- border should be Everforest green."
+      notify-send -a "CoelOS" "Theme Test" "Normal notification -- border should be One Dark blue."
       sleep 2
-      notify-send -a "CoelOS" -u critical "Theme Test" "Critical notification -- border should be Everforest red."
+      notify-send -a "CoelOS" -u critical "Theme Test" "Critical notification -- border should be One Dark error red."
       sleep 1
       echo
 
@@ -51,18 +51,18 @@ in
   # override mechanism itself, just the files being present.
   xdg.configFile = {
     "gtk-3.0/gtk.css".text = ''
-      @define-color accent_color ${theme.green};
-      @define-color accent_fg_color ${theme.bg0};
-      @define-color accent_bg_color ${theme.green};
-      @define-color window_bg_color ${theme.bg0};
+      @define-color accent_color ${theme.blue};
+      @define-color accent_fg_color ${theme.bg};
+      @define-color accent_bg_color ${theme.blue};
+      @define-color window_bg_color ${theme.bg};
       @define-color window_fg_color ${theme.fg};
-      @define-color headerbar_bg_color ${theme.bg0};
+      @define-color headerbar_bg_color ${theme.bg};
       @define-color headerbar_fg_color ${theme.fg};
-      @define-color popover_bg_color ${theme.bg0};
+      @define-color popover_bg_color ${theme.bg};
       @define-color popover_fg_color ${theme.fg};
-      @define-color view_bg_color ${theme.bg1};
+      @define-color view_bg_color ${theme.surface};
       @define-color view_fg_color ${theme.fg};
-      @define-color card_bg_color ${theme.bg1};
+      @define-color card_bg_color ${theme.surface};
       @define-color card_fg_color ${theme.fg};
       @define-color sidebar_bg_color @window_bg_color;
       @define-color sidebar_fg_color @window_fg_color;

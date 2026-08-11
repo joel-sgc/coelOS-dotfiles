@@ -1,4 +1,10 @@
-{ inputs, config, pkgs, lib, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   # Flip this to false to fully disable the ClamAV experiment we added
@@ -13,6 +19,7 @@ in
     ./modules/kdeconnect.nix
     ./modules/globalprotect.nix
     ./modules/nix-ld.nix
+    ./modules/filesystems.nix
   ];
 
   ##############################################################################
@@ -23,7 +30,10 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 0;
 
-  boot.kernelParams = [ "quiet" "splash" ];
+  boot.kernelParams = [
+    "quiet"
+    "splash"
+  ];
   boot.initrd.kernelModules = [ "amdgpu" ];
 
   boot.plymouth = {
@@ -145,7 +155,20 @@ in
 
   # Required for hyprlock to actually authenticate (Hyprland's lock screen,
   # separate from Plasma's own kscreenlocker/PAM service).
-  security.pam.services.hyprlock = { };
+  #
+  # fprintAuth explicitly disabled here even though services.fprintd.enable
+  # would otherwise default it to true: hyprlock has its own independent
+  # native fingerprint backend (home/hypridle.nix's `auth.fingerprint.enabled`,
+  # confirmed straight from hyprlock's src/auth/Auth.cpp -- CPam and
+  # CFingerprint are two separate implementations, either succeeding
+  # unlocks). Leaving pam_fprintd.so *also* in this PAM stack made it
+  # redundant -- worse, since pam_fprintd is `sufficient` and listed before
+  # pam_unix, it blocked *this* conversation's password check until its own
+  # fingerprint attempt resolved, which is exactly what made typing a
+  # password and pressing enter feel like it also required a fingerprint
+  # scan. Native hyprlock fingerprint auth genuinely runs in parallel
+  # instead of nesting inside the password conversation.
+  security.pam.services.hyprlock.fprintAuth = false;
 
   # Grants the `video` group write access to /sys/class/backlight so swayosd
   # (Hyprland session's volume/brightness OSD) can adjust brightness without
@@ -166,7 +189,10 @@ in
       pkgs.xdg-desktop-portal-gtk
     ];
     config = {
-      hyprland.default = [ "hyprland" "gtk" ];
+      hyprland.default = [
+        "hyprland"
+        "gtk"
+      ];
       kde.default = [ "kde" ];
       common.default = [ "gtk" ];
     };
@@ -238,11 +264,33 @@ in
   users.users."joelsgc" = {
     isNormalUser = true;
     description = "JoelSGC";
-    extraGroups = [ "networkmanager" "wheel" "globalprotect" "video" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "globalprotect"
+      "video"
+    ];
     shell = pkgs.zsh;
   };
 
   programs.zsh.enable = true;
+
+  ##############################################################################
+  # Filesystem Support (HFS+ / APFS / NTFS / exFAT)
+  #
+  # Toggles the userspace tools (mkfs.*, fsck.*, apfs-fuse) from
+  # modules/filesystems.nix -- kernel-level read/write mount support for
+  # all four stays on regardless of these. All disabled for now since none
+  # of the external-drive work is currently active; flip back to true
+  # per-filesystem whenever that tooling is needed again.
+  ##############################################################################
+
+  filesystemSupport = {
+    ntfs.extraTools = true;
+    hfs.extraTools = false;
+    apfs.extraTools = false;
+    exfat.extraTools = false;
+  };
 
   ##############################################################################
   # System Packages & Nix Settings
@@ -278,6 +326,13 @@ in
     fd
     ncdu
     jq
+
+    vlc
+
+    # VS Code's jnoortheen.nix-ide extension talks to these -- LSP +
+    # semantic highlighting/diagnostics, and format-on-save, for .nix files.
+    nixd
+    nixfmt
   ];
 
   services.flatpak.enable = true;

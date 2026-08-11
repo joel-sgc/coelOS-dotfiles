@@ -1,7 +1,7 @@
 { ... }:
 
 let
-  theme = import ./theme/everforest.nix;
+  theme = import ./theme/onedark.nix;
 in
 {
   # Notification daemon. Only started via home/hyprland.nix's exec-once, so
@@ -9,16 +9,19 @@ in
   services.mako = {
     enable = true;
     settings = {
-      background-color = "${theme.bg0}e6";
+      background-color = "${theme.bg}e6";
       text-color = theme.fg;
-      border-color = theme.green;
+      border-color = theme.blue;
       border-size = 2;
       border-radius = 8;
       default-timeout = 5000;
       layer = "overlay";
       anchor = "top-right";
 
-      "urgency=critical".border-color = theme.red;
+      # theme.error (their explicit "error" role, #f44747), not theme.red
+      # (coral, #ef596f) -- coral is their emphasis/accent color, not their
+      # failure-state color.
+      "urgency=critical".border-color = theme.error;
     };
   };
 }
