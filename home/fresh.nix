@@ -56,6 +56,14 @@ in
       # Already the default (verified via `--cmd config show`) -- set
       # explicitly so it's not silently dependent on that staying true.
       line_wrap = true;
+      # Carried over from the old micro setup (home/micro.nix had
+      # tabsize = 2) -- Fresh's own default is 4.
+      tab_size = 2;
+      # Same intent as micro's `autosave = true`; Fresh's mechanism is a
+      # periodic timer rather than save-on-every-edit, so this also pairs
+      # with a shorter interval than the 30s default.
+      auto_save_enabled = true;
+      auto_save_interval_secs = 5;
     };
     # Verified via `--cmd config show`: the built-in typescript/javascript
     # LSP entries already have `"enabled": true` and the right command
@@ -68,6 +76,41 @@ in
       typescript.auto_start = true;
       javascript.auto_start = true;
     };
+    # Top-level `keybindings` layers on top of the resolved `keymap` above
+    # (confirmed in fresh's source, input/keybindings.rs: the active map's
+    # bindings load first, then these are loaded "as overrides") -- these
+    # three don't exist in "vscode" at all by default: Ctrl+W is bound to
+    # `select_word` there (Fresh's own close-tab default is Alt+W), and
+    # Ctrl+Tab/Ctrl+Shift+Tab aren't bound to anything. Ghostty's own
+    # ctrl+w/ctrl+tab/ctrl+shift+tab bindings are unbound in home/ghostty.nix
+    # so these actually reach Fresh instead of Ghostty intercepting them
+    # for its own ctrl+w = close_tab / built-in tab-switching first.
+    keybindings = [
+      {
+        key = "w";
+        modifiers = [ "ctrl" ];
+        action = "close_tab";
+        args = { };
+        when = "normal";
+      }
+      {
+        key = "Tab";
+        modifiers = [ "ctrl" ];
+        action = "next_buffer";
+        args = { };
+        when = "normal";
+      }
+      {
+        key = "Tab";
+        modifiers = [
+          "ctrl"
+          "shift"
+        ];
+        action = "prev_buffer";
+        args = { };
+        when = "normal";
+      }
+    ];
   };
 
   xdg.configFile."fresh/themes/onedark-tal7aouy.json".text = builtins.toJSON {

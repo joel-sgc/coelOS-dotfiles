@@ -48,7 +48,19 @@ in
       "font-size" = 10;
       keybind = [
         "ctrl+t=new_tab"
-        "ctrl+w=close_tab"
+        # Unbound rather than pointed at ghostty's own tab actions: ghostty
+        # has no concept of "which program is running in this pane" to
+        # switch behavior on, but `unbind` sends the key straight through to
+        # whatever's actually running instead of consuming it here. Fresh's
+        # keymap (home/fresh.nix) binds all three to its own tab/buffer
+        # actions (close_tab / next_buffer / prev_buffer), so while Fresh is
+        # open these three now do tab navigation *in Fresh*; falling through
+        # to a plain shell just gets zsh's own readline behavior for them
+        # (ctrl+w = delete word backward) instead of ghostty eating them
+        # first.
+        "ctrl+w=unbind"
+        "ctrl+tab=unbind"
+        "ctrl+shift+tab=unbind"
       ];
     };
   };
