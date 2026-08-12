@@ -39,6 +39,7 @@
     ./home/kanshi.nix
     ./home/kde-window-shortcuts.nix
     ./home/kde-shortcuts.nix
+    ./home/kde-wallpaper.nix
 
     # Services / integrations
     ./home/globalprotect.nix

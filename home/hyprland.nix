@@ -125,6 +125,12 @@ in
         # XF86PowerOff bind below (-> coel-power-menu) is what actually
         # fires, instead of an immediate shutdown racing the menu.
         "${pkgs.systemd}/bin/systemd-inhibit --what=handle-power-key --who=Hyprland --why='Custom power menu' --mode=block sleep infinity"
+        # Random wallpaper on every login (home/wallpaper.nix). Plasma's
+        # equivalent is an XDG autostart entry (home/kde-wallpaper.nix) --
+        # exec-once is Hyprland's own version of "run once per session
+        # start". The script itself retries for a few seconds in case it
+        # races the awww daemon's systemd-user startup.
+        "coel-random-wallpaper"
       ];
 
       bind =
