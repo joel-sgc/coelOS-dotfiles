@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   kwriteconfig6 = "${pkgs.kdePackages.kconfig}/bin/kwriteconfig6";

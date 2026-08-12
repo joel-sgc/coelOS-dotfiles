@@ -1,20 +1,21 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   theme = import ./theme/onedark.nix;
-
-  qtctColors = pkgs.writeText "qtct-colors.conf" ''
-    [ColorScheme]
-    active_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
-    disabled_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
-    inactive_colors=${theme.fg}, ${theme.surface}, #ffffff, #cacaca, #9f9f9f, #b8b8b8, ${theme.fg}, #ffffff, ${theme.fg}, ${theme.bg}, ${theme.bg}, ${theme.bg}, ${theme.surface}, ${theme.blue}, ${theme.cyan}, ${theme.blue}, ${theme.surface}, ${theme.bg}, ${theme.surface}, ${theme.fg}, ${theme.cyan}
-  '';
 
   # Walks through every surface this theme touches so a palette change can be
   # sanity-checked in one go instead of hunting down each app by hand.
   themeTest = pkgs.writeShellApplication {
     name = "coel-theme-test";
-    runtimeInputs = [ pkgs.libnotify pkgs.hyprlock ];
+    runtimeInputs = [
+      pkgs.libnotify
+      pkgs.hyprlock
+    ];
     text = ''
       echo "== Ghostty palette (reading this in Ghostty confirms it) =="
       for i in $(seq 0 15); do printf "\033[48;5;%sm  \033[0m" "$i"; done
@@ -72,25 +73,12 @@ in
     "gtk-4.0/gtk.css".text = config.xdg.configFile."gtk-3.0/gtk.css".text;
   };
 
-  # qt5ct/qt6ct give Qt5 and Qt6 apps a configurable platform theme; without
-  # this they'd fall back to whatever GTK style is on PATH (often ugly) or
-  # plain Fusion. QT_QPA_PLATFORMTHEME is set to "qt5ct" specifically (not
-  # "qt6ct") because that's what home-manager's own qt.nix module does for
-  # `platformTheme.name = "qtct"` -- qt6ct's plugin answers to that same
-  # name for compatibility, so one env var covers both.
-  qt = {
-    enable = true;
-    platformTheme.name = "qtct";
-    style.name = "adwaita-dark";
-    qt5ctSettings.Appearance = {
-      custom_palette = true;
-      color_scheme_path = "${qtctColors}";
-    };
-    qt6ctSettings.Appearance = {
-      custom_palette = true;
-      color_scheme_path = "${qtctColors}";
-    };
-  };
+  # Qt theming is intentionally left to KDE/Plasma's native platform theme
+  # (plasma-integration) here. The old qt5ct/qt6ct setup (QT_QPA_PLATFORMTHEME=qt5ct)
+  # bypassed that and broke Plasma: KWin/plasmashell then couldn't resolve the
+  # QtQuickControls2 styles (module "breeze"/"adwaita-dark" is not installed),
+  # crashing the shell to a black screen. The custom One Dark palette lives on
+  # via the GTK overrides above and the Plasma color scheme instead.
 
   home.packages = [ themeTest ];
 }
