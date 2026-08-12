@@ -170,6 +170,35 @@ in
   # instead of nesting inside the password conversation.
   security.pam.services.hyprlock.fprintAuth = false;
 
+  # SDDM (the login screen) had the same "feels like it needs both a password
+  # AND a fingerprint" symptom as hyprlock did before the fix above -- but
+  # the fix itself has to be different. Confirmed from /etc/pam.d/sddm: SDDM
+  # doesn't get its own generated PAM stack at all, it's `auth substack
+  # login`, so this is really about /etc/pam.d/login. Unlike hyprlock, login
+  # (and therefore SDDM) has no independent native fingerprint path to fall
+  # back on -- pam_fprintd.so is the *only* way it can check a fingerprint,
+  # so disabling fprintAuth here (hyprlock's fix) would remove fingerprint
+  # login from the greeter entirely, not just stop it from blocking the
+  # password field.
+  #
+  # Instead: pam_fprintd.so is `sufficient` and was ordered *before*
+  # pam_unix.so (order 11400 vs 12900, confirmed from the generated file),
+  # so typing a password and hitting enter had to wait for the fingerprint
+  # module's own conversation to resolve first -- same root cause as
+  # hyprlock, just fixed by reordering instead of disabling. Moving it to
+  # just after the real password check (`unix`, not the earlier
+  # `likeauth`-only `unix-early`) means: typing a password authenticates
+  # immediately without ever reaching pam_fprintd, and a fingerprint scan
+  # with no password typed still falls through unix's (fast, non-blocking)
+  # failure to reach pam_fprintd and succeed on its own -- fingerprint alone
+  # is sufficient either way, matching hyprlock's actual behavior even
+  # though the mechanism differs. Set as a relative offset from `unix`'s own
+  # order per the option's own documented guidance, since the absolute
+  # values are that module's internal implementation detail and could shift
+  # on a nixpkgs update.
+  security.pam.services.login.rules.auth.fprintd.order =
+    config.security.pam.services.login.rules.auth.unix.order + 10;
+
   # Grants the `video` group write access to /sys/class/backlight so swayosd
   # (Hyprland session's volume/brightness OSD) can adjust brightness without
   # running as root.
