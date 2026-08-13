@@ -87,9 +87,12 @@ in
   # (defined above) rather than the original's `exec: "privacy-dots"` --
   # that was some external Arch/AUR tool with no NixOS package found.
   #
-  # Bluetooth/network on-click point at coel-todo, matching the exact
-  # "isn't adapted to NixOS yet" stubs already in home/rofi.nix's
-  # settingsMenu (bluepala/netpala aren't packaged for NixOS).
+  # bluetooth's on-click launches bluepala, network's launches netpala --
+  # both wired up in configuration.nix (bluepala has no nixosModule so it's
+  # a plain systemPackages entry; netpala's is a programs.netpala.enable
+  # toggle) -- in a floating terminal, same convention as pulseaudio/cpu
+  # below. home/rofi.nix's settingsMenu still has its own separate
+  # coel-todo stub for these, untouched here.
   programs.waybar = {
     enable = true;
     settings = {
@@ -99,7 +102,7 @@ in
         margin-left = 16;
         margin-right = 16;
         margin-top = 16;
-        spacing = 4;
+        spacing = 16;
 
         modules-left = [
           "custom/launcher"
@@ -206,13 +209,23 @@ in
         };
 
         bluetooth = {
-          format = "";
+          # format/format-on were empty strings before -- waybar's bluetooth
+          # module falls back to `format` for any state without its own
+          # more specific format string, so with both blank the widget was
+          # literally invisible (zero-width, no icon) the entire time the
+          # radio was on with nothing connected -- the common case. All
+          # states now always resolve to a real glyph (verified against
+          # nerd-fonts' own glyphnames.json: md-bluetooth/md-bluetooth_off/
+          # md-bluetooth_connect), so it shows regardless of radio/adapter
+          # state instead of only when a device happens to be connected.
+          format = "󰂯";
+          format-on = "󰂯";
           format-off = "󰂲";
           format-disabled = "󰂲";
           format-connected = "󰂱";
-          format-no-controller = "";
+          format-no-controller = "󰂲";
           tooltip-format = "Devices connected: {num_connections}";
-          on-click = "coel-todo \"Bluetooth (bluepala) isn't adapted to NixOS yet.\"";
+          on-click = "ghostty --class=com.joelsgc.floating -e bluepala";
         };
 
         network = {
@@ -226,7 +239,7 @@ in
           tooltip-format-disconnected = "Disconnected";
           interval = 3;
           spacing = 1;
-          on-click = "coel-todo \"WiFi (netpala) isn't adapted to NixOS yet.\"";
+          on-click = "ghostty --class=com.joelsgc.floating -e netpala";
         };
 
         pulseaudio = {
@@ -235,10 +248,10 @@ in
           on-click-right = "pamixer -t";
           tooltip-format = "Playing at {volume}%";
           scroll-step = 5;
-          format-muted = "";
+          format-muted = "";
           format-icons = {
-            headphone = "";
-            default = [ "" "" "" ];
+            headphone = "";
+            default = [ "" "" "" ];
           };
         };
 

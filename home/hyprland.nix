@@ -56,7 +56,7 @@ in
       "$mainMod" = "SUPER";
 
       general = {
-        gaps_in = 16;
+        gaps_in = 8;
         gaps_out = 16;
         border_size = 2;
 
@@ -85,18 +85,27 @@ in
           # Ported from the old Arch/Omarchy dotfiles' window-rules.conf.
           # `ghostty --class=com.joelsgc.floating -e <cmd>` (see home/rofi.nix)
           # opens a one-off utility terminal (fingerprint enroll/delete,
-          # coel-update, pulsemixer, ...) that should float instead of tiling.
+          # coel-update, pulsemixer, btop, netpala, ...) that should float
+          # instead of tiling. Sized in pixels (not ghostty's own
+          # window-width/window-height, which are cell-based but documented
+          # as buggy under GTK decorations) -- 1556x925 was picked by
+          # empirically resizing a live window at this system's actual font
+          # (FiraCode Nerd Font Mono, size 10) and measuring the resulting
+          # `stty size` grid: ~140 cols x 41 rows, comfortable for btop's
+          # panes and netpala's TUI.
           name = "float-utility-terminal";
           "match:class" = "^com\\.joelsgc\\.floating$";
           float = true;
+          size = "1556 925";
         }
         {
-          # Same idea, but for the fastfetch "About" popup, which also had a
-          # fixed size in the original dotfiles.
+          # Same idea, but for the fastfetch "About" popup. Also enlarged
+          # (was 778x506, ~72x27) using the same empirical calibration --
+          # 1111x725 measures out to ~100 cols x 32 rows.
           name = "float-info-terminal";
           "match:class" = "^com\\.joelsgc\\.info$";
           float = true;
-          size = "778 506";
+          size = "1111 725";
         }
         {
           # Ignore maximize requests from all apps.

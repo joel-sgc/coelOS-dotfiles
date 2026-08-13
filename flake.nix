@@ -18,6 +18,9 @@
 
     nix-flatpak.url = "github:gmodena/nix-flatpak";
 
+    netpala.url = "github:joel-sgc/netpala";
+    bluepala.url = "github:joel-sgc/bluepala";
+
     # Not in nixpkgs yet; the project ships its own flake (crane + fenix,
     # pins its own Rust toolchain independent of nixpkgs' rustc), so this is
     # a real declarative build straight from source, not a wrapped installer
@@ -32,26 +35,35 @@
     fresh.url = "github:joel-sgc/fresh/fix/tsx-grammar-and-jsx-indent";
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, opencode, ... }:
-  {
-    nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = { inherit inputs; };
-      modules = [
-        ./configuration.nix
-        home-manager.nixosModules.home-manager
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      home-manager,
+      opencode,
+      netpala,
+      ...
+    }:
+    {
+      nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./configuration.nix
+          netpala.nixosModules.default
+          home-manager.nixosModules.home-manager
 
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
 
-          home-manager.users.joelsgc = import ./home.nix;
+            home-manager.users.joelsgc = import ./home.nix;
 
-          home-manager.extraSpecialArgs = {
-            inherit inputs;
-          };
-        }
-      ];
+            home-manager.extraSpecialArgs = {
+              inherit inputs;
+            };
+          }
+        ];
+      };
     };
-  };
 }

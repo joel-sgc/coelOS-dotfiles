@@ -1,6 +1,5 @@
 {
   inputs,
-  config,
   pkgs,
   ...
 }:
@@ -80,6 +79,7 @@
     pkgs.orca-slicer
     pkgs.vscode
     pkgs.stremio-linux-shell
+    pkgs.gimp
     # pkgs.spotify
 
     # Fonts
