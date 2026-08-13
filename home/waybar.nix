@@ -37,7 +37,11 @@ let
   # device open too.
   privacyDots = pkgs.writeShellApplication {
     name = "coel-privacy-dots";
-    runtimeInputs = [ pkgs.pipewire pkgs.jq pkgs.psmisc ];
+    runtimeInputs = [
+      pkgs.pipewire
+      pkgs.jq
+      pkgs.psmisc
+    ];
     text = ''
       mic_active=false
       if pw-dump 2>/dev/null | jq -e '
@@ -135,17 +139,30 @@ in
         "hyprland/workspaces" = {
           on-click = "activate";
           format = "{icon}";
+          # waybar's hyprland/workspaces module has no per-number CSS class
+          # (only state ones: .active/.empty/.visible/.persistent/...),
+          # confirmed against waybar's own man page -- so per-workspace
+          # color has to be inline Pango markup on each format-icons entry
+          # instead. Cycles through the palette's non-error accent colors;
+          # 8/9 repeat 1/2 since only workspaces 1-5 are ever persistently
+          # shown below.
+          #
+          # No `active` icon override on purpose: that used to swap the
+          # number for a plain uncolored dot on focus, so the one
+          # workspace you're actually on lost both its number and its
+          # color. Dropping it keeps the numbered/colored span showing
+          # when active; the CSS `.active` rule below (bold + full opacity
+          # vs. dimmed inactive buttons) marks focus instead.
           format-icons = {
-            "1" = "1";
-            "2" = "2";
-            "3" = "3";
-            "4" = "4";
-            "5" = "5";
-            "6" = "6";
-            "7" = "7";
-            "8" = "8";
-            "9" = "9";
-            active = "<span></span>";
+            "1" = "<span color='${theme.blue}'>1</span>";
+            "2" = "<span color='${theme.red}'>2</span>";
+            "3" = "<span color='${theme.yellow}'>3</span>";
+            "4" = "<span color='${theme.green}'>4</span>";
+            "5" = "<span color='${theme.purple}'>5</span>";
+            "6" = "<span color='${theme.orange}'>6</span>";
+            "7" = "<span color='${theme.cyan}'>7</span>";
+            "8" = "<span color='${theme.red}'>8</span>";
+            "9" = "<span color='${theme.blue}'>9</span>";
           };
           persistent-workspaces = {
             "1" = [ ];
@@ -191,7 +208,10 @@ in
             transition-duration = 600;
             children-class = "tray-group-item";
           };
-          modules = [ "custom/expand-icon" "tray" ];
+          modules = [
+            "custom/expand-icon"
+            "tray"
+          ];
         };
 
         "custom/expand-icon" = {
@@ -229,9 +249,15 @@ in
         };
 
         network = {
-          format-icons = [ "󰤯" "󰤟" "󰤢" "󰤥" "󰤨" ];
+          format-icons = [
+            "󰤯"
+            "󰤟"
+            "󰤢"
+            "󰤥"
+            "󰤨"
+          ];
           format = "{icon}";
-          format-wifi = "{icon}";
+          format-wifi = "{icon}    {essid}";
           format-ethernet = "󰀂";
           format-disconnected = "󰤮";
           tooltip-format-wifi = "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}";
@@ -251,7 +277,11 @@ in
           format-muted = "";
           format-icons = {
             headphone = "";
-            default = [ "" "" "" ];
+            default = [
+              ""
+              ""
+              ""
+            ];
           };
         };
 
@@ -263,13 +293,35 @@ in
         };
 
         battery = {
-          format = "{icon}  ";
+          format = "{icon}  {capacity}%";
           format-discharging = "{icon}  ";
           format-charging = "{icon}  ";
           format-plugged = "  ";
           format-icons = {
-            charging = [ "󰢜" "󰂆" "󰂇" "󰂈" "󰢝" "󰂉" "󰢞" "󰂊" "󰂋" "󰂅" ];
-            default = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+            charging = [
+              "󰢜"
+              "󰂆"
+              "󰂇"
+              "󰂈"
+              "󰢝"
+              "󰂉"
+              "󰢞"
+              "󰂊"
+              "󰂋"
+              "󰂅"
+            ];
+            default = [
+              "󰁺"
+              "󰁻"
+              "󰁼"
+              "󰁽"
+              "󰁾"
+              "󰁿"
+              "󰂀"
+              "󰂁"
+              "󰂂"
+              "󰁹"
+            ];
           };
           format-full = "󰂅";
           tooltip-format-discharging = "{power:>1.0f}W↓ {capacity}%";
@@ -318,6 +370,31 @@ in
         padding: 4px 12px;
       }
 
+      /* Each workspace number carries its own color via inline Pango
+         markup in format-icons (waybar has no per-number CSS class here).
+         Dim the inactive ones and bring the focused one to full
+         opacity/weight so it's still obvious which workspace you're on. */
+      #workspaces button {
+        opacity: 0.55;
+        padding: 0 4px;
+        font-weight: 900;
+      }
+
+      #workspaces button {
+        opacity: 0.25;
+        padding: 0 6px;
+        font-weight: 900;
+      }
+
+      #workspaces button:not(.active):not(.empty) {
+        opacity: 0.75;
+      }
+
+      #workspaces button.active {
+        opacity: 1;
+        font-weight: 700;
+      }
+
       /* The url() below is a Nix path interpolation, resolved to the
          logo's actual Nix store path at build time -- GTK's CSS url()
          loads that directly, no separate xdg.configFile copy needed. */
@@ -326,11 +403,16 @@ in
         background-repeat: no-repeat;
         background-position: center;
         background-size: 20px 20px;
-        min-width: 40px;
+        background-color: transparent;
+        min-width: 18px;
         min-height: 20px;
       }
     '';
   };
 
-  home.packages = [ screenrecordingIndicator privacyDots pkgs.pamixer ];
+  home.packages = [
+    screenrecordingIndicator
+    privacyDots
+    pkgs.pamixer
+  ];
 }

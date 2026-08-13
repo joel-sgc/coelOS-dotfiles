@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   inherit (config.lib.formats.rasi) mkLiteral;
@@ -53,26 +58,26 @@ let
     name = "coel-main-menu";
     runtimeInputs = [ pkgs.rofi ];
     text = ''
-      choice=$(printf \
-      "󰀻  Programs\n\
-󱓞  Actions\n\
-  Settings\n\
-  Rebuild\n\
-  Update\n\
-  About\n\
-󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
+            choice=$(printf \
+            "󰀻  Programs\n\
+      󱓞  Actions\n\
+        Settings\n\
+        Rebuild\n\
+        Update\n\
+        About\n\
+      󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
 
-      case "$choice" in
-      	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
-      	*Actions*) exec coel-actions-menu ;;
-      	*Settings*) exec coel-settings-menu ;;
-      	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
-      	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
-      	*Rebuild*) exec ghostty --class=com.joelsgc.floating -e coel-rebuild ;;
-      	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
-      	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
-      	*System*) exec coel-power-menu ;;
-      esac
+            case "$choice" in
+            	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
+            	*Actions*) exec coel-actions-menu ;;
+            	*Settings*) exec coel-settings-menu ;;
+            	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
+            	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
+            	*Rebuild*) exec ghostty --class=com.joelsgc.floating -e coel-rebuild ;;
+            	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
+            	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
+            	*System*) exec coel-power-menu ;;
+            esac
     '';
   };
 
@@ -129,7 +134,11 @@ let
   # search-as-you-type against the real API, no local package list at all.
   packageSearchQuery = pkgs.writeShellApplication {
     name = "coel-package-search-query";
-    runtimeInputs = [ pkgs.nix-search-cli pkgs.jq pkgs.gawk ];
+    runtimeInputs = [
+      pkgs.nix-search-cli
+      pkgs.jq
+      pkgs.gawk
+    ];
     text = ''
       query="''${1:-}"
       if [ -z "$query" ]; then
@@ -158,7 +167,13 @@ let
   # Dracula with zero changes needed here.
   packageSearch = pkgs.writeShellApplication {
     name = "coel-package-search";
-    runtimeInputs = [ pkgs.fzf pkgs.gawk pkgs.wl-clipboard showDone packageSearchQuery ];
+    runtimeInputs = [
+      pkgs.fzf
+      pkgs.gawk
+      pkgs.wl-clipboard
+      showDone
+      packageSearchQuery
+    ];
     text = ''
       selection=$(fzf \
         --disabled \
@@ -188,79 +203,79 @@ let
   };
 
   powerMenu = pkgs.writeShellScriptBin "coel-power-menu" ''
-    #!/usr/bin/env bash
-    choice=$(printf \
-    "  Lock\n\
-󰍃  Logout\n\
-󰤄  Suspend\n\
-  Restart\n\
-󰤆  Shutdown\n" | rofi -dmenu -i -p "Power" -lines 10 -no-fixed-num-lines)
+        #!/usr/bin/env bash
+        choice=$(printf \
+        "  Lock\n\
+    󰍃  Logout\n\
+    󰤄  Suspend\n\
+      Restart\n\
+    󰤆  Shutdown\n" | rofi -dmenu -i -p "Power" -lines 10 -no-fixed-num-lines)
 
-    exit_code=$?
+        exit_code=$?
 
-    case "$choice" in
-    	*Lock*) hyprlock ;;
-    	*Logout*) hyprctl dispatch exit ;;
-    	*Suspend*) systemctl suspend ;;
-    	*Restart*) systemctl reboot ;;
-    	*Shutdown*) systemctl poweroff ;;
-    esac
+        case "$choice" in
+        	*Lock*) hyprlock ;;
+        	*Logout*) hyprctl dispatch exit ;;
+        	*Suspend*) systemctl suspend ;;
+        	*Restart*) systemctl reboot ;;
+        	*Shutdown*) systemctl poweroff ;;
+        esac
 
-    if [ "$exit_code" -ne 0 ]; then
-        exec coel-main-menu
-    fi
+        if [ "$exit_code" -ne 0 ]; then
+            exec coel-main-menu
+        fi
   '';
 
   actionsMenu = pkgs.writeShellScriptBin "coel-actions-menu" ''
-    #!/usr/bin/env bash
-    choice=$(printf \
-    "󰄀  Screenshot\n\
-  Screen Record\n\
-  Color\n" | rofi -dmenu -i -p "Actions" -lines 10 -no-fixed-num-lines)
+        #!/usr/bin/env bash
+        choice=$(printf \
+        "󰄀  Screenshot\n\
+      Screen Record\n\
+      Color\n" | rofi -dmenu -i -p "Actions" -lines 10 -no-fixed-num-lines)
 
-    exit_code=$?
+        exit_code=$?
 
-    case "$choice" in
-    	*Screenshot*) exec bash -c "sleep 0.15 && coel-screenshot" ;;
-    	*Record*) exec bash -c "sleep 0.15 && coel-screenrecord" ;;
-    	*Color*) exec bash -c "sleep 0.15 && hyprpicker -a" ;;
-    esac
+        case "$choice" in
+        	*Screenshot*) exec bash -c "sleep 0.15 && coel-screenshot" ;;
+        	*Record*) exec bash -c "sleep 0.15 && coel-screenrecord" ;;
+        	*Color*) exec bash -c "sleep 0.15 && hyprpicker -a" ;;
+        esac
 
-    if [ "$exit_code" -ne 0 ]; then
-        exec coel-main-menu
-    fi
+        if [ "$exit_code" -ne 0 ]; then
+            exec coel-main-menu
+        fi
   '';
 
   settingsMenu = pkgs.writeShellScriptBin "coel-settings-menu" ''
-    #!/usr/bin/env bash
-    choice=$(printf \
-    "  Audio\n\
-󰖩  WiFi\n\
-󰂯  Bluetooth\n\
-󱐋  Power Profiles\n\
-󰍹  Monitors\n\
-  Keybindings\n\
-󰍽  Input\n\
-󰈷  Fingerprint\n\
-  Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
+        #!/usr/bin/env bash
+        choice=$(printf \
+        "  Audio\n\
+    󰖩  WiFi\n\
+    󰂯  Bluetooth\n\
+    󱐋  Power Profiles\n\
+    󰍹  Monitors\n\
+      Keybindings\n\
+    󰍽  Input\n\
+    󰈷  Fingerprint\n\
+      Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
 
-    exit_code=$?
+        exit_code=$?
 
-    case "$choice" in
-    	*Audio*) exec ghostty --class=com.joelsgc.floating -e pulsemixer ;;
-    	*WiFi*) exec coel-todo "WiFi (netpala) isn't adapted to NixOS yet." ;;
-    	*Bluetooth*) exec coel-todo "Bluetooth (bluepala) isn't adapted to NixOS yet." ;;
-    	*Power\ Profiles*) exec coel-power-profiles-menu ;;
-    	*Monitors*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Keybindings*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Input*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Fingerprint*) exec coel-fingerprint-menu ;;
-    	*Config*) exec coel-config-menu ;;
-    esac
+        case "$choice" in
+        	*Audio*) exec ghostty --class=com.joelsgc.floating -e pulsemixer ;;
+        	*WiFi*) exec ghostty --class=com.joelsgc.floating -e netpala ;;
+        	*Bluetooth*) exec ghostty --class=com.joelsgc.floating -e bluepala ;;
+        	*Power\ Profiles*) exec coel-power-profiles-menu ;;
+        	*Monitors*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Keybindings*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Input*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Fingerprint*) exec coel-fingerprint-menu ;;
+        	*Config*) exec coel-config-menu ;;
+        esac
 
-    if [ "$exit_code" -ne 0 ]; then
-        exec coel-main-menu
-    fi
+        if [ "$exit_code" -ne 0 ]; then
+            exec coel-main-menu
+        fi
   '';
 
   # Ported from config.sh. Monitors/Keybindings/Input/Autostart/Window Rules
@@ -269,31 +284,31 @@ let
   # entries below point at the same file — that's a real difference from the
   # old per-concern file split, not a mistake.
   configMenu = pkgs.writeShellScriptBin "coel-config-menu" ''
-    #!/usr/bin/env bash
-    choice=$(printf \
-    "  Hyprland\n\
-  Hyprlock\n\
-  Hypridle\n\
-󱓞  Autostart\n\
-󱂬  Window Rules\n\
-󰏘  Look & Feel\n\
-󰌧  Waybar" | rofi -dmenu -i -p "Config" -lines 10 -no-fixed-num-lines)
+        #!/usr/bin/env bash
+        choice=$(printf \
+        "  Hyprland\n\
+      Hyprlock\n\
+      Hypridle\n\
+    󱓞  Autostart\n\
+    󱂬  Window Rules\n\
+    󰏘  Look & Feel\n\
+    󰌧  Waybar" | rofi -dmenu -i -p "Config" -lines 10 -no-fixed-num-lines)
 
-    exit_code=$?
+        exit_code=$?
 
-    case "$choice" in
-    	*Hyprland*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Hyprlock*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hypridle.nix" ;;
-    	*Hypridle*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hypridle.nix" ;;
-    	*Autostart*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Window\ Rules*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
-    	*Look*) exec coel-todo "Look & Feel isn't broken out into its own theme file yet — styling is still deferred." ;;
-    	*Waybar*) exec coel-todo "Waybar isn't configured/styled yet." ;;
-    esac
+        case "$choice" in
+        	*Hyprland*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Hyprlock*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hypridle.nix" ;;
+        	*Hypridle*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hypridle.nix" ;;
+        	*Autostart*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Window\ Rules*) exec ghostty -e "$EDITOR" "$HOME/.nixos/home/hyprland.nix" ;;
+        	*Look*) exec coel-todo "Look & Feel isn't broken out into its own theme file yet — styling is still deferred." ;;
+        	*Waybar*) exec coel-todo "Waybar isn't configured/styled yet." ;;
+        esac
 
-    if [ "$exit_code" -ne 0 ]; then
-        exec coel-settings-menu
-    fi
+        if [ "$exit_code" -ne 0 ]; then
+            exec coel-settings-menu
+        fi
   '';
 
   powerProfilesMenu = pkgs.writeShellScriptBin "coel-power-profiles-menu" ''
@@ -327,7 +342,16 @@ let
   # so they came over unmodified apart from PATH resolution.
   screenshot = pkgs.writeShellApplication {
     name = "coel-screenshot";
-    runtimeInputs = with pkgs; [ grim slurp wayfreeze satty jq hyprland wl-clipboard libnotify ];
+    runtimeInputs = with pkgs; [
+      grim
+      slurp
+      wayfreeze
+      satty
+      jq
+      hyprland
+      wl-clipboard
+      libnotify
+    ];
     text = ''
       OUTPUT_DIR="$HOME/Pictures"
 
@@ -569,7 +593,10 @@ let
 
   fingerprintEnroll = pkgs.writeShellApplication {
     name = "coel-fingerprint-enroll";
-    runtimeInputs = [ pkgs.fprintd showDone ];
+    runtimeInputs = [
+      pkgs.fprintd
+      showDone
+    ];
     text = ''
       sudo pkill fprintd || true
       sudo fprintd-enroll "$USER"
@@ -583,7 +610,7 @@ let
     text = ''
       sudo -v
       sleep 0.2
-      sudo rm -rf /var/lib/fprint/*
+      sudo fprintd-delete "$USER"
       exec coel-show-done
     '';
   };
@@ -681,7 +708,10 @@ in
       "listview-split" = {
         orientation = mkLiteral "horizontal";
         spacing = mkLiteral "24px";
-        children = map mkLiteral [ "listview" "icon-current-entry" ];
+        children = map mkLiteral [
+          "listview"
+          "icon-current-entry"
+        ];
       };
 
       element = {

@@ -65,11 +65,9 @@ in
   networking.networkmanager.enable = true;
   networking.firewall.checkReversePath = false; # Needed for ProtonVPN
 
-  # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala). Its flake
-  # ships a NixOS module (imported in flake.nix's `modules` list, not here --
-  # it declares options.programs.netpala under the NixOS module system, so it
-  # can't live inside home.nix's home-manager module tree).
-  programs.netpala.enable = true;
+  # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala). Configured
+  # via its Home Manager module + modules/netpala.nix, both imported from
+  # home.nix -- see there, not here.
 
   # Tailscale
   services.tailscale.enable = true;
@@ -368,14 +366,6 @@ in
     # semantic highlighting/diagnostics, and format-on-save, for .nix files.
     nixd
     nixfmt
-
-    # Terminal-friendly BlueZ TUI (github:joel-sgc/bluepala), same idea as
-    # netpala. Unlike netpala's flake, this one doesn't ship a nixosModules
-    # output -- just packages.default -- so it's added straight to
-    # systemPackages instead of going through a programs.bluepala.enable
-    # toggle. Talks to org.bluez over D-Bus, which hardware.bluetooth.enable
-    # below already provides; nothing else to wire up.
-    inputs.bluepala.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 
   services.flatpak.enable = true;

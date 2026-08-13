@@ -60,10 +60,13 @@ in
         gaps_out = 16;
         border_size = 2;
 
-        # One Dark (tal7aouy): blue -> red (coral) gradient on focus (the two
-        # most emphasized colors in the real theme), muted comment-grey when
-        # idle.
-        "col.active_border" = "rgba(${strip theme.blue}ee) rgba(${strip theme.red}ee) 45deg";
+        # Primary duo (blue + yellow) gradient on focus, matching the
+        # primary/secondary/error scheme now also wired into home/theme.nix
+        # and already the pairing home/rofi.nix's accent/urgent used -- was
+        # blue -> red (coral) before; red is reserved for errors
+        # (theme.error) now, not general emphasis. Muted comment-grey when
+        # idle, unchanged.
+        "col.active_border" = "rgba(${strip theme.blue}ee) rgba(${strip theme.yellow}ee) 45deg";
         "col.inactive_border" = "rgba(${strip theme.comment}aa)";
       };
 

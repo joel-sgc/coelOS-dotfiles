@@ -55,6 +55,29 @@ in
       @define-color accent_color ${theme.blue};
       @define-color accent_fg_color ${theme.bg};
       @define-color accent_bg_color ${theme.blue};
+
+      # Primary/secondary/error scheme: blue+yellow are the primary duo
+      # (see home/hyprland.nix's border gradient and home/rofi.nix's
+      # accent/urgent, which already used this pairing), green is
+      # secondary, and error/destructive use theme.error (their real
+      # dedicated failure-state red, #f44747 -- not theme.red/coral,
+      # which is the emphasis/accent color, not a failure color). These
+      # three were previously undefined here, so GTK/libadwaita apps
+      # silently fell back to upstream's own default green/yellow/red
+      # instead of the theme's palette.
+      @define-color success_color ${theme.green};
+      @define-color success_bg_color ${theme.green};
+      @define-color success_fg_color ${theme.bg};
+      @define-color warning_color ${theme.yellow};
+      @define-color warning_bg_color ${theme.yellow};
+      @define-color warning_fg_color ${theme.bg};
+      @define-color error_color ${theme.error};
+      @define-color error_bg_color ${theme.error};
+      @define-color error_fg_color ${theme.bg};
+      @define-color destructive_color ${theme.error};
+      @define-color destructive_bg_color ${theme.error};
+      @define-color destructive_fg_color ${theme.bg};
+
       @define-color window_bg_color ${theme.bg};
       @define-color window_fg_color ${theme.fg};
       @define-color headerbar_bg_color ${theme.bg};

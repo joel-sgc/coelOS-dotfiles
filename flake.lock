@@ -6,11 +6,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1786580474,
-        "narHash": "sha256-m9bkxcdnzHYO4u//+43cAQrUFx9xuK8VKTDgQASeEsM=",
+        "lastModified": 1786638289,
+        "narHash": "sha256-Y0nwyXJokN5a9Jg3RqyJhSk26BgaTtKDOXa2aIwZ/F8=",
         "owner": "joel-sgc",
         "repo": "bluepala",
-        "rev": "5d4bee5740f981ea15d6f4b98acb1f1fc5115a97",
+        "rev": "6ca7d4d5ed2707733855952c190d4f8833218f7c",
         "type": "github"
       },
       "original": {
@@ -176,11 +176,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1786573007,
-        "narHash": "sha256-Zp2PxlzfroyOgUG5P8cIjOHHvxjipRt4eK5hHdgTLp0=",
+        "lastModified": 1786634046,
+        "narHash": "sha256-IRWAiUxgHm0nmI+rK4k1IseZ+D2IQX5yReovLgQeubU=",
         "owner": "joel-sgc",
         "repo": "netpala",
-        "rev": "9425d23fb0d3675ee605a5f1de71197f969304bc",
+        "rev": "00929a60590878f7e5497da1bc9b64e8aa8d79d4",
         "type": "github"
       },
       "original": {

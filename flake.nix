@@ -50,7 +50,6 @@
         specialArgs = { inherit inputs; };
         modules = [
           ./configuration.nix
-          netpala.nixosModules.default
           home-manager.nixosModules.home-manager
 
           {

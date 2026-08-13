@@ -50,6 +50,13 @@
     ./home/flatpak.nix
     inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
+
+    # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala).
+    inputs.netpala.homeManagerModules.default
+    ./home/netpala.nix
+
+    inputs.bluepala.homeManagerModules.default
+    ./home/bluepala.nix
   ];
 
   ##############################################################################
