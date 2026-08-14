@@ -1,7 +1,7 @@
 # CoelOS Plymouth Theme Script
 
-Window.SetBackgroundTopColor(0.149, 0.149, 0.149);
-Window.SetBackgroundBottomColor(0.149, 0.149, 0.149);
+Window.SetBackgroundTopColor(0.157, 0.173, 0.204);
+Window.SetBackgroundBottomColor(0.157, 0.173, 0.204);
 
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);

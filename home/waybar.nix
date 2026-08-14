@@ -257,7 +257,7 @@ in
             "󰤨"
           ];
           format = "{icon}";
-          format-wifi = "{icon}    {essid}";
+          format-wifi = "{icon}    {essid} ";
           format-ethernet = "󰀂";
           format-disconnected = "󰤮";
           tooltip-format-wifi = "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}";
@@ -274,13 +274,13 @@ in
           on-click-right = "pamixer -t";
           tooltip-format = "Playing at {volume}%";
           scroll-step = 5;
-          format-muted = "";
+          format-muted = " ";
           format-icons = {
-            headphone = "";
+            headphone = " ";
             default = [
-              ""
-              ""
-              ""
+              " "
+              " "
+              " "
             ];
           };
         };
@@ -365,7 +365,7 @@ in
         /* rgba(), not an 8-digit #RRGGBBAA hex -- GTK's CSS engine doesn't
            support that newer hex-alpha syntax ("Junk at end of value").
            64, 71, 84 is theme.surface (#404754) in decimal. */
-        background-color: rgba(64, 71, 84, 0.8);
+        background-color: rgba(64, 71, 84, 1);
         border-radius: 16px;
         padding: 4px 12px;
       }
@@ -383,7 +383,6 @@ in
       #workspaces button {
         opacity: 0.25;
         padding: 0 6px;
-        font-weight: 900;
       }
 
       #workspaces button:not(.active):not(.empty) {
@@ -392,7 +391,6 @@ in
 
       #workspaces button.active {
         opacity: 1;
-        font-weight: 700;
       }
 
       /* The url() below is a Nix path interpolation, resolved to the
@@ -406,6 +404,15 @@ in
         background-color: transparent;
         min-width: 18px;
         min-height: 20px;
+      }
+      
+      #bluetooth, #network, #pulseaudio, #cpu, #battery {
+        min-width: 18px;
+        min-height: 20px;
+      }
+      
+      #network {
+        padding: 4px 20px;
       }
     '';
   };

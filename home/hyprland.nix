@@ -50,6 +50,12 @@ in
       env = [
         "NIXOS_OZONE_WL,1"
         "MOZ_ENABLE_WAYLAND,1"
+        # Deliberately set only here, not globally (home.sessionVariables)
+        # -- see home/qt-theme.nix for why. Gives Qt6 apps under Hyprland
+        # (e.g. hyprland-share-picker) a real color source instead of
+        # falling back to plain light Qt defaults, without ever touching
+        # a separate Plasma session.
+        "QT_QPA_PLATFORMTHEME,qt6ct"
       ];
 
       "$terminal" = "ghostty";

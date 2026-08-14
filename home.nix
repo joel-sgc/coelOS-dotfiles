@@ -44,6 +44,8 @@
     ./home/kde-window-shortcuts.nix
     ./home/kde-shortcuts.nix
     ./home/kde-wallpaper.nix
+    ./home/kde-theme.nix
+    ./home/qt-theme.nix
 
     # Services / integrations
     ./home/globalprotect.nix
@@ -72,44 +74,43 @@
   # Packages
   ##############################################################################
 
-  home.packages = [
+  home.packages = with pkgs; [
     # Clipboard (Wayland + X11)
-    pkgs.wl-clipboard
-    pkgs.xclip
+    wl-clipboard
+    xclip
 
     # CLI / shell tools
-    pkgs.eza
-    pkgs.starship
-    pkgs.steam-run # run non-NixOS/dynamically-linked binaries: steam-run <cmd>
+    eza
+    starship
+    steam-run # run non-NixOS/dynamically-linked binaries: steam-run <cmd>
 
     # Desktop apps
-    pkgs.orca-slicer
-    pkgs.vscode
-    pkgs.stremio-linux-shell
-    pkgs.gimp
-    # pkgs.spotify
+    orca-slicer
+    vscode
+    stremio-linux-shell
+    gimp
+    # spotify
 
     # Fonts
-    pkgs.nerd-fonts.fira-code # rofi + ghostty (home/rofi.nix, home/ghostty.nix)
-    pkgs.noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
+    nerd-fonts.fira-code # rofi + ghostty (home/rofi.nix, home/ghostty.nix)
+    noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
 
     # Networking / VPN
-    pkgs.sshfs
-    pkgs.wireguard-tools
-    pkgs.proton-vpn
+    sshfs
+    wireguard-tools
+    proton-vpn
 
     # Security tools
-    pkgs.john
-    pkgs.nautilus
+    john
 
     # Hyprland session utilities (media keys, notifications)
-    pkgs.playerctl
-    pkgs.libnotify
+    playerctl
+    libnotify
 
     # General utility -- cross-referenced against a couple of well-known
     # Hyprland rices' package lists (JaKooLit, HyDE), both include it as a
     # baseline dependency
-    pkgs.imagemagick
+    imagemagick
   ];
 
   ##############################################################################
