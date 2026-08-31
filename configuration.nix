@@ -1,18 +1,10 @@
 {
-  inputs,
   config,
   pkgs,
-  lib,
+  pkgs-unstable,
   ...
 }:
 
-let
-  # Flip this to false to fully disable the ClamAV experiment we added
-  # while trying to satisfy LUC's GlobalProtect HIP compliance check.
-  # Leaves the actual GlobalProtect packaging (modules/globalprotect.nix)
-  # untouched either way.
-  enableGpHipComplianceExperiment = false;
-in
 {
   imports = [
     ./hardware-configuration.nix
@@ -65,6 +57,42 @@ in
   networking.networkmanager.enable = true;
   networking.firewall.checkReversePath = false; # Needed for ProtonVPN
 
+  # See globalprotect-hip-investigation.md for the LUC HIP-compliance
+  # investigation this nftables/firewalld choice (and the commented-out
+  # iptables-legacy line below) came out of.
+  # networking.firewall.package = pkgs.iptables-legacy;
+  networking.nftables.enable = true;
+  services.firewalld.enable = true;
+
+  # Split-horizon DNS: Cloudflare as the general-purpose resolver, while
+  # Tailscale's *.ts.net names and (if/when GlobalProtect ever pushes any)
+  # LUC-internal names get scoped to their own resolvers instead of a
+  # strict try-everything-in-order chain -- a flat priority list would mean
+  # internal names only resolve after the earlier resolvers fail/time out,
+  # which is backwards for domains a generic public resolver never knows
+  # about anyway.
+  #
+  # enabling this handles the NetworkManager/resolvconf wiring itself
+  # (nixos/modules/system/boot/resolved.nix sets
+  # networking.networkmanager.dns = "systemd-resolved" and switches
+  # networking.resolvconf.package to systemd's own resolvconf-compatible
+  # shim automatically) -- GlobalProtect's `resolvconf -a` calls keep
+  # working unchanged, just properly captured as gpd0's per-link DNS in
+  # resolved instead of overwriting /etc/resolv.conf directly. Tailscale
+  # auto-detects resolved and registers its own ts.net-scoped DNS the same
+  # way, no extra config needed. DHCP-provided network DNS still becomes
+  # wlp1s0's per-link DNS as before, so it's still in the resolver pool as
+  # a fallback if Cloudflare is unreachable (e.g. a captive portal) --
+  # just not as a hardcoded, network-specific address, since that changes
+  # every time the laptop joins a different network.
+  services.resolved = {
+    enable = true;
+    settings.Resolve.DNS = [
+      "1.1.1.1"
+      "1.0.0.1"
+    ];
+  };
+
   # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala). Configured
   # via its Home Manager module + modules/netpala.nix, both imported from
   # home.nix -- see there, not here.
@@ -75,7 +103,11 @@ in
   # oneshot systemd unit (tailscaled-set, from the tailscale module itself)
   # that runs `tailscale set --operator=joelsgc` automatically after every
   # boot -- equivalent to running that command by hand, just declarative.
-  services.tailscale.extraSetFlags = [ "--operator=joelsgc" ];
+  services.tailscale.extraSetFlags = [
+    "--operator=joelsgc"
+    "--accept-routes"
+    "--ssh"
+  ];
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
@@ -104,21 +136,6 @@ in
       "ServerAliveInterval=15"
       "ServerAliveCountMax=3"
     ];
-  };
-
-  ##############################################################################
-  # GlobalProtect HIP compliance experiment (toggleable)
-  #
-  # Added while trying to satisfy LUC's GlobalProtect firewall/antivirus HIP
-  # check. So far it has NOT changed the gateway's compliance verdict, so this
-  # is a candidate for full removal once LUC IT responds with what's actually
-  # required. Set enableGpHipComplianceExperiment = false above to disable
-  # everything in this block without deleting it.
-  ##############################################################################
-
-  services.clamav = lib.mkIf enableGpHipComplianceExperiment {
-    daemon.enable = true;
-    updater.enable = true;
   };
 
   ##############################################################################
@@ -263,18 +280,7 @@ in
   # needs-auth chicken/egg problem (enrolling normally requires an already-
   # authenticated session, which is circular the first time). Ported from
   # the old dotfiles' configs/polkit-fprint.rules.
-  security.polkit.extraConfig = ''
-    polkit.addRule(function(action, subject) {
-      if (
-        action.id === "net.reactivated.fprint.device.enroll" &&
-        subject.isLocal() &&
-        subject.active &&
-        subject.isInGroup("wheel")
-      ) {
-        return polkit.Result.YES;
-      }
-    });
-  '';
+  security.polkit.extraConfig = builtins.readFile ./configuration/polkit-fprint-enroll.js;
 
   # Lid-close behavior, ported from the old dotfiles' configs/power/logind-power.conf.
   # Deliberately suspends even on AC power (not the usual NixOS/systemd
@@ -294,6 +300,11 @@ in
   # Users & Shell
   ##############################################################################
 
+  nix.settings.trusted-users = [
+    "root"
+    "@wheel"
+    "joelsgc"
+  ];
   users.users."joelsgc" = {
     isNormalUser = true;
     description = "JoelSGC";
@@ -302,6 +313,8 @@ in
       "wheel"
       "globalprotect"
       "video"
+      "libvirtd" # manage VMs without sudo -- see Virtualisation section
+      "dialout"
     ];
     shell = pkgs.zsh;
   };
@@ -336,39 +349,60 @@ in
     "flakes"
   ];
 
-  environment.systemPackages = with pkgs; [
-    micro
-    git
-    sshfs
+  environment.systemPackages = [
+    pkgs.micro
+    pkgs.git
+    pkgs.sshfs
 
     # Basic CLI utilities NixOS doesn't ship by default (unlike most
     # distros' base install)
-    file
-    tree
-    binutils-unwrapped # strings, nm, objdump, readelf, etc.
-    unzip
-    zip
-    which
-    lsof
-    psmisc # killall, pstree, fuser
-    pciutils # lspci
-    usbutils # lsusb
-    dnsutils # dig, nslookup, host
-    btop
-    ripgrep
-    fd
-    ncdu
-    jq
+    pkgs.file
+    pkgs.tree
+    pkgs.binutils-unwrapped # strings, nm, objdump, readelf, etc.
+    pkgs.unzip
+    pkgs.zip
+    pkgs.which
+    pkgs.lsof
+    pkgs.psmisc # killall, pstree, fuser
+    pkgs.pciutils # lspci
+    pkgs.usbutils # lsusb
+    pkgs.dnsutils # dig, nslookup, host
+    pkgs.btop
+    pkgs.ripgrep
+    pkgs.fd
+    pkgs.ncdu
+    pkgs.jq
 
-    vlc
+    pkgs.vlc
 
     # VS Code's jnoortheen.nix-ide extension talks to these -- LSP +
     # semantic highlighting/diagnostics, and format-on-save, for .nix files.
-    nixd
-    nixfmt
+    pkgs.nixd
+    pkgs.nixfmt
+    pkgs.dmidecode
+    
+    # Freecad from unstable
+    pkgs-unstable.freecad
   ];
-
+  
   services.flatpak.enable = true;
+
+  ##############################################################################
+  # Virtualisation
+  ##############################################################################
+
+  # For testing GlobalProtect's HIP compliance detection on a real .deb/.rpm
+  # target (Palo Alto's Linux client is only actually built/tested for
+  # those) -- to check whether the empty anti-malware/firewall detection
+  # (see globalprotect-hip-investigation.md) is a NixOS/vendoring quirk or
+  # a genuine cross-distro OPSWAT Linux limitation.
+  virtualisation.libvirtd.enable = true;
+  virtualisation.spiceUSBRedirection.enable = true;
+  programs.virt-manager.enable = true;
+  
+  services.udev.extraRules = ''
+    KERNEL=="sda", GROUP="kvm", MODE="0660"
+  '';
 
   ##############################################################################
   # Other Services
@@ -382,7 +416,7 @@ in
   # Locale / Time
   ##############################################################################
 
-  time.timeZone = "America/New_York";
+  time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
   ##############################################################################

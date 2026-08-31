@@ -1,22 +1,40 @@
-{ pkgs, ... }:
+{ ... }:
 
 {
-  # Overrides for upstream .desktop entries that spuriously match rofi's
-  # `drun` search for "code" (which matches against Name/GenericName/
-  # Comment/Keywords, not just Name) -- home-manager's xdg.desktopEntries
-  # generates a same-named .desktop file with hiPrio, which shadows the
-  # nix-store original in XDG_DATA_DIRS resolution order. Every other
-  # field below is copied verbatim from the original; only the specific
-  # word that accidentally contained "code" is changed.
+  # Originally written to fix upstream .desktop entries spuriously matching
+  # rofi's `drun` search for "code" (matches against Name/GenericName/
+  # Comment/Keywords, not just Name), on the assumption that home-manager's
+  # generated .desktop file always shadows the original in XDG_DATA_DIRS
+  # resolution order. That's not reliably true -- Flatpak's own exported
+  # entries (~/.local/share/flatpak/exports/share/applications/) sit
+  # *earlier* in XDG_DATA_DIRS than the home-manager profile, so for
+  # Flatpak apps specifically, these don't actually win. The real fix for
+  # the rofi search problem is now `drun-match-fields` in home/rofi.nix,
+  # which stops rofi from searching Keywords/Comment at all. These entries
+  # are kept anyway for their own sake -- cleaner, deduped metadata for
+  # any other consumer of these files -- not because they still shadow
+  # anything for rofi's purposes. Every field below is copied verbatim
+  # from the original; only the specific word that accidentally contained
+  # "code" is changed.
   xdg.desktopEntries = {
-    # Original (orca-slicer's own share/applications/OrcaSlicer.desktop)
-    # has "gcode" in Keywords -- accurate (it's a G-code-producing slicer),
-    # but "gcode" contains "code" as a substring, so it matched.
-    OrcaSlicer = {
+    # Now overrides the Flatpak's own generated entry (~/.local/share/
+    # flatpak/exports/share/applications/com.orcaslicer.OrcaSlicer.desktop)
+    # instead of the native package's -- native orca-slicer install was
+    # dropped in favor of the Flatpak (home/flatpak.nix). Exec/Icon copied
+    # verbatim from that generated entry; "gcode" is still dropped from
+    # Keywords for the same reason as before (it contains "code" as a
+    # substring, which spuriously matched rofi drun's "code" search).
+    #
+    # The attribute name has to be the Flatpak's real Desktop ID
+    # (com.orcaslicer.OrcaSlicer), not a friendly "OrcaSlicer" -- the
+    # shadowing this file relies on only works when the generated filename
+    # matches exactly. A friendly name here just produces a *second*,
+    # unrelated .desktop file that coexists instead of overriding anything.
+    "com.orcaslicer.OrcaSlicer" = {
       name = "OrcaSlicer";
       genericName = "3D Printing Software";
-      icon = "OrcaSlicer";
-      exec = "${pkgs.orca-slicer}/bin/orca-slicer %U";
+      icon = "com.orcaslicer.OrcaSlicer";
+      exec = "flatpak run --branch=stable --arch=x86_64 --command=entrypoint --file-forwarding com.orcaslicer.OrcaSlicer @@u %U @@";
       terminal = false;
       mimeType = [
         "model/stl"
@@ -25,6 +43,7 @@
         "application/prs.wavefront-obj"
         "application/x-amf"
         "x-scheme-handler/orcaslicer"
+        "model/step"
       ];
       categories = [ "Graphics" "3DGraphics" "Engineering" ];
       startupNotify = false;
@@ -32,6 +51,33 @@
         # "gcode" dropped from here, everything else kept
         Keywords = "3D;Printing;Slicer;slice;3D;printer;convert;stl;obj;amf;SLA";
         StartupWMClass = "orca-slicer";
+      };
+    };
+
+    # Same fix, same reasoning, as com.orcaslicer.OrcaSlicer above -- copied
+    # verbatim from ~/.local/share/flatpak/exports/share/applications/
+    # com.bambulab.BambuStudio.desktop, "gcode" dropped from Keywords.
+    "com.bambulab.BambuStudio" = {
+      name = "BambuStudio";
+      genericName = "3D Printing Software";
+      icon = "com.bambulab.BambuStudio";
+      exec = "flatpak run --branch=stable --arch=x86_64 --command=entrypoint --file-forwarding com.bambulab.BambuStudio @@u %U @@";
+      terminal = false;
+      mimeType = [
+        "model/stl"
+        "model/3mf"
+        "application/vnd.ms-3mfdocument"
+        "application/prs.wavefront-obj"
+        "application/x-amf"
+        "x-scheme-handler/bambustudio"
+        "model/step"
+      ];
+      categories = [ "Graphics" "3DGraphics" "Engineering" ];
+      startupNotify = false;
+      settings = {
+        # "gcode" dropped from here, everything else kept
+        Keywords = "3D;Printing;Slicer;slice;3D;printer;convert;stl;obj;amf;SLA";
+        StartupWMClass = "bambu-studio";
       };
     };
 

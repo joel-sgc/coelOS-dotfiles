@@ -27,6 +27,20 @@ in
     common.default = [ "gtk" ];
   };
 
+  # The actual xdg-desktop-portal *service* runs with
+  # NIX_XDG_DESKTOP_PORTAL_DIR pointed at this per-user profile's portal
+  # dir, not the system one -- configuration.nix's xdg.portal.extraPortals
+  # (which does list xdg-desktop-portal-gtk) populates a different profile
+  # that the dispatcher never looks at here. Without gtk's package present
+  # in home.packages too, its .portal file (declaring which interfaces it
+  # implements, e.g. OpenURI, FileChooser, Settings) never reaches that
+  # dir, so the dispatcher has no way to know "gtk" can serve those
+  # interfaces at all -- `default = [ "hyprland" "gtk" ]` above is a no-op
+  # for anything gtk-only, regardless of ordering, since the fallback
+  # target is invisible to it. (xdg-desktop-portal-hyprland doesn't need
+  # this explicit entry -- the Hyprland module above adds it on its own.)
+  home.packages = [ pkgs.xdg-desktop-portal-gtk ];
+
   wayland.windowManager.hyprland = {
     enable = true;
     # Use the Hyprland package/session registered by programs.hyprland.enable

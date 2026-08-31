@@ -24,6 +24,7 @@
     ./home/zsh.nix
     ./home/micro.nix
     ./home/fresh.nix
+    ./home/quickshell.nix
     ./home/ghostty.nix
     ./home/development.nix
     ./home/zen-browser.nix
@@ -70,6 +71,12 @@
     package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
   };
 
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true; # Automatically hooks into Zsh
+    nix-direnv.enable = true; # Heavily speeds up evaluation through caching
+  };
+
   ##############################################################################
   # Packages
   ##############################################################################
@@ -82,10 +89,10 @@
     # CLI / shell tools
     eza
     starship
+    devenv
     steam-run # run non-NixOS/dynamically-linked binaries: steam-run <cmd>
 
     # Desktop apps
-    orca-slicer
     vscode
     stremio-linux-shell
     gimp

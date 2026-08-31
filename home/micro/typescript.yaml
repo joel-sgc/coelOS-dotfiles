@@ -1,0 +1,65 @@
+filetype: typescript
+
+detect:
+    filename: "\\.tsx?$"
+
+rules:
+    - constant.number: "\\b[-+]?([1-9][0-9]*|0[0-7]*|0x[0-9a-fA-F]+)([uU][lL]?|[lL][uU]?)?\\b"
+    - constant.number: "\\b[-+]?([0-9]+\\.[0-9]*|[0-9]*\\.[0-9]+)([EePp][+-]?[0-9]+)?[fFlL]?"
+    - constant.number: "\\b[-+]?([0-9]+[EePp][+-]?[0-9]+)[fFlL]?"
+    - statement: "\\b(abstract|as|async|await|break|case|catch|class|const|constructor|continue)\\b"
+    - statement: "\\b(debugger|declare|default|delete|do|else|enum|export|extends|finally|for|from)\\b"
+    - statement: "\\b(function|get|if|implements|import|in|instanceof|interface|is|let|module|namespace)\\b"
+    - statement: "\\b(new|of|out|override|package|private|protected|public|require|return|set|static|super|switch)\\b"
+    - statement: "\\b(satisfies|this|throw|try|type|typeof|var|void|while|with|yield)\\b"
+    - type.keyword: "\\b(infer|keyof|readonly|unique)\\b"
+    - constant: "\\b(false|true|null|undefined|NaN)\\b"
+    - type: "\\b(Array|Boolean|Date|Enumerator|Error|Function|Math)\\b"
+    - type: "\\b(Number|Object|RegExp|String|Symbol)\\b"
+    - type: "\\b(any|unknown|boolean|never|number|string|symbol)\\b"
+    - statement: "[-+/*=<>!~%?:&|]"
+    # Decorators (@Component, @Injectable, ...).
+    - special: "@[A-Za-z_][A-Za-z0-9_.]*"
+    # JSX/TSX tag names. Inherently ambiguous with a spaceless "a<B"
+    # comparison since a regex-based highlighter has no real parser to
+    # disambiguate, but JSX is overwhelmingly the more common case in a
+    # React codebase, so it's placed after the operator rule above to
+    # win that tradeoff for the shared "<"/">" characters.
+    - symbol.tag: "</?[A-Za-z][A-Za-z0-9_.]*"
+    # Identifier calls, including generic-parameterized ones
+    # (useMemo<T>(...), useState<T>(...) -- the bundled rule only
+    # matched a bare "name(", missing every generic-typed hook/call).
+    # Placed after the JSX tag rule above (later wins on overlap) so a
+    # full "name<Type>(" call reclaims the "<Type" span the JSX rule
+    # would otherwise also match, while genuine JSX tags (never
+    # followed by "(") are untouched by this rule either way.
+    - identifier: "[A-Za-z_][A-Za-z0-9_]*(<[^<>]*>)?[[:space:]]*[(]"
+    - constant: "/[^*]([^/]|(\\\\/))*[^\\\\]/[gim]*"
+    - constant: "\\\\[0-7][0-7]?[0-7]?|\\\\x[0-9a-fA-F]+|\\\\[bfnrt'\"\\?\\\\]"
+    - comment:
+        start: "//"
+        end: "$"
+        rules: []
+    - comment:
+        start: "/\\*"
+        end: "\\*/"
+        rules:
+            - todo: "TODO:?"
+    - constant.string:
+        start: "\""
+        end: "\""
+        skip: "\\\\."
+        rules:
+            - constant.specialChar: "\\\\."
+    - constant.string:
+        start: "'"
+        end: "'"
+        skip: "\\\\."
+        rules:
+            - constant.specialChar: "\\\\."
+    - constant.string:
+        start: "`"
+        end: "`"
+        rules:
+            - constant.specialChar: "\\\\."
+            - identifier: "\\x24\\{.*?\\}"

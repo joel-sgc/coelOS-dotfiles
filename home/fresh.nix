@@ -72,9 +72,30 @@ in
     # missing server. The `lsp` map deep-merges per-field (confirmed in the
     # docs), so this only needs to override the one field; command/args/
     # root_markers/etc. are preserved from the built-in defaults.
+    #
+    # QML isn't a built-in language (unlike typescript/javascript above),
+    # so it needs both a `languages` registration (basic recognition --
+    # extensions/comments/indent) and a full `lsp` entry, not just an
+    # override -- see docs/configuration/index.md's "Add a Custom
+    # Language" example. `grammar` intentionally left unset: confirmed via
+    # `fresh --cmd grammar list` that QML isn't among the 147 bundled
+    # tree-sitter grammars, so indent-rules-only is genuinely the best
+    # available here, not a placeholder pending a check.
+    # `qmlls` (home/quickshell.nix) takes no `--stdio`/mode flag; verified
+    # via `qmlls --help` -- stdio is its only communication mode.
+    languages.qml = {
+      extensions = [ "qml" ];
+      comment_prefix = "//";
+      auto_indent = true;
+    };
     lsp = {
       typescript.auto_start = true;
       javascript.auto_start = true;
+      qml = {
+        command = "qmlls";
+        args = [ ];
+        enabled = true;
+      };
     };
     # Top-level `keybindings` layers on top of the resolved `keymap` above
     # (confirmed in fresh's source, input/keybindings.rs: the active map's

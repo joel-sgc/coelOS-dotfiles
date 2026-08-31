@@ -9,18 +9,9 @@ in
   ##############################################################################
   # Cross-platform filesystem support (HFS+ / APFS / NTFS / exFAT)
   #
-  # Split into two independent layers per filesystem:
-  #   - Kernel-level read/write mount support: always on, never toggled here.
-  #     NTFS/HFS+/exFAT are mainline Linux drivers (auto-load on mount, no
-  #     config needed); APFS needs the out-of-tree linux-apfs-rw module,
-  #     wired up unconditionally below via boot.kernelModules /
-  #     boot.extraModulePackages.
-  #   - Userspace "extra tools" (mkfs.*, fsck.*, and apfs-fuse's read-only
-  #     fallback + volume listing): toggleable per filesystem group via the
-  #     options below. Disabling a group only removes these convenience
-  #     packages -- mounting/reading/writing an existing volume of that type
-  #     keeps working regardless, since that's the kernel driver's job, not
-  #     these tools'.
+  # Kernel-level mount support is always on (see `config` below); the
+  # options here only toggle userspace convenience tools per filesystem --
+  # see each option's own description for specifics.
   ##############################################################################
 
   options.filesystemSupport = {

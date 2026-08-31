@@ -42,40 +42,7 @@ let
       pkgs.jq
       pkgs.psmisc
     ];
-    text = ''
-      mic_active=false
-      if pw-dump 2>/dev/null | jq -e '
-        any(.[]?; (.info.props["media.class"]? // "") == "Stream/Input/Audio" and .info.state == "running")
-      ' >/dev/null 2>&1; then
-        mic_active=true
-      fi
-
-      camera_active=false
-      shopt -s nullglob
-      for dev in /dev/video*; do
-        if fuser "$dev" >/dev/null 2>&1; then
-          camera_active=true
-          break
-        fi
-      done
-      shopt -u nullglob
-
-      text=""
-      tooltip_lines=()
-
-      if [ "$mic_active" = true ]; then
-        text+=" "
-        tooltip_lines+=("Microphone in use")
-      fi
-
-      if [ "$camera_active" = true ]; then
-        text+=""
-        tooltip_lines+=("Camera in use")
-      fi
-
-      tooltip=$(printf '%s\n' "''${tooltip_lines[@]-}")
-      jq -nc --arg text "$text" --arg tooltip "$tooltip" '{text: $text, tooltip: $tooltip}'
-    '';
+    text = builtins.readFile ./waybar/privacy-dots.sh;
   };
 in
 {
@@ -294,9 +261,9 @@ in
 
         battery = {
           format = "{icon}  {capacity}%";
-          format-discharging = "{icon}  ";
-          format-charging = "{icon}  ";
-          format-plugged = "  ";
+          format-discharging = "{icon}  {capacity}%";
+          format-charging = "{icon}  {capacity}%";
+          format-plugged = "{icon}  {capacity}%";
           format-icons = {
             charging = [
               "󰢜"
@@ -324,6 +291,7 @@ in
             ];
           };
           format-full = "󰂅";
+          format-not-charging = "";
           tooltip-format-discharging = "{power:>1.0f}W↓ {capacity}%";
           tooltip-format-charging = "{power:>1.0f}W↑ {capacity}%";
           interval = 5;
@@ -341,80 +309,8 @@ in
     # -- fonts/borders/spacing etc. for individual modules are still
     # deferred to a later, deeper theming pass.
     style = ''
-      window#waybar {
-        background: transparent;
-        border: none;
-        box-shadow: none;
-      }
-
-      /* "Bubble" look: each real module floats on its own rounded
-         background instead of sitting on one continuous opaque bar.
-         custom/separator is deliberately left out -- it's just a thin
-         divider glyph, not something that reads as its own module. */
-      #custom-launcher,
-      #workspaces,
-      #clock,
-      #custom-screenrecording-indicator,
-      #custom-privacy-dots,
-      #group-tray-expander,
-      #bluetooth,
-      #network,
-      #pulseaudio,
-      #cpu,
-      #battery {
-        /* rgba(), not an 8-digit #RRGGBBAA hex -- GTK's CSS engine doesn't
-           support that newer hex-alpha syntax ("Junk at end of value").
-           64, 71, 84 is theme.surface (#404754) in decimal. */
-        background-color: rgba(64, 71, 84, 1);
-        border-radius: 16px;
-        padding: 4px 12px;
-      }
-
-      /* Each workspace number carries its own color via inline Pango
-         markup in format-icons (waybar has no per-number CSS class here).
-         Dim the inactive ones and bring the focused one to full
-         opacity/weight so it's still obvious which workspace you're on. */
-      #workspaces button {
-        opacity: 0.55;
-        padding: 0 4px;
-        font-weight: 900;
-      }
-
-      #workspaces button {
-        opacity: 0.25;
-        padding: 0 6px;
-      }
-
-      #workspaces button:not(.active):not(.empty) {
-        opacity: 0.75;
-      }
-
-      #workspaces button.active {
-        opacity: 1;
-      }
-
-      /* The url() below is a Nix path interpolation, resolved to the
-         logo's actual Nix store path at build time -- GTK's CSS url()
-         loads that directly, no separate xdg.configFile copy needed. */
-      #custom-launcher {
-        background-image: url("${./assets/Coel.svg}");
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 20px 20px;
-        background-color: transparent;
-        min-width: 18px;
-        min-height: 20px;
-      }
-      
-      #bluetooth, #network, #pulseaudio, #cpu, #battery {
-        min-width: 18px;
-        min-height: 20px;
-      }
-      
-      #network {
-        padding: 4px 20px;
-      }
-    '';
+      #custom-launcher { background-image: url("${./assets/Coel.svg}"); }
+    '' + builtins.readFile ./waybar/style.css;
   };
 
   home.packages = [
