@@ -1,0 +1,152 @@
+GRAMMAR                           SHORT NAME      SOURCE        EXTENSIONS
+-------                           ----------      ------        ----------
+ActionScript                                      built-in      .as
+AppleScript                                       built-in      .applescript, .script editor
+ASP                                               built-in      .asa
+Assembly                                          built-in      .asm, .s, .S, .nasm
+Astro                                             built-in      .astro
+AutoHotkey                                        built-in      .ahk, .ahk2
+Batch File                                        built-in      .bat, .cmd
+BibTeX                                            built-in      .bib
+BibTeX Style                                      built-in      .bst
+Bourne Again Shell (bash)         sh              built-in      .sh, .bash, .zsh, ..bash_aliases, ..bash_completions, ..bash_functions, ..bash_login, ..bash_logout, ..bash_profile, ..bash_variables, ..bashrc, ..profile, ..textmate_init
+C                                                 built-in      .c, .h
+C#                                csharp          built-in      .cs, .csx
+C++                               c++             built-in      .cpp, .cc, .cp, .cxx, .c++, .C, .h, .hh, .hpp, .hxx, .h++, .inl, .ipp, .cppm, .ixx
+C3                                                built-in      .c3, .c3i, .c3t
+camlp4                                            built-in      
+Cargo Build Results                               built-in      
+Clojure                                           built-in      .clj
+CMake                                             built-in      .cmake
+CMake Cache                                       built-in      
+commands-builtin-shell-bash                       built-in      
+CSS                                               built-in      .css, .css.erb, .css.liquid
+CUDA                              cu              built-in      .cu, .cuh
+D                                                 built-in      .d, .di
+Dart                                              built-in      .dart
+Diff                                              built-in      .diff, .patch
+Dockerfile                        dockerfile      built-in      .dockerfile
+Doxygen                                           built-in      .dox, .doxy
+Doxygen Config                                    built-in      
+Earthfile                                         built-in      .earth
+Elixir                                            built-in      .ex, .exs
+Erlang                                            built-in      .erl, .hrl, .Emakefile, .emakefile
+Fish                                              built-in      .fish
+Fortran                           f90             built-in      .f, .for, .ftn, .f77, .f90, .f95, .f03, .f08
+FSharp                            f#              built-in      .fs, .fsi, .fsx
+GDScript                                          built-in      .gd
+Gettext PO                        po              built-in      .po, .pot
+Git Attributes                    git-attributes  built-in      .gitattributes
+Git Commit Message                git-commit      built-in      
+Git Config                        git-config      built-in      .gitconfig, .gitmodules
+Git Rebase Todo                   git-rebase      built-in      
+Gitignore                         gitignore       built-in      .gitignore, .dockerignore, .npmignore, .hgignore
+Gleam                                             built-in      .gleam
+GLSL                                              built-in      .glsl, .glslf, .glslv, .vert, .frag, .geom, .tesc, .tese, .comp, .rgen, .rint, .rahit, .rchit, .rmiss, .rcall
+Go                                                built-in      .go
+Go Module                         gomod           built-in      .mod, .sum
+GraphQL                                           built-in      .graphql, .gql
+Graphviz (DOT)                                    built-in      .dot, .DOT, .gv
+Groovy                                            built-in      .groovy, .gvy, .gradle
+Haskell                                           built-in      .hs
+HCL                               tf              built-in      .tf, .tfvars, .hcl
+HIP                                               built-in      .hip
+HLSL                                              built-in      .hlsl, .hlsli, .fx, .fxh
+HTML                                              built-in      .html, .htm, .shtml, .xhtml, .inc, .tmpl, .tpl
+HTML (ASP)                                        built-in      .asp
+HTML (Erlang)                                     built-in      .yaws
+HTML (Rails)                                      built-in      .rails, .rhtml, .erb, .html.erb
+HTML (Tcl)                                        built-in      .adp
+Hyprlang                                          built-in      .hl
+INI                                               built-in      .ini, .cfg, .conf, .env, .editorconfig, .properties, .desktop, .service, .socket, .timer
+Java                                              built-in      .java, .bsh
+Java Properties                                   built-in      .properties
+Java Server Page (JSP)                            built-in      .jsp
+JavaDoc                                           built-in      
+JavaScript                        js              built-in      .js, .jsx, .mjs, .cjs
+JavaScript (Rails)                                built-in      .js.erb
+JSON                                              built-in      .json, .sublime-settings, .sublime-menu, .sublime-keymap, .sublime-mousemap, .sublime-theme, .sublime-build, .sublime-project, .sublime-completions, .sublime-commands, .sublime-macro, .sublime-color-scheme
+JSON with Comments                                built-in      .jsonc
+Julia                                             built-in      .jl
+Justfile                                          built-in      .justfile
+KDL                                               built-in      .kdl
+Kotlin                                            built-in      .kt, .kts
+LaTeX                                             built-in      .tex, .ltx
+LaTeX Log                                         built-in      
+LESS                                              built-in      .less
+Lisp                                              built-in      .lisp, .cl, .clisp, .l, .mud, .el, .scm, .ss, .lsp, .fasl
+Literate Haskell                                  built-in      .lhs
+LLVM IR                           ll              built-in      .ll
+Lua                                               built-in      .lua
+M4                                                built-in      .m4, .ac
+Make Output                                       built-in      
+Makefile                                          built-in      .make, .GNUmakefile, .makefile, .Makefile, .OCamlMakefile, .mak, .mk
+Markdown                          md              built-in      .md, .mdown, .markdown, .markdn
+MATLAB                                            built-in      .matlab
+Metal                             msl             built-in      .metal
+MLIR                              mlir            built-in      .mlir
+MultiMarkdown                                     built-in      
+NAnt Build File                                   built-in      .build
+Nim                                               built-in      .nim, .nims, .nimble
+Nix                                               built-in      .nix
+Nushell                                           built-in      .nu
+Objective-C                       objc            built-in      .m, .h
+Objective-C++                     objcpp          built-in      .mm, .M, .h
+OCaml                                             built-in      .ml, .mli
+OCamllex                                          built-in      .mll
+OCamlyacc                                         built-in      .mly
+Odin                                              built-in      .odin
+Pascal                                            built-in      .pas, .p, .dpr
+Perl                                              built-in      .pl, .pm, .pod, .t, .PL
+PHP                                               built-in      .php, .php3, .php4, .php5, .php7, .phps, .phpt, .phtml
+PHP Source                                        built-in      
+pkg-config                                        built-in      .pc
+PowerShell                                        built-in      .ps1, .psm1, .psd1
+Protocol Buffers                  proto           built-in      .proto
+Python                            py              built-in      .py, .py3, .pyw, .pyi, .pyx, .pyx.in, .pxd, .pxd.in, .pxi, .pxi.in, .rpy, .cpy, .SConstruct, .Sconstruct, .sconstruct, .SConscript, .gyp, .gypi, .Snakefile, .wscript
+R                                                 built-in      .R, .r, .s, .S, .Rprofile
+R Console                                         built-in      
+Racket                                            built-in      .rkt, .rktd, .rktl, .scrbl
+Rd (R Documentation)                              built-in      .rd
+Regular Expression                                built-in      .re
+Regular Expressions (Javascript)                  built-in      
+Regular Expressions (Python)      regex           built-in      
+reStructuredText                                  built-in      .rst, .rest
+Ruby                              rb              built-in      .rb, .Appfile, .Appraisals, .Berksfile, .Brewfile, .capfile, .cgi, .Cheffile, .config.ru, .Deliverfile, .Fastfile, .fcgi, .Gemfile, .gemspec, .Guardfile, .irbrc, .jbuilder, .podspec, .prawn, .rabl, .rake, .Rakefile, .Rantfile, .rbx, .rjs, .ruby.rail, .Scanfile, .simplecov, .Snapfile, .thor, .Thorfile, .Vagrantfile
+Ruby Haml                                         built-in      .haml, .sass
+Ruby on Rails                                     built-in      .rxml, .builder
+Rust                              rs              built-in      .rs
+Scala                                             built-in      .scala, .sbt
+SCSS                                              built-in      .scss
+Shell-Unix-Generic                                built-in      
+Slang                                             built-in      .slang
+Smali                                             built-in      .smali
+Solidity                                          built-in      .sol
+SQL                                               built-in      .sql, .ddl, .dml
+SQL (Rails)                                       built-in      .erbsql, .sql.erb
+Starlark                          bazel           built-in      .bzl, .star, .bazel
+Svelte                                            built-in      .svelte
+Swift                                             built-in      .swift
+SystemVerilog                                     built-in      .sv, .svh, .svi, .svp
+Tcl                                               built-in      .tcl
+Templ                                             built-in      .templ
+TeX                                               built-in      .sty, .cls
+Textile                                           built-in      .textile
+Thrift                                            built-in      .thrift
+TOML                                              built-in      .toml
+TypeScript                        ts              built-in      .ts, .tsx, .mts, .cts
+Typst                                             built-in      .typ
+V                                                 built-in      .v, .vv
+Verilog                                           built-in      .vh, .verilog
+VHDL                                              built-in      .vhd, .vhdl, .vho
+Vue                                               built-in      .vue
+Wavefront OBJ                                     built-in      .obj
+WGSL                                              built-in      .wgsl
+Windows Resource Script                           built-in      .rc
+Xcode Project                     pbxproj         built-in      .pbxproj
+XML                                               built-in      .xml, .xsd, .xslt, .tld, .dtml, .rss, .opml, .svg
+YAML                              yml             built-in      .yaml, .yml, .sublime-syntax
+Zig                                               built-in      .zig, .zon
+
+147 grammars available.
+Use the grammar name or short name in config: languages -> <language> -> grammar

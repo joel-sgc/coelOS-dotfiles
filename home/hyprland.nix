@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   theme = import ./theme/onedark.nix;
@@ -22,7 +27,10 @@ in
   # system level (still correct via XDG config fallback, but better to have
   # both agree explicitly).
   xdg.portal.config = {
-    hyprland.default = [ "hyprland" "gtk" ];
+    hyprland.default = [
+      "hyprland"
+      "gtk"
+    ];
     kde.default = [ "kde" ];
     common.default = [ "gtk" ];
   };
@@ -46,7 +54,7 @@ in
     # Use the Hyprland package/session registered by programs.hyprland.enable
     # in configuration.nix instead of installing a second copy here.
     package = null;
-		configType = "hyprlang";
+    configType = "hyprlang";
 
     # Defaults to false. Without it, apps that rely on the standard XDG
     # autostart mechanism (a .desktop file in ~/.config/autostart or
@@ -55,7 +63,10 @@ in
     systemd.enableXdgAutostart = true;
 
     settings = {
-      monitor = [ "eDP-1,2256x1504@59.999,0x0,1" ];
+      monitor = [
+        "eDP-1,2256x1504@59.999,0x0,1"
+        "DP-10, preferred, 0x-1080, 1"
+      ];
 
       # Also set here (not just home.sessionVariables) per the Hyprland
       # wiki's own recommendation -- Hyprland's env directive guarantees
@@ -76,8 +87,8 @@ in
       "$mainMod" = "SUPER";
 
       general = {
-        gaps_in = 8;
-        gaps_out = 16;
+        gaps_in = 4;
+        gaps_out = "8, 12, 12, 12";
         border_size = 2;
 
         # Primary duo (blue + yellow) gradient on focus, matching the
@@ -102,6 +113,10 @@ in
       gesture = [
         "3, horizontal, workspace"
       ];
+
+      decoration = {
+        rounding = 8;
+      };
 
       windowrule = [
         {
@@ -151,7 +166,7 @@ in
 
       exec-once = [
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
-        "${pkgs.waybar}/bin/waybar"
+#         "${pkgs.waybar}/bin/waybar"
         "${pkgs.mako}/bin/mako"
         # Blocks logind's default hardware-power-key handling so the
         # XF86PowerOff bind below (-> coel-power-menu) is what actually
@@ -163,50 +178,51 @@ in
         # start". The script itself retries for a few seconds in case it
         # races the awww daemon's systemd-user startup.
         "coel-random-wallpaper"
+        "${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
       ];
 
-      bind =
-        [
-          "$mainMod, T, exec, $terminal"
-          "$mainMod, space, exec, ${config.programs.rofi.finalPackage}/bin/rofi -show drun"
-          "$mainMod SHIFT, space, exec, coel-main-menu"
-          "$mainMod, period, exec, coel-emoji-picker"
-          "$mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock"
-          "$mainMod, W, killactive"
-          "$mainMod, M, exit"
-          "$mainMod, F, togglefloating"
-          "$mainMod SHIFT, F, fullscreen"
-          "$mainMod, left, movefocus, l"
-          "$mainMod, right, movefocus, r"
-          "$mainMod, up, movefocus, u"
-          "$mainMod, down, movefocus, d"
-          "$mainMod SHIFT, left, resizeactive, 10"
-          "$mainMod SHIFT, right, resizeactive, -10"
-          "$mainMod SHIFT, up, resizeactive, 0 -10"
-          "$mainMod SHIFT, down, resizeactive, 0 10"
-          "$mainMod, V, exec, ${pkgs.cliphist}/bin/cliphist list | ${config.programs.rofi.finalPackage}/bin/rofi -dmenu | ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"
-          ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
-          ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"
-          ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"
-          ", XF86MonBrightnessUp, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness raise"
-          ", XF86MonBrightnessDown, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness lower"
-          ", Print, exec, coel-screenshot"
-          ", XF86PowerOff, exec, coel-power-menu"
-        ]
-        ++ builtins.concatLists (
-          builtins.genList (
-            i:
-            let
-              ws = i + 1;
-              key = if ws == 10 then "0" else toString ws;
-              wsStr = toString ws;
-            in
-            [
-              "$mainMod, ${key}, workspace, ${wsStr}"
-              "$mainMod SHIFT, ${key}, movetoworkspace, ${wsStr}"
-            ]
-          ) 10
-        );
+      bind = [
+        "$mainMod, T, exec, $terminal"
+        "$mainMod, space, exec, ${config.programs.rofi.finalPackage}/bin/rofi -show drun"
+        "$mainMod SHIFT, space, exec, coel-main-menu"
+        "$mainMod, period, exec, coel-emoji-picker"
+        "$mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock"
+        "$mainMod, W, killactive"
+        "$mainMod, M, exit"
+        "$mainMod, B, exec, coel-random-wallpaper"
+        "$mainMod, F, togglefloating"
+        "$mainMod SHIFT, F, fullscreen"
+        "$mainMod, left, movefocus, l"
+        "$mainMod, right, movefocus, r"
+        "$mainMod, up, movefocus, u"
+        "$mainMod, down, movefocus, d"
+        "$mainMod SHIFT, left, resizeactive, 10"
+        "$mainMod SHIFT, right, resizeactive, -10"
+        "$mainMod SHIFT, up, resizeactive, 0 -10"
+        "$mainMod SHIFT, down, resizeactive, 0 10"
+        "$mainMod, V, exec, ${pkgs.cliphist}/bin/cliphist list | ${config.programs.rofi.finalPackage}/bin/rofi -dmenu | ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"
+        ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
+        ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"
+        ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"
+        ", XF86MonBrightnessUp, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness raise"
+        ", XF86MonBrightnessDown, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness lower"
+        ", Print, exec, coel-screenshot"
+        ", XF86PowerOff, exec, coel-power-menu"
+      ]
+      ++ builtins.concatLists (
+        builtins.genList (
+          i:
+          let
+            ws = i + 1;
+            key = if ws == 10 then "0" else toString ws;
+            wsStr = toString ws;
+          in
+          [
+            "$mainMod, ${key}, workspace, ${wsStr}"
+            "$mainMod SHIFT, ${key}, movetoworkspace, ${wsStr}"
+          ]
+        ) 10
+      );
 
       bindm = [
         "$mainMod, mouse:272, movewindow"

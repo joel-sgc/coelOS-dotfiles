@@ -25,6 +25,7 @@
     ./home/micro.nix
     ./home/fresh.nix
     ./home/quickshell.nix
+    ./home/kicad.nix
     ./home/ghostty.nix
     ./home/development.nix
     ./home/zen-browser.nix

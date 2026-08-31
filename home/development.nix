@@ -11,5 +11,10 @@
 
     go
     gcc
+    
+    arduino-ide
+    python3
+    
+    espeak
   ];
 }

@@ -85,6 +85,78 @@
     # QR-Codes" -- "Codes" contains "code" as a substring. Only the base
     # (untranslated) Name/GenericName/Comment are reproduced here, not
     # every one of upstream's ~40 per-locale translations.
+    # Different failure mode than the other three entries here: this isn't
+    # about a keyword false-matching, it's the opposite -- rofi's
+    # "drun-match-fields" = "name,generic,categories" (above) stopped
+    # matching against Keywords/Exec entirely, and upstream's own
+    # (untranslated) Name is "GNU Image Manipulation Program" -- the
+    # string "gimp" appears nowhere in Name, GenericName ("Image Editor"),
+    # or Categories, only in Keywords/Exec, which are exactly the fields
+    # that change just stopped searching. So typing "gimp" in rofi drun
+    # found nothing, even though the app was installed and working fine.
+    # Fix is the same shape as the others -- override just the field that
+    # doesn't survive the stricter match -- but here that means *adding*
+    # "GIMP" to Name rather than removing a word from it. Rest copied
+    # verbatim from the real gimp.desktop.
+    "gimp" = {
+      name = "GIMP";
+      genericName = "Image Editor";
+      icon = "gimp";
+      exec = "gimp-3.0 %U";
+      terminal = false;
+      mimeType = [
+        "image/x-xcf"
+        "application/pdf"
+        "application/postscript"
+        "application/x-navi-animation"
+        "image/avif"
+        "image/bmp"
+        "image/dds"
+        "image/g3-fax"
+        "image/gif"
+        "image/heif"
+        "image/hej2k"
+        "image/jp2"
+        "image/jpeg"
+        "image/jxl"
+        "image/openraster"
+        "image/png"
+        "image/qoi"
+        "image/svg+xml"
+        "image/tiff"
+        "image/vnd.microsoft.icon"
+        "image/vnd.wap.wbmp"
+        "image/webp"
+        "image/x-dcm"
+        "image/x-dcx"
+        "image/x-exr"
+        "image/x-fits"
+        "image/x-flic"
+        "image/x-icns"
+        "image/x-ico"
+        "image/x-ilbm"
+        "image/x-jp2-codestream"
+        "image/x-pcx"
+        "image/x-pixmap"
+        "image/x-portable-anymap"
+        "image/x-psd"
+        "image/x-psp"
+        "image/x-sgi"
+        "image/x-sun-raster"
+        "image/x-tga"
+        "image/x-wmf"
+        "image/x-xbitmap"
+        "image/x-xwindowdump"
+      ];
+      categories = [ "Graphics" "2DGraphics" "RasterGraphics" "GTK" ];
+      startupNotify = true;
+      settings = {
+        TryExec = "gimp-3.0";
+        Keywords = "GIMP;graphic;design;illustration;painting;";
+        StartupWMClass = "gimp";
+      };
+    };
+
     "org.kde.qrca" = {
       name = "Qrca";
       # Original GenericName was "Barcode Scanner" -- also contains "code"
