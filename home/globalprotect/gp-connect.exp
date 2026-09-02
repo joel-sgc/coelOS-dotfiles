@@ -1,0 +1,112 @@
+#!/usr/bin/env expect
+#
+# Programmatic wrapper around the vendored `globalprotect connect`, meant to
+# be driven by another process (a Go TUI, a script) rather than a human at a
+# terminal. No pty is required from the caller -- expect allocates its own
+# for the vendor CLI. Progress is reported as machine-readable
+# "GP_STATUS: <state>" lines on stdout; raw client output goes to stderr.
+#
+# LUC auth model (reverse-engineered in globalprotect-hip-investigation.md):
+# portal username+password -- NOT SAML, the prelogin response carries only
+# an <authentication-message> -- then a gateway OTP challenge. The vendor
+# CLI prompt sequence, confirmed by capture, is:
+#     Retrieving configuration...
+#     secureaccess.luc.edu - Enter your username and password
+#     Username(<user>):                       <- prompts even with --username
+#     Password:
+#     Enter Your Microsoft verification code: <- the MFA code, sent as <secure-id>
+#
+# MFA code is taken from, in order: argv[0], $GP_MFA_CODE, or -- if neither
+# is set -- one line read from stdin *after* "GP_STATUS: mfa-required" is
+# printed (so the caller can prompt its own user and write the code back).
+# If the gateway rejects a code it re-shows the prompt; this emits
+# "GP_STATUS: mfa-rejected" and then falls back to the stdin path.
+#
+# The portal password must already be in $GP_PASSWORD -- the coel-vpn-connect
+# shell wrapper puts it there (keyring lookup, or passed through by the
+# caller). This script does not touch the keyring itself.
+#
+# Env (exported by the coel-vpn-connect shell wrapper):
+#   GP_PORTAL GP_USERNAME GP_FHS_CMD GP_PASSWORD
+#   GP_MFA_CODE   optional  -- MFA code (same as passing argv[0])
+#
+# GP_STATUS values: connecting | mfa-required | mfa-rejected | connected
+#                   | auth-failed | no-password | mfa-timeout
+#                   | needs-attention | timeout
+# Exit codes: 0 connected | 2 auth-failed | 3 no-password
+#             | 4 timeout/needs-attention | 5 mfa not supplied
+
+proc status {s} { puts "GP_STATUS: $s"; flush stdout }
+
+set portal   $env(GP_PORTAL)
+set username $env(GP_USERNAME)
+set fhs      $env(GP_FHS_CMD)
+
+# --- MFA code: arg or env (may stay empty -> stdin later) -----------------
+set mfa ""
+if {[info exists env(GP_MFA_CODE)]} { set mfa [string trim $env(GP_MFA_CODE)] }
+if {$argc > 0} { set mfa [string trim [lindex $argv 0]] }
+
+# --- password (the wrapper guarantees this is set) -----------------------
+if {![info exists env(GP_PASSWORD)] || $env(GP_PASSWORD) eq ""} {
+    status "no-password"
+    puts stderr "coel-vpn-connect: GP_PASSWORD not set."
+    exit 3
+}
+set password $env(GP_PASSWORD)
+
+status "connecting"
+log_user 0
+set timeout 120
+spawn $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect connect --portal $portal --username $username"
+
+set pw_sent 0
+set mfa_sent 0
+expect {
+    -re {Username\([^)]*\):\s*$} {
+        send -- "$username\r"
+        exp_continue
+    }
+    -re {Password:\s*$} {
+        incr pw_sent
+        if {$pw_sent > 2} { status "auth-failed"; exit 2 }
+        send -- "$password\r"
+        exp_continue
+    }
+    -re {(?i)verification code:\s*$} {
+        if {$mfa_sent >= 1} {
+            status "mfa-rejected"
+            set mfa ""
+        }
+        if {$mfa eq ""} {
+            status "mfa-required"
+            set timeout 300
+            expect_user {
+                -re {([^\r\n]+)[\r\n]} { set mfa [string trim $expect_out(1,string)] }
+                timeout { status "mfa-timeout"; exit 5 }
+            }
+            set timeout 120
+        }
+        if {$mfa eq ""} { status "mfa-timeout"; exit 5 }
+        incr mfa_sent
+        if {$mfa_sent > 4} { status "auth-failed"; exit 2 }
+        send -- "$mfa\r"
+        exp_continue
+    }
+    -re {(?i)(authentication failed|login failed|invalid username or password|incorrect password|cannot connect to globalprotect)} {
+        status "auth-failed"; exit 2
+    }
+    -re {(?i)pem pass ?phrase|do you want to continue.*\?} {
+        status "needs-attention"; exit 4
+    }
+    timeout { status "timeout"; exit 4 }
+    eof {
+        # The vendor CLI usually just exits on success with no clear banner,
+        # so confirm against an explicit status query.
+        catch {
+            exec $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status"
+        } out
+        if {[regexp {(?i)\mconnected\M} $out]} { status "connected"; exit 0 }
+        status "auth-failed"; exit 2
+    }
+}
