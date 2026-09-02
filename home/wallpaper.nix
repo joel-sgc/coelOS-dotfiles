@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 let
   setWallpaper = pkgs.writeShellApplication {
@@ -23,8 +23,15 @@ let
 
   randomWallpaper = pkgs.writeShellApplication {
     name = "coel-random-wallpaper";
-    runtimeInputs = [ pkgs.findutils pkgs.coreutils setWallpaper pkgs.kdePackages.plasma-workspace ];
-    text = "WALLPAPER_DIR_REL=${lib.escapeShellArg wallpaperDir}\n" + builtins.readFile ./wallpaper/random-wallpaper.sh;
+    runtimeInputs = [
+      pkgs.findutils
+      pkgs.coreutils
+      setWallpaper
+      pkgs.kdePackages.plasma-workspace
+    ];
+    text =
+      "WALLPAPER_DIR_REL=${lib.escapeShellArg wallpaperDir}\n"
+      + builtins.readFile ./wallpaper/random-wallpaper.sh;
   };
 in
 {
@@ -42,5 +49,8 @@ in
 
   home.file.${wallpaperDir}.source = ../assets/wallpapers;
 
-  home.packages = [ setWallpaper randomWallpaper ];
+  home.packages = [
+    setWallpaper
+    randomWallpaper
+  ];
 }

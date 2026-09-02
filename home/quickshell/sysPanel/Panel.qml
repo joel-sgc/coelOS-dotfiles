@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Hyprland
+import QtQuick
 import QtQuick.Layouts
 
 // One PanelWindow per screen, same Variants-over-Quickshell.screens pattern

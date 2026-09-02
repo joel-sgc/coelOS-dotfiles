@@ -68,6 +68,7 @@ in
           path = "${../coelos-theme/logo.png}";
           size = 300;
           border_size = 0;
+          rounding = 0;
           halign = "center";
           valign = "center";
           position = "0, 200";
