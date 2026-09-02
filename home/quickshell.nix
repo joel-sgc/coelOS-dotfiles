@@ -6,8 +6,12 @@
   # rather than configuration.nix's environment.systemPackages -- moved
   # from there.
   #
-  # No actual shell config (QML files) written yet; this is just the
-  # runtime + dev tooling in place.
+  # ./quickshell/shell.qml is the actual config (a waybar-style top panel
+  # -- see sysPanel/); this wires the whole directory to
+  # ~/.config/quickshell, quickshell's default config search path, so
+  # `quickshell` picks it up with no -p/-c flag needed.
+  xdg.configFile."quickshell".source = ./quickshell;
+
   home.packages = [
     pkgs.quickshell
 
