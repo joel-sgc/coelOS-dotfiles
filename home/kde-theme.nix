@@ -159,6 +159,7 @@ in
     ForegroundVisited=${rgb theme.purple}
 
     [General]
+    Dark=true
     ColorScheme=CoelOSOneDark
     Name=CoelOS One Dark
     shadeSortColumn=true

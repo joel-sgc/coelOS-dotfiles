@@ -166,7 +166,7 @@ in
 
       exec-once = [
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
-#         "${pkgs.waybar}/bin/waybar"
+        #         "${pkgs.waybar}/bin/waybar"
         "${pkgs.mako}/bin/mako"
         # Blocks logind's default hardware-power-key handling so the
         # XF86PowerOff bind below (-> coel-power-menu) is what actually

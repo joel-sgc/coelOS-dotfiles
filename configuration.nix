@@ -120,12 +120,11 @@
   # Personal server sshfs mount
   programs.fuse.userAllowOther = true;
   fileSystems."/home/joelsgc/server" = {
-    device = "joel@jsgc-server:/files";
+    device = "sftp@jsgc-server:/upload";
     fsType = "fuse.sshfs";
     options = [
       "x-systemd.automount"
       "_netdev"
-      "port=2222"
       "IdentityFile=/home/joelsgc/.ssh/id_ed25519_coelos_server"
       "IdentitiesOnly=yes"
       "StrictHostKeyChecking=accept-new"
@@ -374,17 +373,18 @@
     pkgs.jq
 
     pkgs.vlc
+    pkgs.ffmpeg
 
     # VS Code's jnoortheen.nix-ide extension talks to these -- LSP +
     # semantic highlighting/diagnostics, and format-on-save, for .nix files.
     pkgs.nixd
     pkgs.nixfmt
     pkgs.dmidecode
-    
+
     # Freecad from unstable
     pkgs-unstable.freecad
   ];
-  
+
   services.flatpak.enable = true;
 
   ##############################################################################
@@ -399,7 +399,7 @@
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
   programs.virt-manager.enable = true;
-  
+
   services.udev.extraRules = ''
     KERNEL=="sda", GROUP="kvm", MODE="0660"
   '';

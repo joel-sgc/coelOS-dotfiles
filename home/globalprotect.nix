@@ -109,6 +109,7 @@ let
       out=$(globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status' 2>/dev/null || true)
       case "$out" in
         *"Connected - Internal"*) echo connected-internal; exit 0 ;;
+        *"OnDemand"*)             echo connected;          exit 0 ;;
         *"Connected"*)            echo connected;          exit 0 ;;
         *"Disconnected"*)         echo disconnected;       exit 1 ;;
         *)                        echo unknown;            exit 1 ;;

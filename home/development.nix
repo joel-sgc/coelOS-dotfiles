@@ -7,14 +7,16 @@
   ];
 
   home.packages = with pkgs; [
+    python3
     uv
 
     go
     gcc
     
     arduino-ide
-    python3
-    
+    arduino-cli
     espeak
-  ];
+    
+    (vscode.fhsWithPackages (ps: with ps; [ systemd libusb1 stdenv.cc.cc ]))
+  ];  
 }

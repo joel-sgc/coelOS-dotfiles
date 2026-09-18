@@ -61,6 +61,7 @@
 
     inputs.bluepala.homeManagerModules.default
     ./home/bluepala.nix
+    #     bluetui    # Safe alternative to bluepala
   ];
 
   ##############################################################################
@@ -94,7 +95,6 @@
     steam-run # run non-NixOS/dynamically-linked binaries: steam-run <cmd>
 
     # Desktop apps
-    vscode
     stremio-linux-shell
     gimp
     # spotify
@@ -119,6 +119,7 @@
     # Hyprland rices' package lists (JaKooLit, HyDE), both include it as a
     # baseline dependency
     imagemagick
+    rpi-imager
   ];
 
   ##############################################################################
@@ -127,8 +128,8 @@
 
   home.sessionVariables = {
     TERMINAL = "ghostty";
-    EDITOR = "micro";
-    VISUAL = "micro";
+    EDITOR = "fresh";
+    VISUAL = "fresh";
     GTK_THEME = "Adwaita:dark";
 
     # Makes Electron apps (VS Code) and Firefox-based browsers (Zen) render
