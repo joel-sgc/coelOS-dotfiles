@@ -65,7 +65,7 @@ in
     settings = {
       monitor = [
         "eDP-1,2256x1504@59.999,0x0,1"
-        "DP-10, preferred, 0x-1080, 1"
+        "DP-9, preferred, 0x-1080, 1"
       ];
 
       # Also set here (not just home.sessionVariables) per the Hyprland
@@ -178,6 +178,13 @@ in
         # start". The script itself retries for a few seconds in case it
         # races the awww daemon's systemd-user startup.
         "coel-random-wallpaper"
+        # -c straight at this repo (not ~/.config/quickshell) for quick
+        # reload while developing -- quickshell watches and hot-reloads
+        # these files on edit, home-manager's deployed copy obviously
+        # doesn't. Icons no longer depend on this being the *built* config
+        # either way (sysPanel/Phosphor.js resolves codepoints to glyphs
+        # at QML runtime, not via a Nix-time text substitution), so
+        # pointing straight at source here is safe again.
         "${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
       ];
 

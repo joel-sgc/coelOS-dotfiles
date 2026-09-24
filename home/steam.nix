@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ ... }:
 
 # Per-game Steam workarounds, declared instead of clicked into Steam's UI.
 # The steam-config-nix module (flake input) writes them into Steam's own

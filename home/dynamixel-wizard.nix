@@ -6,8 +6,7 @@
 }:
 
 let
-  dir = "${config.home.homeDirectory}/dynamixel-wizard";
-  installDir = "${dir}/ROBOTIS/DYNAMIXEL Wizard 2.0";
+  dir = "${config.home.homeDirectory}/DYNAMIXEL Wizard 2.0";
 
   # DYNAMIXEL Wizard 2.0 isn't packaged in nixpkgs -- it's ROBOTIS's own
   # vendor Linux build, extracted by hand into ~/dynamixel-wizard, next to
@@ -18,7 +17,7 @@ let
   # buildFHSEnv `.env` shell -- rather than duplicating shell.nix's package
   # list here, which would drift out of sync with it as that file gets
   # tweaked directly.
-  runCmd = "cd ${lib.escapeShellArg installDir} && exec ./DynamixelWizard2";
+  runCmd = "cd ${lib.escapeShellArg dir} && exec ./DynamixelWizard2";
 
   launcher = pkgs.writeShellApplication {
     name = "coel-dynamixel-wizard";
@@ -32,7 +31,7 @@ let
     name = "coel-dynamixel-wizard";
     desktopName = "DYNAMIXEL Wizard 2.0";
     genericName = "Dynamixel Servo Configuration Tool";
-    icon = "${installDir}/icon.png";
+    icon = "${dir}/icon.png";
     exec = "coel-dynamixel-wizard";
     terminal = false;
     categories = [

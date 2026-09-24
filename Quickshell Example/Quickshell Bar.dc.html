@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/styles.css">
+<script src="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>body{margin:0;background:#1e2127;} a{color:#61afef;} a:hover{color:#abb2bf;} button{font:inherit;}</style>
+</helmet>
+<div style="height:100vh;box-sizing:border-box;background:#282c34;font-family:'JetBrains Mono',monospace;font-size:13px;color:#abb2bf;display:flex;flex-direction:column;overflow:hidden;">
+  <div style="padding:0;position:relative;z-index:2;">
+    <div data-screen-label="Bar" style="height:36px;display:grid;grid-template-columns:minmax(max-content,1fr) auto minmax(max-content,1fr);column-gap:12px;align-items:center;background:#282c34;padding:0 12px;position:relative;">
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <button title="CoelOS" style="width:28px;height:28px;display:grid;place-items:center;background:transparent;border:0;border-radius:6px;cursor:pointer;color:#abb2bf;" style-hover="background:#404754;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 7.5A8 8 0 1 0 20 12h-8"></path><path d="M16 12a4 4 0 1 1-4-4"></path></svg>
+        </button>
+        <div onWheel="{{ onWsWheel }}" style="display:flex;align-items:center;gap:2px;">
+          <sc-for list="{{ workspaces }}" as="ws" hint-placeholder-count="5">
+            <button onClick="{{ ws.select }}" title="Workspace {{ ws.n }}" style="position:relative;min-width:22px;height:26px;padding:0 4px;display:grid;place-items:center;background:transparent;border:0;border-radius:5px;cursor:pointer;color:{{ ws.color }};opacity:{{ ws.opacity }};font-weight:{{ ws.weight }};font-size:14px;" style-hover="background:#404754;opacity:1;">
+              {{ ws.label }}
+              <span style="position:absolute;left:6px;right:6px;bottom:1px;height:2px;border-radius:2px;background:{{ ws.color }};opacity:{{ ws.markOpacity }};"></span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <button onClick="{{ toggleCal }}" style="background:{{ clockBg }};border:0;border-radius:6px;padding:4px 12px;cursor:pointer;color:#abb2bf;font-size:14px;letter-spacing:0.02em;" style-hover="background:#404754;">{{ clockText }}</button>
+
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0;">
+        <div style="display:flex;align-items:center;gap:2px;padding-right:8px;margin-right:4px;border-right:1px solid #404754;">
+          <sc-for list="{{ tray }}" as="t" hint-placeholder-count="3">
+            <button title="{{ t.name }}" style="width:26px;height:26px;display:grid;place-items:center;background:transparent;border:0;border-radius:5px;cursor:pointer;color:#5c6370;font-size:15px;" style-hover="background:#404754;color:#abb2bf;"><i class="{{ t.icon }}"></i></button>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleBt }}" title="Bluetooth" style="height:26px;padding:0 7px;display:flex;align-items:center;gap:5px;background:{{ btBtnBg }};border:0;border-radius:5px;cursor:pointer;color:{{ btBtnColor }};font-size:14px;" style-hover="background:#404754;"><i class="{{ btBtnIcon }}"></i><span style="font-size:13px;">{{ btBtnLabel }}</span></button>
+        <button onClick="{{ toggleNet }}" title="Network" style="height:26px;padding:0 7px;display:flex;align-items:center;gap:6px;background:{{ wifiBg }};border:0;border-radius:5px;cursor:pointer;color:{{ wifiColor }};" style-hover="background:#404754;"><i class="{{ wifiIcon }}" style="font-size:14px;"></i><span style="white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;">{{ wifiLabel }}</span></button>
+        <button onClick="{{ toggleAudio }}" onWheel="{{ aWheel }}" title="Audio · scroll to adjust" style="height:26px;padding:0 7px;display:flex;align-items:center;gap:6px;background:{{ aBtnBg }};border:0;border-radius:5px;cursor:pointer;color:{{ aBtnColor }};" style-hover="background:#404754;"><i class="{{ aBtnIcon }}" style="font-size:14px;"></i><span>{{ aBtnLabel }}</span></button>
+        <button onClick="{{ toggleSys }}" title="System monitor" style="height:26px;padding:0 7px;display:flex;align-items:center;gap:6px;background:{{ sysBtnBg }};border:0;border-radius:5px;cursor:pointer;color:{{ sysBtnColor }};" style-hover="background:#404754;"><i class="ph ph-cpu" style="font-size:14px;"></i><span style="min-width:3ch;text-align:right;">{{ cpu }}%</span></button>
+        <button onClick="{{ togglePwr }}" title="{{ batTitle }}" style="height:26px;padding:0 7px;display:flex;align-items:center;gap:6px;background:{{ pwrBtnBg }};border:0;border-radius:5px;cursor:pointer;color:{{ batColor }};" style-hover="background:#404754;"><i class="{{ batIcon }}" style="font-size:15px;"></i><span>{{ battery }}%</span></button>
+      </div>
+
+      <div data-screen-label="Calendar dropdown" style="position:absolute;top:36px;left:50%;transform:translateX(-50%);width:660px;z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ calClip }};pointer-events:{{ calPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">calendar</span>
+              <span style="color:#5c6370;">─ week {{ calWeek }} ─</span>
+              <span style="color:{{ calStatusColor }};">{{ calStatus }}</span>
+            </div>
+            <div style="display:flex;gap:2px;">
+              <button onClick="{{ calToday }}" style="border:0;border-radius:2px;padding:0 8px;cursor:pointer;background:transparent;color:#5c6370;" style-hover="color:#abb2bf;background:#404754;"><span style="color:#e5c07b;">t</span> today</button>
+              <button onClick="{{ closeCal }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:268px minmax(0,1fr);gap:14px;margin-top:8px;align-items:stretch;">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:16px 12px 10px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#5c6370;">clock</span>
+                <div style="display:flex;align-items:flex-end;gap:10px;">
+                  <div style="display:flex;gap:6px;">
+                    <sc-for list="{{ clkGlyphs }}" as="g" hint-placeholder-count="5">
+                      <div style="display:grid;grid-template-columns:{{ g.cols }};gap:2px;">
+                        <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="15">
+                          <span style="width:10px;height:10px;border-radius:1px;background:{{ c.bg }};"></span>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;line-height:1.25;">
+                    <span style="color:#e5c07b;">{{ clkAmpm }}</span>
+                    <span style="color:#5c6370;">:{{ clkSec }}</span>
+                  </div>
+                </div>
+                <div style="margin-top:10px;color:#abb2bf;">{{ clkDate }}</div>
+                <div style="color:#5c6370;">{{ clkMeta }}</div>
+              </div>
+
+              <div style="position:relative;border:1px solid {{ calBorder }};border-radius:2px;padding:14px 8px 8px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 4px;background:#282c34;display:flex;gap:6px;align-items:center;">
+                  <button onClick="{{ calPrev }}" title="Previous month ([)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 2px;line-height:1.4;" style-hover="color:#abb2bf;">‹</button>
+                  <span style="color:{{ calLegend }};">{{ calMonthLabel }}</span>
+                  <button onClick="{{ calNext }}" title="Next month (])" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 2px;line-height:1.4;" style-hover="color:#abb2bf;">›</button>
+                </span>
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center;">
+                  <sc-for list="{{ calWeekdays }}" as="w" hint-placeholder-count="7">
+                    <span style="color:{{ w.color }};font-size:11px;">{{ w.l }}</span>
+                  </sc-for>
+                  <sc-for list="{{ calCells }}" as="d" hint-placeholder-count="42">
+                    <button onClick="{{ d.pick }}" style="height:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;border:1px solid {{ d.border }};border-radius:2px;background:{{ d.bg }};color:{{ d.color }};font-weight:{{ d.weight }};cursor:pointer;padding:0;line-height:1.1;" style-hover="border-color:#5c6370;">
+                      <span>{{ d.label }}</span>
+                      <span style="width:4px;height:4px;border-radius:50%;background:{{ d.dot }};"></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:relative;border:1px solid {{ tdBorder }};border-radius:2px;padding:14px 4px 8px;display:flex;flex-direction:column;min-width:0;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ tdLegend }};">todo ─ {{ tdDayLabel }}</span>
+              <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ tdSummary }}</span>
+              <sc-for list="{{ tdRows }}" as="r" hint-placeholder-count="5">
+                <div onClick="{{ r.select }}" style="display:grid;grid-template-columns:14px 28px 42px minmax(0,1fr) 22px;gap:4px;align-items:start;padding:2px 8px;border-radius:2px;background:{{ r.bg }};cursor:pointer;" style-hover="background:#2f343e;">
+                  <span style="color:#61afef;">{{ r.marker }}</span>
+                  <button onClick="{{ r.toggle }}" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.boxColor }};text-align:left;" style-hover="color:#89ca78;">{{ r.box }}</button>
+                  <span style="color:{{ r.timeColor }};">{{ r.time }}</span>
+                  <span style="color:{{ r.textColor }};text-decoration:{{ r.deco }};text-wrap:pretty;overflow-wrap:anywhere;">{{ r.text }}</span>
+                  <button onClick="{{ r.remove }}" title="Delete (x)" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.delColor }};" style-hover="color:#ef596f;">×</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ tdEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#5c6370;padding:2px 8px;">nothing planned — press <span style="color:#e5c07b;">a</span> to add</div>
+              </sc-if>
+              <div style="flex:1;min-height:12px;"></div>
+              <div style="display:flex;align-items:center;gap:8px;margin:0 8px;padding-top:8px;border-top:1px dashed #404754;">
+                <span style="color:#89ca78;">+</span>
+                <input ref="{{ tdRef }}" value="{{ tdDraft }}" onChange="{{ tdOnDraft }}" onKeyDown="{{ tdOnKey }}" placeholder="new task  ·  '14:00 text' sets a time" spellcheck="false" style="flex:1;min-width:0;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:3px 6px;outline:none;" style-focus="border-bottom-color:#89ca78;background:#2c313c;"></input>
+                <button onClick="{{ tdAdd }}" style="border:0;border-radius:2px;background:transparent;color:#89ca78;cursor:pointer;padding:0 6px;" style-hover="background:#404754;">[⏎]</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ calHints }}" as="h" hint-placeholder-count="6">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="Network dropdown" style="position:absolute;top:36px;right:150px;width:520px;z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ netClip }};pointer-events:{{ netPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">network</span>
+              <span style="color:#5c6370;">─ wlan0 ─</span>
+              <span style="color:{{ statusColor }};">{{ statusText }}</span>
+            </div>
+            <div style="display:flex;gap:2px;">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+                <button onClick="{{ t.go }}" style="border:0;border-radius:2px;padding:0 8px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};" style-hover="color:#abb2bf;"><span style="color:{{ t.keyColor }};">{{ t.key }}</span> {{ t.label }}</button>
+              </sc-for>
+              <button onClick="{{ closeNet }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+            </div>
+          </div>
+
+          <sc-if value="{{ isMain }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 12px 10px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ statusColor }};">connected</span>
+              <sc-if value="{{ hasCurrent }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                  <div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="color:#89ca78;">●</span><span style="color:#abb2bf;font-weight:500;font-size:13.5px;">{{ cur.ssid }}</span><span style="color:#5c6370;">{{ cur.band }} · ch {{ cur.ch }}</span></div>
+                  <div style="display:flex;gap:2px;">
+                    <button onClick="{{ editCurrent }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;border-radius:2px;" style-hover="background:#404754;">[<span style="color:#e5c07b;">e</span>]dit</button>
+                    <button onClick="{{ disconnect }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;border-radius:2px;" style-hover="background:#404754;color:#ef596f;">[<span style="color:#e5c07b;">d</span>]isconnect</button>
+                  </div>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;margin:6px 0 8px;">
+                  <span><span style="color:#5c6370;">signal </span><span style="color:{{ cur.sigColor }};">{{ cur.meterOn }}</span><span style="color:#404754;">{{ cur.meterOff }}</span> <span style="color:#abb2bf;">{{ cur.sig }}%</span></span>
+                  <span><span style="color:#2bbac5;">↓</span> {{ rx }} MB/s  <span style="color:#d55fde;">↑</span> {{ tx }} MB/s</span>
+                </div>
+                <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:1px 12px;">
+                  <sc-for list="{{ curInfo }}" as="kv" hint-placeholder-count="8">
+                    <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ kv.v }}</span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ connectingNow }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#e5c07b;">{{ spinner }} connecting to {{ connecting }}…</div>
+              </sc-if>
+              <sc-if value="{{ idle }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#5c6370;">{{ idleText }}</div>
+              </sc-if>
+            </div>
+
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#61afef;">available ({{ availCount }})</span>
+              <button onClick="{{ rescan }}" style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;border:0;cursor:pointer;color:#5c6370;line-height:1.4;" style-hover="color:#abb2bf;">{{ scanLabel }}</button>
+              <div style="display:grid;grid-template-columns:14px minmax(0,1fr) 44px 44px 56px 120px;gap:8px;padding:0 8px 2px;color:#5c6370;">
+                <span></span><span>ssid</span><span>sig</span><span>sec</span><span>band</span><span></span>
+              </div>
+              <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+                <div onClick="{{ r.select }}" onDoubleClick="{{ r.connect }}" style="display:grid;grid-template-columns:14px minmax(0,1fr) 44px 44px 56px 120px;gap:8px;align-items:center;padding:1px 8px;cursor:pointer;background:{{ r.bg }};border-radius:2px;" style-hover="background:#2f343e;">
+                  <span style="color:#61afef;">{{ r.marker }}</span>
+                  <span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.ssid }}</span>
+                  <span><span style="color:{{ r.sigColor }};">{{ r.strong }}</span><span style="color:#404754;">{{ r.weak }}</span></span>
+                  <span style="color:{{ r.secColor }};">{{ r.sec }}</span>
+                  <span style="color:#5c6370;">{{ r.band }}</span>
+                  <span style="display:flex;justify-content:flex-end;gap:2px;">
+                    <sc-if value="{{ r.isSel }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ r.connect }}" style="border:0;background:transparent;color:#89ca78;cursor:pointer;padding:0 4px;border-radius:2px;" style-hover="background:#404754;">[⏎]</button>
+                      <button onClick="{{ r.edit }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 4px;border-radius:2px;" style-hover="background:#404754;">[<span style="color:#e5c07b;">e</span>]</button>
+                    </sc-if>
+                    <sc-if value="{{ r.showSaved }}" hint-placeholder-val="{{ false }}">
+                      <span style="color:#5c6370;">saved</span>
+                    </sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#d55fde;">vpn</span>
+              <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ vpnSummary }}</span>
+              <sc-for list="{{ vpnRows }}" as="v" hint-placeholder-count="3">
+                <div onClick="{{ v.toggle }}" style="display:grid;grid-template-columns:28px minmax(0,1fr) 80px 150px;gap:8px;align-items:center;padding:1px 8px;cursor:pointer;border-radius:2px;" style-hover="background:#2f343e;">
+                  <span style="color:{{ v.checkColor }};">{{ v.check }}</span>
+                  <span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ v.name }}</span>
+                  <span style="color:#5c6370;">{{ v.type }}</span>
+                  <span style="color:{{ v.statusColor }};text-align:right;">{{ v.status }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isEdit }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 12px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#e5c07b;">{{ editTitle }}</span>
+              <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 12px;align-items:center;">
+                <span style="color:#5c6370;">ssid</span>
+                <input value="{{ d.ssid }}" onChange="{{ d.onSsid }}" spellcheck="false" style="background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+                <span style="color:#5c6370;">security</span>
+                <button onClick="{{ d.cycleSec }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#61afef;"><span style="color:#5c6370;">‹</span> {{ d.sec }} <span style="color:#5c6370;">›</span></button>
+                <sc-if value="{{ d.needsPass }}" hint-placeholder-val="{{ true }}">
+                  <span style="color:#5c6370;">password</span>
+                  <div style="display:flex;gap:8px;min-width:0;">
+                    <input type="{{ d.passType }}" value="{{ d.pass }}" onChange="{{ d.onPass }}" placeholder="enter password" spellcheck="false" style="flex:1;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+                    <button onClick="{{ d.toggleShow }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 4px;" style-hover="color:#abb2bf;">{{ d.showLabel }}</button>
+                  </div>
+                </sc-if>
+                <span style="color:#5c6370;">ipv4</span>
+                <button onClick="{{ d.cycleIp }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#61afef;"><span style="color:#5c6370;">‹</span> {{ d.ipMode }} <span style="color:#5c6370;">›</span></button>
+                <sc-if value="{{ d.manual }}" hint-placeholder-val="{{ false }}">
+                  <span style="color:#5c6370;padding-left:12px;">address</span>
+                  <input value="{{ d.addr }}" onChange="{{ d.onAddr }}" spellcheck="false" style="background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+                  <span style="color:#5c6370;padding-left:12px;">gateway</span>
+                  <input value="{{ d.gw }}" onChange="{{ d.onGw }}" spellcheck="false" style="background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+                </sc-if>
+                <span style="color:#5c6370;">dns</span>
+                <input value="{{ d.dns }}" onChange="{{ d.onDns }}" spellcheck="false" style="background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+                <span style="color:#5c6370;">mac address</span>
+                <button onClick="{{ d.cycleMac }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#61afef;"><span style="color:#5c6370;">‹</span> {{ d.mac }} <span style="color:#5c6370;">›</span></button>
+                <span></span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px 18px;">
+                  <button onClick="{{ d.toggleAuto }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#61afef;"><span style="color:{{ d.autoColor }};">{{ d.autoBox }}</span> autoconnect</button>
+                  <button onClick="{{ d.toggleMetered }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#61afef;"><span style="color:{{ d.meteredColor }};">{{ d.meteredBox }}</span> metered</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px;">
+                <button onClick="{{ saveDraft }}" style="border:0;border-radius:2px;background:#61afef;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">{{ saveLabel }}</button>
+                <button onClick="{{ backMain }}" style="border:0;border-radius:2px;background:transparent;color:#abb2bf;cursor:pointer;padding:1px 10px;" style-hover="background:#404754;">&lt; cancel &gt;</button>
+                <sc-if value="{{ d.canForget }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ forgetDraft }}" style="margin-left:auto;border:0;border-radius:2px;background:transparent;color:#ef596f;cursor:pointer;padding:1px 10px;" style-hover="background:#404754;">&lt; forget &gt;</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isHotspot }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 12px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#d19a66;">hotspot</span>
+              <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ hsStatusColor }};">{{ hsStatus }}</span>
+              <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 12px;align-items:center;">
+                <span style="color:#5c6370;">name</span>
+                <input value="{{ hs.ssid }}" onChange="{{ hsOnSsid }}" disabled="{{ hs.on }}" spellcheck="false" style="background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#d19a66;background:#2c313c;"></input>
+                <span style="color:#5c6370;">security</span>
+                <button onClick="{{ hsCycleSec }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#d19a66;"><span style="color:#5c6370;">‹</span> {{ hs.sec }} <span style="color:#5c6370;">›</span></button>
+                <span style="color:#5c6370;">password</span>
+                <div style="display:flex;gap:8px;min-width:0;">
+                  <input type="{{ hsPassType }}" value="{{ hs.pass }}" onChange="{{ hsOnPass }}" disabled="{{ hs.on }}" spellcheck="false" style="flex:1;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;min-width:0;" style-focus="border-bottom-color:#d19a66;background:#2c313c;"></input>
+                  <button onClick="{{ hsToggleShow }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 4px;" style-hover="color:#abb2bf;">{{ hsShowLabel }}</button>
+                </div>
+                <span style="color:#5c6370;">band</span>
+                <button onClick="{{ hsCycleBand }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#d19a66;"><span style="color:#5c6370;">‹</span> {{ hs.band }} <span style="color:#5c6370;">›</span></button>
+                <span style="color:#5c6370;">share from</span>
+                <button onClick="{{ hsCycleShare }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#d19a66;"><span style="color:#5c6370;">‹</span> {{ hs.share }} <span style="color:#5c6370;">›</span></button>
+                <span></span>
+                <button onClick="{{ hsToggleHidden }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#d19a66;"><span style="color:{{ hsHiddenColor }};">{{ hsHiddenBox }}</span> hidden network</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
+                <button onClick="{{ hsToggle }}" style="border:0;border-radius:2px;background:{{ hsBtnBg }};color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">{{ hsBtnLabel }}</button>
+                <span style="color:#5c6370;">{{ hsNote }}</span>
+              </div>
+            </div>
+            <sc-if value="{{ hs.on }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#d19a66;">clients ({{ hsClientCount }})</span>
+                <sc-for list="{{ hsClients }}" as="c" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 100px 140px 40px;gap:8px;padding:1px 8px;">
+                    <span style="color:#abb2bf;">{{ c.name }}</span>
+                    <span style="color:#abb2bf;">{{ c.ip }}</span>
+                    <span style="color:#5c6370;">{{ c.mac }}</span>
+                    <span style="color:#5c6370;text-align:right;">{{ c.since }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ hints }}" as="h" hint-placeholder-count="5">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="Bluetooth dropdown" style="position:absolute;top:36px;right:200px;width:480px;z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ btClip }};pointer-events:{{ btPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:relative;background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">bluetooth</span>
+              <span style="color:#5c6370;">─ hci0 ─</span>
+              <span style="color:{{ btStatusColor }};">{{ btStatus }}</span>
+            </div>
+            <div style="display:flex;gap:2px;">
+              <button onClick="{{ btTogglePower }}" style="border:0;border-radius:2px;padding:0 8px;cursor:pointer;background:{{ btPowerBg }};color:{{ btPowerColor }};" style-hover="color:#abb2bf;"><span style="color:#e5c07b;">p</span> power</button>
+              <button onClick="{{ btToggleVisible }}" style="border:0;border-radius:2px;padding:0 8px;cursor:pointer;background:{{ btVisBg }};color:{{ btVisColor }};" style-hover="color:#abb2bf;"><span style="color:#e5c07b;">v</span> visible</button>
+              <button onClick="{{ closeBt }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+            </div>
+          </div>
+
+          <sc-if value="{{ btOff }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid #404754;border-radius:2px;padding:18px 12px;margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <span style="color:#5c6370;">○ adapter is powered off</span>
+              <button onClick="{{ btTogglePower }}" style="border:0;border-radius:2px;background:#61afef;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">&lt; power on &gt;</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ btOn }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;border:1px solid {{ btPairedBorder }};border-radius:2px;padding:12px 4px 6px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ btPairedLegend }};">devices ({{ btPairedCount }})</span>
+              <sc-for list="{{ btPairedRows }}" as="r" hint-placeholder-count="4">
+                <div onClick="{{ r.select }}" onDoubleClick="{{ r.toggle }}" style="display:grid;grid-template-columns:14px 20px minmax(0,1fr) 124px 40px;gap:6px;align-items:center;padding:1px 8px;cursor:pointer;background:{{ r.bg }};border-radius:2px;" style-hover="background:#2f343e;">
+                  <span style="color:#61afef;">{{ r.marker }}</span>
+                  <i class="{{ r.icon }}" style="color:{{ r.iconColor }};font-size:14px;"></i>
+                  <span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</span>
+                  <span style="color:{{ r.statusColor }};white-space:nowrap;">{{ r.status }}</span>
+                  <span style="color:{{ r.batColor }};text-align:right;">{{ r.bat }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ btHasCur }}" hint-placeholder-val="{{ true }}">
+                <div style="margin:8px 8px 2px;padding-top:8px;border-top:1px dashed #404754;">
+                  <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:1px 12px;">
+                    <sc-for list="{{ btInfo }}" as="kv" hint-placeholder-count="6">
+                      <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:{{ kv.c }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ kv.v }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:2px;margin-top:8px;margin-left:-6px;">
+                    <button onClick="{{ btCurToggle }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;border-radius:2px;" style-hover="background:#404754;">[<span style="color:#e5c07b;">c</span>]{{ btCurToggleLabel }}</button>
+                    <button onClick="{{ btCurTrust }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;border-radius:2px;" style-hover="background:#404754;">[<span style="color:#e5c07b;">t</span>]{{ btCurTrustLabel }}</button>
+                    <button onClick="{{ btCurForget }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;border-radius:2px;" style-hover="background:#404754;color:#ef596f;">[<span style="color:#e5c07b;">f</span>]orget</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="position:relative;border:1px solid {{ btNearBorder }};border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ btNearLegend }};">nearby ({{ btNearCount }})</span>
+              <button onClick="{{ btToggleScan }}" style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;border:0;cursor:pointer;color:#5c6370;line-height:1.4;" style-hover="color:#abb2bf;">{{ btScanLabel }}</button>
+              <sc-for list="{{ btNearRows }}" as="r" hint-placeholder-count="4">
+                <div onClick="{{ r.select }}" onDoubleClick="{{ r.pair }}" style="display:grid;grid-template-columns:14px 20px minmax(0,1fr) 70px 36px 56px;gap:6px;align-items:center;padding:1px 8px;cursor:pointer;background:{{ r.bg }};border-radius:2px;" style-hover="background:#2f343e;">
+                  <span style="color:#61afef;">{{ r.marker }}</span>
+                  <i class="{{ r.icon }}" style="color:#5c6370;font-size:14px;"></i>
+                  <span style="color:{{ r.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</span>
+                  <span style="color:#5c6370;">{{ r.kind }}</span>
+                  <span><span style="color:{{ r.sigColor }};">{{ r.strong }}</span><span style="color:#404754;">{{ r.weak }}</span></span>
+                  <span style="text-align:right;">
+                    <sc-if value="{{ r.isSel }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ r.pair }}" style="border:0;background:transparent;color:#89ca78;cursor:pointer;padding:0 4px;border-radius:2px;" style-hover="background:#404754;">[pair]</button>
+                    </sc-if>
+                  </span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ btNearEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#5c6370;padding:2px 8px;">{{ btNearEmptyText }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ btHints }}" as="h" hint-placeholder-count="5">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ btPairing }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;border-radius:0 0 16px 16px;background:rgba(30,33,39,0.82);display:grid;place-items:center;padding:16px;">
+              <div style="position:relative;width:100%;max-width:360px;box-sizing:border-box;background:#282c34;border:1px solid {{ pr.border }};border-radius:2px;padding:16px 16px 12px;box-shadow:0 0 0 4px #282c34, 0 12px 28px rgba(0,0,0,0.45);">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ pr.border }};">{{ pr.title }}</span>
+                <sc-if value="{{ pr.showTimer }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ pr.left }}s</span>
+                </sc-if>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <i class="{{ pr.icon }}" style="color:#abb2bf;font-size:16px;"></i>
+                  <span style="color:#abb2bf;font-weight:500;">{{ pr.name }}</span>
+                  <span style="color:#5c6370;">{{ pr.mac }}</span>
+                </div>
+                <div style="color:{{ pr.msgColor }};text-wrap:pretty;">{{ pr.msg }}</div>
+                <sc-if value="{{ pr.showCode }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;justify-content:center;gap:6px;margin:14px 0 10px;">
+                    <sc-for list="{{ pr.digits }}" as="dg" hint-placeholder-count="6">
+                      <span style="width:30px;height:38px;display:grid;place-items:center;border:1px solid {{ dg.border }};border-radius:2px;color:{{ dg.color }};font-size:22px;font-weight:500;margin-right:{{ dg.gap }};">{{ dg.ch }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="text-align:center;margin-bottom:10px;"><span style="color:{{ pr.barColor }};">{{ pr.barOn }}</span><span style="color:#404754;">{{ pr.barOff }}</span></div>
+                </sc-if>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                  <sc-if value="{{ pr.canConfirm }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ btConfirm }}" style="border:0;border-radius:2px;background:#89ca78;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">&lt; <span>y</span> codes match &gt;</button>
+                  </sc-if>
+                  <sc-if value="{{ pr.canRetry }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ btRetry }}" style="border:0;border-radius:2px;background:#61afef;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">&lt; r retry &gt;</button>
+                  </sc-if>
+                  <sc-if value="{{ pr.canCancel }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ btCancelPair }}" style="border:0;border-radius:2px;background:transparent;color:#ef596f;cursor:pointer;padding:1px 10px;" style-hover="background:#404754;">&lt; {{ pr.cancelLabel }} &gt;</button>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div data-screen-label="Audio dropdown" style="position:absolute;top:36px;right:96px;width:560px;z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ aClip }};pointer-events:{{ aPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:relative;background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">audio</span>
+              <span style="color:#5c6370;">─ pipewire 1.2.7 ─</span>
+              <span style="color:#89ca78;">● running</span>
+            </div>
+            <div style="display:flex;gap:2px;">
+              <sc-for list="{{ aTabs }}" as="t" hint-placeholder-count="2">
+                <button onClick="{{ t.go }}" style="border:0;border-radius:2px;padding:0 8px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};" style-hover="color:#abb2bf;"><span style="color:#e5c07b;">{{ t.key }}</span> {{ t.label }}</button>
+              </sc-for>
+              <button onClick="{{ closeAudio }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+            </div>
+          </div>
+
+          <sc-if value="{{ aIsDevices }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;border:1px solid {{ aOutBorder }};border-radius:2px;padding:12px 4px 6px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ aOutLegend }};">output</span>
+              <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">default ─ {{ aDefSinkName }}</span>
+              <sc-for list="{{ aOutRows }}" as="r" hint-placeholder-count="4">
+                <div onClick="{{ r.select }}" style="padding:1px 8px;border-radius:2px;background:{{ r.bg }};cursor:pointer;" style-hover="background:#2f343e;">
+                  <div style="display:grid;grid-template-columns:14px 26px minmax(0,1fr) 152px 38px 20px;gap:6px;align-items:center;">
+                    <span style="color:#61afef;">{{ r.marker }}</span>
+                    <button onClick="{{ r.makeDefault }}" title="Set as default" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.radioColor }};text-align:left;" style-hover="color:#61afef;">{{ r.radio }}</button>
+                    <span style="color:{{ r.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</span>
+                    <div onMouseDown="{{ r.setVol }}" onMouseMove="{{ r.dragVol }}" style="cursor:ew-resize;white-space:nowrap;user-select:none;overflow:hidden;"><span style="color:{{ r.barColor }};">{{ r.on }}</span><span style="color:#404754;">{{ r.off }}</span></div>
+                    <span style="color:{{ r.pctColor }};text-align:right;">{{ r.pct }}</span>
+                    <button onClick="{{ r.toggleMute }}" title="Mute (m)" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.muteColor }};display:grid;place-items:center;" style-hover="color:#abb2bf;"><i class="{{ r.muteIcon }}" style="font-size:13px;"></i></button>
+                  </div>
+                  <sc-if value="{{ r.isSel }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding-left:46px;color:#5c6370;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.sub }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="position:relative;border:1px solid {{ aInBorder }};border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ aInLegend }};">input</span>
+              <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">default ─ {{ aDefSourceName }}</span>
+              <sc-for list="{{ aInRows }}" as="r" hint-placeholder-count="3">
+                <div onClick="{{ r.select }}" style="padding:1px 8px;border-radius:2px;background:{{ r.bg }};cursor:pointer;" style-hover="background:#2f343e;">
+                  <div style="display:grid;grid-template-columns:14px 26px minmax(0,1fr) 152px 38px 20px;gap:6px;align-items:center;">
+                    <span style="color:#61afef;">{{ r.marker }}</span>
+                    <button onClick="{{ r.makeDefault }}" title="Set as default" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.radioColor }};text-align:left;" style-hover="color:#61afef;">{{ r.radio }}</button>
+                    <span style="color:{{ r.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</span>
+                    <div onMouseDown="{{ r.setVol }}" onMouseMove="{{ r.dragVol }}" style="cursor:ew-resize;white-space:nowrap;user-select:none;overflow:hidden;"><span style="color:{{ r.barColor }};">{{ r.on }}</span><span style="color:#404754;">{{ r.off }}</span></div>
+                    <span style="color:{{ r.pctColor }};text-align:right;">{{ r.pct }}</span>
+                    <button onClick="{{ r.toggleMute }}" title="Mute (m)" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ r.muteColor }};display:grid;place-items:center;" style-hover="color:#abb2bf;"><i class="{{ r.muteIcon }}" style="font-size:13px;"></i></button>
+                  </div>
+                  <sc-if value="{{ r.isSel }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding-left:46px;color:#5c6370;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.sub }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="display:flex;align-items:center;gap:10px;margin:6px 8px 2px;padding-top:7px;border-top:1px dashed #404754;">
+                <span style="color:#5c6370;">level</span>
+                <div style="display:flex;gap:2px;">
+                  <sc-for list="{{ aLevelCells }}" as="c" hint-placeholder-count="28">
+                    <span style="width:7px;height:10px;border-radius:1px;background:{{ c.bg }};"></span>
+                  </sc-for>
+                </div>
+                <span style="color:#5c6370;white-space:nowrap;">{{ aLevelDb }}</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ aIsCards }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:8px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#61afef;">cards ({{ aCardCount }})</span>
+              <sc-for list="{{ aCardRows }}" as="r" hint-placeholder-count="3">
+                <div onClick="{{ r.select }}" style="display:grid;grid-template-columns:14px 20px minmax(0,1fr) 56px minmax(0,190px);gap:6px;align-items:center;padding:1px 8px;cursor:pointer;background:{{ r.bg }};border-radius:2px;" style-hover="background:#2f343e;">
+                  <span style="color:#61afef;">{{ r.marker }}</span>
+                  <i class="{{ r.icon }}" style="color:{{ r.iconColor }};font-size:14px;"></i>
+                  <span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</span>
+                  <span style="color:#5c6370;">{{ r.api }}</span>
+                  <span style="color:{{ r.profileColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;">{{ r.profile }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 12px;margin-top:16px;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#e5c07b;">settings ─ {{ c.name }}</span>
+              <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:3px 12px;align-items:start;">
+                <span style="color:#5c6370;">node</span>
+                <span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.node }}</span>
+                <span style="color:#5c6370;">driver</span>
+                <span style="color:#abb2bf;">{{ c.driver }} <span style="color:#5c6370;">· {{ c.bus }} · {{ c.api }}</span></span>
+                <span style="color:#5c6370;">profile</span>
+                <button onClick="{{ aCycProfile }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;text-align:left;" style-hover="color:#e5c07b;"><span style="color:#5c6370;">‹</span> {{ c.profile }} <span style="color:#5c6370;">›</span></button>
+                <span style="color:#5c6370;">sample rate</span>
+                <button onClick="{{ aCycRate }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#e5c07b;"><span style="color:#5c6370;">‹</span> {{ c.rate }} Hz <span style="color:#5c6370;">›</span></button>
+                <span style="color:#5c6370;">quantum</span>
+                <span style="display:flex;gap:10px;align-items:center;">
+                  <button onClick="{{ aCycQuantum }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#e5c07b;"><span style="color:#5c6370;">‹</span> {{ c.quantum }} <span style="color:#5c6370;">›</span></button>
+                  <span style="color:{{ aLatencyColor }};">{{ aLatency }} ms</span>
+                </span>
+                <span style="color:#5c6370;">format</span>
+                <span style="color:#abb2bf;">{{ c.format }} <span style="color:#5c6370;">· {{ c.channels }}</span></span>
+                <sc-if value="{{ aHasCodec }}" hint-placeholder-val="{{ false }}">
+                  <span style="color:#5c6370;">codec</span>
+                  <span style="color:#d55fde;">{{ aCodec }}</span>
+                </sc-if>
+                <span style="color:#5c6370;padding-top:6px;">output ports</span>
+                <div style="display:flex;flex-direction:column;padding-top:6px;">
+                  <sc-for list="{{ aOutPorts }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.pick }}" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;color:{{ p.nameColor }};display:flex;gap:8px;" style-hover="color:#e5c07b;"><span style="color:{{ p.radioColor }};">{{ p.radio }}</span><span>{{ p.name }}</span><span style="color:#5c6370;">{{ p.note }}</span></button>
+                  </sc-for>
+                  <sc-if value="{{ aNoOutPorts }}" hint-placeholder-val="{{ false }}"><span style="color:#5c6370;">— none in this profile</span></sc-if>
+                </div>
+                <span style="color:#5c6370;padding-top:4px;">input ports</span>
+                <div style="display:flex;flex-direction:column;padding-top:4px;">
+                  <sc-for list="{{ aInPorts }}" as="p" hint-placeholder-count="1">
+                    <button onClick="{{ p.pick }}" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;color:{{ p.nameColor }};display:flex;gap:8px;" style-hover="color:#e5c07b;"><span style="color:{{ p.radioColor }};">{{ p.radio }}</span><span>{{ p.name }}</span><span style="color:#5c6370;">{{ p.note }}</span></button>
+                  </sc-for>
+                  <sc-if value="{{ aNoInPorts }}" hint-placeholder-val="{{ false }}"><span style="color:#5c6370;">— none in this profile</span></sc-if>
+                </div>
+                <span></span>
+                <button onClick="{{ aToggleSuspend }}" style="justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:6px 0 0;" style-hover="color:#e5c07b;"><span style="color:{{ aSuspendColor }};">{{ aSuspendBox }}</span> suspend when idle</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ aHints }}" as="h" hint-placeholder-count="6">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div data-screen-label="System monitor" style="position:absolute;top:36px;right:12px;width:min(900px, calc(100vw - 24px));z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ sysClip }};pointer-events:{{ sysPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:relative;background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">system</span>
+              <span style="color:#5c6370;">─ coel@archlinux ─</span>
+              <span style="color:#abb2bf;">up {{ sysUptime }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="color:#5c6370;">load <span style="color:#abb2bf;">{{ sysLoad }}</span></span>
+              <button onClick="{{ closeSys }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+            </div>
+          </div>
+
+          <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 10px;margin-top:8px;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#89ca78;">cpu ─ AMD Ryzen 7 7840U</span>
+            <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;"><span style="color:{{ tempColor }};">{{ cpuTemp }}°C</span> · {{ cpuFreq }} GHz</span>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:stretch;">
+              <div style="position:relative;height:84px;display:flex;align-items:flex-end;gap:1px;border-bottom:1px solid #404754;">
+                <sc-for list="{{ cpuCols }}" as="c" hint-placeholder-count="60">
+                  <div style="flex:1;min-width:0;height:{{ c.h }};background:{{ c.bg }};border-radius:1px 1px 0 0;"></div>
+                </sc-for>
+                <span style="position:absolute;top:0;left:0;padding:0 6px 0 0;background:#282c34;color:#abb2bf;">total <span style="color:{{ cpuTotalColor }};font-weight:500;">{{ cpu }}%</span></span>
+                <span style="position:absolute;top:0;right:0;padding:0 0 0 6px;background:#282c34;color:#5c6370;font-size:11px;">60s</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 14px;align-content:center;">
+                <sc-for list="{{ coreRows }}" as="c" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:22px minmax(0,1fr) 34px;gap:6px;align-items:center;">
+                    <span style="color:#5c6370;">{{ c.l }}</span>
+                    <span style="white-space:nowrap;overflow:hidden;"><span style="color:{{ c.color }};">{{ c.on }}</span><span style="color:#404754;">{{ c.off }}</span></span>
+                    <span style="color:#abb2bf;text-align:right;">{{ c.pct }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;margin-top:16px;align-items:stretch;">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 10px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#61afef;">memory</span>
+                <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ memHead }}</span>
+                <div style="display:flex;height:8px;border-radius:1px;overflow:hidden;background:#353b45;margin-bottom:8px;">
+                  <div style="width:{{ memUsedW }};background:#61afef;"></div>
+                  <div style="width:{{ memCacheW }};background:#2bbac5;opacity:0.55;"></div>
+                </div>
+                <sc-for list="{{ memRows }}" as="m" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:62px minmax(0,1fr) 54px;gap:8px;align-items:center;">
+                    <span style="color:#5c6370;">{{ m.k }}</span>
+                    <span style="white-space:nowrap;overflow:hidden;"><span style="color:{{ m.color }};">{{ m.on }}</span><span style="color:#404754;">{{ m.off }}</span></span>
+                    <span style="color:#abb2bf;text-align:right;">{{ m.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 8px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#e5c07b;">disks</span>
+                <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ diskHead }}</span>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <sc-for list="{{ diskRows }}" as="d" hint-placeholder-count="4">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span style="color:#abb2bf;">{{ d.mount }}</span> <span style="color:#5c6370;">{{ d.meta }}</span></span>
+                        <span style="color:{{ d.freeColor }};white-space:nowrap;">{{ d.free }} free</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;">
+                        <span style="white-space:nowrap;overflow:hidden;"><span style="color:{{ d.color }};">{{ d.on }}</span><span style="color:#404754;">{{ d.off }}</span></span>
+                        <span style="color:#5c6370;">{{ d.used }}/{{ d.total }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 8px;">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#2bbac5;">net ─ wlan0</span>
+                <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ netHead }}</span>
+                <div style="display:flex;justify-content:space-between;"><span><span style="color:#2bbac5;">↓</span> <span style="color:#abb2bf;">{{ netDown }}</span></span><span style="color:#5c6370;">rx {{ netRx }}</span></div>
+                <div style="height:26px;display:flex;align-items:flex-end;gap:1px;margin:2px 0 6px;">
+                  <sc-for list="{{ downCols }}" as="c" hint-placeholder-count="40">
+                    <div style="flex:1;min-width:0;height:{{ c.h }};background:#2bbac5;opacity:{{ c.o }};"></div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;justify-content:space-between;"><span><span style="color:#d55fde;">↑</span> <span style="color:#abb2bf;">{{ netUp }}</span></span><span style="color:#5c6370;">tx {{ netTx }}</span></div>
+                <div style="height:26px;display:flex;align-items:flex-end;gap:1px;margin-top:2px;">
+                  <sc-for list="{{ upCols }}" as="c" hint-placeholder-count="40">
+                    <div style="flex:1;min-width:0;height:{{ c.h }};background:#d55fde;opacity:{{ c.o }};"></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:relative;border:1px solid #4b5263;border-radius:2px;padding:14px 4px 6px;display:flex;flex-direction:column;min-width:0;">
+              <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#61afef;">processes ({{ procCount }})</span>
+              <button onClick="{{ sysCycleSort }}" style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;border:0;cursor:pointer;color:#5c6370;line-height:1.4;" style-hover="color:#abb2bf;">[<span style="color:#e5c07b;">s</span>] sort: {{ sortLabel }}</button>
+              <div style="display:flex;align-items:center;gap:8px;margin:0 8px 6px;">
+                <span style="color:#e5c07b;">/</span>
+                <input ref="{{ sysRef }}" value="{{ sysQuery }}" onChange="{{ sysOnQuery }}" placeholder="filter by name, command, user or pid" spellcheck="false" style="flex:1;min-width:0;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:2px 6px;outline:none;" style-focus="border-bottom-color:#e5c07b;background:#2c313c;"></input>
+                <sc-if value="{{ sysHasQuery }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ sysClearQuery }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 4px;" style-hover="color:#abb2bf;">[clear]</button>
+                </sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:14px 52px minmax(0,1fr) 52px 34px 56px 50px;gap:6px;padding:0 8px 2px;">
+                <span></span>
+                <sc-for list="{{ procCols }}" as="h" hint-placeholder-count="6">
+                  <button onClick="{{ h.sort }}" style="border:0;background:transparent;padding:0;cursor:pointer;color:{{ h.color }};text-align:{{ h.align }};" style-hover="color:#abb2bf;">{{ h.label }}</button>
+                </sc-for>
+              </div>
+              <div style="height:318px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#404754 transparent;">
+                <sc-for list="{{ procRows }}" as="p" hint-placeholder-count="15">
+                  <div onClick="{{ p.select }}" onDoubleClick="{{ p.kill }}" style="display:grid;grid-template-columns:14px 52px minmax(0,1fr) 52px 34px 56px 50px;gap:6px;align-items:center;padding:0 8px;border-radius:2px;background:{{ p.bg }};cursor:pointer;" style-hover="background:#2f343e;">
+                    <span style="color:#61afef;">{{ p.marker }}</span>
+                    <span style="color:#5c6370;text-align:right;">{{ p.pid }}</span>
+                    <span style="color:{{ p.nameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.name }}</span>
+                    <span style="color:{{ p.userColor }};">{{ p.user }}</span>
+                    <span style="color:#5c6370;text-align:right;">{{ p.thr }}</span>
+                    <span style="color:#abb2bf;text-align:right;">{{ p.mem }}</span>
+                    <span style="color:{{ p.cpuColor }};text-align:right;">{{ p.cpu }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ procEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="color:#5c6370;padding:4px 8px;">no processes match “{{ sysQuery }}”</div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ procHasSel }}" hint-placeholder-val="{{ true }}">
+                <div style="margin:6px 8px 0;padding-top:6px;border-top:1px dashed #404754;display:flex;align-items:center;gap:10px;min-width:0;">
+                  <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5c6370;"><span style="color:#abb2bf;">{{ sel.name }}</span> · {{ sel.state }} · {{ sel.cmd }}</span>
+                  <button onClick="{{ sysAskKill }}" style="border:0;border-radius:2px;background:transparent;color:#ef596f;cursor:pointer;padding:0 6px;white-space:nowrap;" style-hover="background:#404754;">[<span style="color:#e5c07b;">x</span>] kill</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ sysHints }}" as="h" hint-placeholder-count="6">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ sysKilling }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;border-radius:0 0 16px 16px;background:rgba(30,33,39,0.82);display:grid;place-items:center;padding:16px;">
+              <div style="position:relative;width:100%;max-width:380px;box-sizing:border-box;background:#282c34;border:1px solid #ef596f;border-radius:2px;padding:16px 16px 12px;box-shadow:0 0 0 4px #282c34, 0 12px 28px rgba(0,0,0,0.45);">
+                <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#ef596f;">⚠ end process</span>
+                <div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:#abb2bf;font-weight:500;">{{ kill.name }}</span><span style="color:#5c6370;">pid {{ kill.pid }} · {{ kill.user }}</span></div>
+                <div style="color:#abb2bf;text-wrap:pretty;">{{ kill.msg }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+                  <button onClick="{{ sysTerm }}" style="border:0;border-radius:2px;background:#e5c07b;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">&lt; y SIGTERM &gt;</button>
+                  <button onClick="{{ sysKill9 }}" style="border:0;border-radius:2px;background:#ef596f;color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;" style-hover="background:#abb2bf;">&lt; K SIGKILL &gt;</button>
+                  <button onClick="{{ sysCancelKill }}" style="border:0;border-radius:2px;background:transparent;color:#abb2bf;cursor:pointer;padding:1px 10px;" style-hover="background:#404754;">&lt; n cancel &gt;</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div data-screen-label="Power dropdown" style="position:absolute;top:36px;right:8px;width:min(470px, calc(100vw - 24px));z-index:9;transition:clip-path 0.24s cubic-bezier(0.2,0.8,0.2,1);clip-path:{{ pwrClip }};pointer-events:{{ pwrPe }};font-size:12.5px;line-height:1.55;">
+        <div style="position:absolute;top:0;left:-14px;width:14px;height:14px;background:radial-gradient(circle at 0 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:absolute;top:0;right:-14px;width:14px;height:14px;background:radial-gradient(circle at 100% 100%, transparent 13.5px, #282c34 14px);"></div>
+        <div style="position:relative;background:#282c34;border-radius:0 0 16px 16px;padding:6px 16px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="color:#61afef;font-weight:500;">power</span>
+              <span style="color:#5c6370;">─ BAT0 ─</span>
+              <span style="color:{{ pwrStateColor }};">{{ pwrState }}</span>
+            </div>
+            <button onClick="{{ closePwr }}" title="Close (esc)" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+          </div>
+
+          <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:16px 12px 10px;margin-top:8px;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ pwrStateColor }};">battery</span>
+            <button onClick="{{ pwrToggleAc }}" title="Adapter (a)" style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;border:0;cursor:pointer;color:#5c6370;line-height:1.4;" style-hover="color:#abb2bf;">{{ acLabel }}</button>
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="display:flex;align-items:center;">
+                <div style="display:flex;gap:2px;padding:3px;border:1px solid #5c6370;border-radius:3px;">
+                  <sc-for list="{{ batCells }}" as="c" hint-placeholder-count="20">
+                    <span style="width:6px;height:18px;border-radius:1px;background:{{ c.bg }};"></span>
+                  </sc-for>
+                </div>
+                <span style="width:3px;height:10px;background:#5c6370;border-radius:0 2px 2px 0;"></span>
+              </div>
+              <div style="display:flex;flex-direction:column;line-height:1.3;min-width:0;">
+                <span style="color:#abb2bf;font-size:20px;font-weight:500;">{{ battery }}%</span>
+                <span style="color:{{ etaColor }};white-space:nowrap;">{{ etaText }}</span>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;">
+              <span style="color:#5c6370;">{{ rateLabel }}</span>
+              <span><span style="color:{{ rateColor }};font-weight:500;">{{ rateNow }}</span> <span style="color:#5c6370;">· avg {{ rateAvg }}</span></span>
+            </div>
+            <div style="position:relative;height:44px;display:flex;align-items:flex-end;gap:1px;margin-top:4px;border-bottom:1px solid #404754;">
+              <sc-for list="{{ wCols }}" as="c" hint-placeholder-count="60">
+                <div style="flex:1;min-width:0;height:{{ c.h }};background:{{ c.bg }};opacity:{{ c.o }};border-radius:1px 1px 0 0;"></div>
+              </sc-for>
+              <span style="position:absolute;top:0;right:0;padding-left:6px;background:#282c34;color:#5c6370;font-size:11px;">{{ wMaxLabel }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:1px 12px;margin-top:8px;">
+              <sc-for list="{{ batInfo }}" as="kv" hint-placeholder-count="6">
+                <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:{{ kv.c }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ kv.v }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:16px;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#e5c07b;">power mode</span>
+            <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">power-profiles-daemon</span>
+            <sc-for list="{{ profRows }}" as="p" hint-placeholder-count="3">
+              <div onClick="{{ p.pick }}" style="display:grid;grid-template-columns:14px 26px 20px minmax(0,1fr) auto;gap:6px;align-items:center;padding:3px 8px;border-radius:2px;background:{{ p.bg }};cursor:pointer;" style-hover="background:#2f343e;">
+                <span style="color:#61afef;">{{ p.marker }}</span>
+                <span style="color:{{ p.radioColor }};">{{ p.radio }}</span>
+                <i class="{{ p.icon }}" style="color:{{ p.iconColor }};font-size:14px;"></i>
+                <span style="min-width:0;"><span style="color:{{ p.nameColor }};">{{ p.name }}</span> <span style="color:#5c6370;">{{ p.desc }}</span></span>
+                <span style="color:#5c6370;white-space:nowrap;">{{ p.est }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 12px 10px;margin-top:16px;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#5c6370;">utilities</span>
+            <div style="display:grid;grid-template-columns:90px minmax(0,1fr) 40px;gap:6px 10px;align-items:center;">
+              <span style="color:#5c6370;">brightness</span>
+              <div onMouseDown="{{ briSet }}" onMouseMove="{{ briDrag }}" style="cursor:ew-resize;white-space:nowrap;overflow:hidden;user-select:none;"><span style="color:#e5c07b;">{{ bri.on }}</span><span style="color:#404754;">{{ bri.off }}</span></div>
+              <span style="color:#abb2bf;text-align:right;">{{ bri.pct }}</span>
+              <span style="color:#5c6370;">charge limit</span>
+              <button onClick="{{ pwrToggleLimit }}" style="grid-column:span 2;justify-self:start;border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:0;" style-hover="color:#e5c07b;"><span style="color:{{ limitColor }};">{{ limitBox }}</span> stop at 80% <span style="color:#5c6370;">· longer lifespan</span></button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;padding-top:10px;border-top:1px dashed #404754;">
+              <sc-for list="{{ sessRows }}" as="a" hint-placeholder-count="5">
+                <button onClick="{{ a.run }}" title="{{ a.title }}" style="display:flex;align-items:center;gap:6px;border:1px solid {{ a.border }};border-radius:2px;background:transparent;color:{{ a.color }};cursor:pointer;padding:1px 8px;" style-hover="background:#404754;"><i class="{{ a.icon }}" style="font-size:13px;"></i>{{ a.label }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ sessHasMsg }}" hint-placeholder-val="{{ false }}">
+              <div style="color:#5c6370;margin-top:6px;">{{ sessMsg }}</div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:12px;color:#5c6370;">
+            <sc-for list="{{ pwrHints }}" as="h" hint-placeholder-count="5">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-screen-label="Desktop" style="flex:1;min-height:0;margin:{{ frameMargin }};border-radius:{{ frameRadius }};background:radial-gradient(120% 90% at 30% 20%, #2c313c 0%, #1e2127 60%, #1a1d23 100%);box-shadow:inset 0 0 0 1px #404754, inset 0 6px 18px rgba(0,0,0,0.35);"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;clockFormat&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Day @ 12h&quot;,&quot;Day @ 24h&quot;,&quot;Date · 12h&quot;],&quot;default&quot;:&quot;Day @ 12h&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;numbers&quot;,&quot;dots&quot;],&quot;default&quot;:&quot;numbers&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:3,&quot;max&quot;:9,&quot;default&quot;:5,&quot;tsType&quot;:&quot;number&quot;},&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:24,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:8,&quot;tsType&quot;:&quot;number&quot;},&quot;cornerRadius&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:32,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;activeUnderline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = {
+    active: 2, occupied: [1, 2, 3, 4, 5], now: new Date(), cpu: 1, muted: false, ...this.sysSeed(), ...this.pwrSeed(), calOpen: false, calY: new Date().getFullYear(), calM: new Date().getMonth(), calSel: this.dkey(new Date()), calFocus: 'cal', tdSel: 0, tdDraft: '', todos: this.seedTodos(),
+    audioOpen: false, aView: 'devices', aFocus: 'out', aOutSel: 0, aInSel: 0, aCardSel: 0, level: 0.3, defSink: 57, defSource: 64,
+    sinks: [
+      { id: 48, name: 'Built-in Speakers', node: 'alsa_output.pci-0000_00_1f.3.analog-stereo', card: 0, vol: 62, mute: false, req: null },
+      { id: 57, name: 'WH-1000XM5', node: 'bluez_output.88_C9_E8_4A_21_0F.1', card: 1, vol: 45, mute: false, req: null },
+      { id: 63, name: 'Scarlett 2i2 · Out 1–2', node: 'alsa_output.usb-Focusrite_Scarlett_2i2_USB-00.pro-output-0', card: 2, vol: 80, mute: false, req: null },
+      { id: 71, name: 'HDMI / DisplayPort 1', node: 'alsa_output.pci-0000_00_1f.3.hdmi-stereo', card: 0, vol: 100, mute: false, req: 'hdmi' },
+    ],
+    sources: [
+      { id: 49, name: 'Built-in Digital Mic', node: 'alsa_input.pci-0000_00_1f.3.analog-stereo', card: 0, vol: 70, mute: false, req: null },
+      { id: 58, name: 'WH-1000XM5 Mic', node: 'bluez_input.88_C9_E8_4A_21_0F.0', card: 1, vol: 60, mute: false, req: 'headset' },
+      { id: 64, name: 'Scarlett 2i2 · In 1–2', node: 'alsa_input.usb-Focusrite_Scarlett_2i2_USB-00.pro-input-0', card: 2, vol: 55, mute: false, req: 'duplex' },
+    ],
+    cards: [
+      { name: 'Built-in Audio', icon: 'ph-cpu', node: 'alsa_card.pci-0000_00_1f.3', driver: 'snd_hda_intel', bus: 'pci', api: 'alsa', profile: 'HiFi (Speaker, Mic, HDMI)', profiles: ['HiFi (Speaker, Mic, HDMI)', 'HiFi (Speaker, Mic)', 'Pro Audio', 'Off'], rates: [44100, 48000, 96000], rate: 48000, quantum: 1024, format: 'S32LE', channels: '2ch · FL FR', suspend: true,
+        ports: [{ dir: 'out', name: 'Speaker', avail: true, active: true }, { dir: 'out', name: 'Headphones', avail: false }, { dir: 'out', name: 'HDMI 1', avail: true, hdmi: true }, { dir: 'in', name: 'Digital Mic', avail: true, active: true }, { dir: 'in', name: 'Headset Mic', avail: false }] },
+      { name: 'WH-1000XM5', icon: 'ph-headphones', node: 'bluez_card.88_C9_E8_4A_21_0F', driver: 'bluez5', bus: 'bluetooth', api: 'bluez5', profile: 'A2DP Sink (LDAC)', profiles: ['A2DP Sink (LDAC)', 'A2DP Sink (AAC)', 'A2DP Sink (SBC)', 'Headset Head Unit (mSBC)', 'Headset Head Unit (CVSD)', 'Off'], rates: [44100, 48000, 96000], rate: 96000, quantum: 1024, format: 'S24LE', channels: '2ch · FL FR', suspend: true,
+        ports: [{ dir: 'out', name: 'Headphone', avail: true, active: true }, { dir: 'in', name: 'Headset Mic', avail: true, active: true, headset: true }] },
+      { name: 'Scarlett 2i2 USB', icon: 'ph-usb', node: 'alsa_card.usb-Focusrite_Scarlett_2i2_USB-00', driver: 'snd_usb_audio', bus: 'usb', api: 'alsa', profile: 'Pro Audio', profiles: ['Pro Audio', 'Analog Stereo Duplex', 'Analog Stereo Output', 'Off'], rates: [44100, 48000, 88200, 96000, 176400, 192000], rate: 96000, quantum: 256, format: 'S32LE', channels: '2in · 2out', suspend: false,
+        ports: [{ dir: 'out', name: 'Line Out 1–2', avail: true, active: true }, { dir: 'in', name: 'Input 1 (XLR/TRS)', avail: true, active: true }, { dir: 'in', name: 'Input 2 (XLR/TRS)', avail: true }] },
+    ],
+    btOpen: false, btPower: true, btVisible: false, btScanning: true, btFocus: 'paired', btSel: 0, btNSel: 0, btBusy: null, btPair: null,
+    btPaired: [
+      { mac: '88:C9:E8:4A:21:0F', name: 'WH-1000XM5', kind: 'headphones', icon: 'ph-headphones', connected: true, battery: 72, trusted: true, profile: 'A2DP · LDAC', rssi: -48 },
+      { mac: 'D4:3E:7A:19:B2:C5', name: 'MX Master 3S', kind: 'mouse', icon: 'ph-mouse', connected: true, battery: 18, trusted: true, profile: 'HID · LE', rssi: -41 },
+      { mac: 'DC:2C:26:F1:04:8A', name: 'Keychron K2', kind: 'keyboard', icon: 'ph-keyboard', connected: false, battery: 64, trusted: true, profile: 'HID', rssi: null },
+      { mac: '5C:17:CF:0B:9E:33', name: 'Pixel 8', kind: 'phone', icon: 'ph-device-mobile', connected: false, battery: null, trusted: false, profile: 'PAN · OBEX', rssi: null },
+    ],
+    btNearby: [
+      { mac: 'F8:DF:15:6C:A0:11', name: 'JBL Flip 6', kind: 'speaker', icon: 'ph-speaker-hifi', rssi: -52, method: 'just-works', profile: 'A2DP · AAC' },
+      { mac: '2A:91:4E:D7:3C:08', name: "Mira's iPhone", kind: 'phone', icon: 'ph-device-mobile', rssi: -63, method: 'confirm', profile: 'PAN · OBEX' },
+      { mac: 'C8:4F:0E:22:7B:95', name: 'Logitech K380', kind: 'keyboard', icon: 'ph-keyboard', rssi: -70, method: 'type', profile: 'HID' },
+      { mac: '64:A2:F9:3D:5E:C0', name: 'Galaxy Buds2', kind: 'earbuds', icon: 'ph-headphones', rssi: -77, method: 'confirm', profile: 'A2DP · SSC' },
+      { mac: '3F:A1:90:6B:E4:27', name: '3F-A1-90-6B', kind: 'unknown', icon: 'ph-question', rssi: -89, method: 'just-works', profile: 'LE' },
+    ],
+    netOpen: false, view: 'main', sel: 0, current: 'LUC', connecting: null, scanning: false, rx: '12.4', tx: '1.1', spin: 0,
+    networks: [
+      { ssid: 'LUC', sig: 82, sec: 'WPA3', band: '5 GHz', ch: 44, saved: true, auto: true },
+      { ssid: 'LUC_2G', sig: 74, sec: 'WPA2', band: '2.4 GHz', ch: 6, saved: true, auto: true },
+      { ssid: 'Mesa-Guest', sig: 58, sec: 'Open', band: '2.4 GHz', ch: 11, saved: false },
+      { ssid: 'NETGEAR-4F1C', sig: 44, sec: 'WPA2', band: '5 GHz', ch: 149, saved: false },
+      { ssid: 'DIRECT-7a-HP LaserJet', sig: 31, sec: 'WPA2', band: '2.4 GHz', ch: 1, saved: false },
+      { ssid: 'xfinitywifi', sig: 17, sec: 'Open', band: '2.4 GHz', ch: 6, saved: false },
+    ],
+    vpns: [
+      { name: 'wg-home', type: 'wireguard', on: true, ip: '10.8.0.2' },
+      { name: 'mullvad-se-sto', type: 'wireguard', on: false, ip: '10.64.12.7' },
+      { name: 'work-corp', type: 'openvpn', on: false, ip: '172.16.4.19' },
+    ],
+    draft: null,
+    hs: { on: false, ssid: 'coel-hotspot', sec: 'WPA3 Personal', pass: 'nebula-7731', show: false, band: '5 GHz', share: 'eth0 · ethernet', hidden: false, prev: null },
+  };
+  componentDidMount() {
+    this.onKey = e => this.handleKey(e);
+    try { const saved = JSON.parse(localStorage.getItem('qs-bar-todos')); if (saved) this.setState({ todos: saved }); } catch (e) {}
+    window.addEventListener('keydown', this.onKey);
+    this.t = setInterval(() => this.setState({ now: new Date(), rx: (8 + Math.random() * 9).toFixed(1), tx: (0.4 + Math.random() * 1.6).toFixed(1) }), 1000);
+    this.sp = setInterval(() => { const s = this.state; if (s.connecting || s.scanning || (s.btOpen && (s.btScanning || s.btBusy || s.btPair))) this.setState(st => ({ spin: st.spin + 1 })); }, 90);
+    this.bti = setInterval(() => this.btTick(), 1000);
+    this.lvi = setInterval(() => {
+      const s = this.state; if (!s.audioOpen || s.aView !== 'devices') return;
+      const target = Math.random() < 0.25 ? 0.05 + Math.random() * 0.1 : 0.35 + Math.random() * 0.55;
+      this.setState({ level: s.level + (target - s.level) * (target > s.level ? 0.7 : 0.25) });
+    }, 80);
+    this.c = setInterval(() => { this.sysTick(); this.pwrTick(); }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.t); clearInterval(this.c); clearInterval(this.sp); clearInterval(this.bti); clearInterval(this.lvi); clearInterval(this.btType); window.removeEventListener('keydown', this.onKey); }
+  pwrSeed() {
+    return {
+      pwrOpen: true, bat: 65.4, ac: false, profile: 'balanced', limit: true, bright: 70, pwrSel: 1, sessArmed: null, sessMsg: '',
+      wHist: Array.from({ length: 60 }, () => -(9 + Math.random() * 4)), wSum: 10.8 * 600, wN: 600,
+    };
+  }
+  pwrDraw(profile) { return { performance: 19, balanced: 11, 'power-saver': 6.4 }[profile]; }
+  pwrTick() {
+    const s = this.state, R = (a, b) => a + Math.random() * (b - a), cap = 57;
+    const target = s.limit ? 80 : 100;
+    let w;
+    if (s.ac) {
+      if (s.bat >= target - 0.05) w = 0;
+      else { const taper = s.bat > 80 ? Math.max(0.25, (100 - s.bat) / 20) : 1; w = 45 * taper + R(-1.5, 1.5); }
+    } else w = -(this.pwrDraw(s.profile) + (s.cpu || 0) * 0.08 + R(-1.8, 1.8)) * (0.7 + s.bright / 100 * 0.45);
+    const bat = Math.max(1, Math.min(target, s.bat + w / cap / 3600 * 100 * 6));
+    this.setState({ bat, wHist: [...s.wHist.slice(1), w], wSum: s.wSum + Math.abs(w), wN: s.wN + 1 });
+  }
+  pwrKey(e) {
+    const s = this.state, k = e.key, order = ['performance', 'balanced', 'power-saver'];
+    if (k === 'Escape') return this.setState({ pwrOpen: false });
+    if (k === '1' || k === '2' || k === '3') return this.setState({ profile: order[+k - 1], pwrSel: +k - 1 });
+    if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); return this.setState({ pwrSel: Math.min(2, s.pwrSel + 1) }); }
+    if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); return this.setState({ pwrSel: Math.max(0, s.pwrSel - 1) }); }
+    if (k === 'Enter' || k === ' ') { e.preventDefault(); return this.setState({ profile: order[s.pwrSel] }); }
+    if (k === 'a') return this.setState({ ac: !s.ac });
+    if (k === 'c') return this.setState({ limit: !s.limit });
+    if (k === '-' || k === 'h' || k === 'ArrowLeft') return this.setState({ bright: Math.max(5, s.bright - 5) });
+    if (k === '=' || k === '+' || k === 'l' || k === 'ArrowRight') return this.setState({ bright: Math.min(100, s.bright + 5) });
+  }
+  pwrSession(id) {
+    const cmds = { lock: 'loginctl lock-session', suspend: 'systemctl suspend', hibernate: 'systemctl hibernate', reboot: 'systemctl reboot', poweroff: 'systemctl poweroff' };
+    if (id !== 'lock' && this.state.sessArmed !== id) {
+      clearTimeout(this.armT);
+      this.armT = setTimeout(() => this.setState({ sessArmed: null }), 3000);
+      return this.setState({ sessArmed: id, sessMsg: 'click again to confirm' });
+    }
+    clearTimeout(this.armT);
+    this.setState({ sessArmed: null, sessMsg: `→ ${cmds[id]}` });
+  }
+  pwrVals() {
+    const s = this.state, open = s.pwrOpen, cap = 57, pct = Math.round(s.bat), target = s.limit ? 80 : 100;
+    const w = s.wHist[s.wHist.length - 1], held = s.ac && w === 0;
+    const hm = h => { const m = Math.max(0, Math.round(h * 60)); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`; };
+    const lvl = pct <= 15 ? '#ef596f' : pct <= 30 ? '#e5c07b' : '#89ca78';
+    const lit = Math.round(pct / 5);
+    const avgDis = s.wHist.filter(v => v < 0).reduce((a, v, _, arr) => a - v / arr.length, 0) || this.pwrDraw(s.profile);
+    const eta = s.ac ? (held ? `held at ${target}% · charge limit` : `full in ${hm((target - s.bat) / 100 * cap / Math.max(w, 1))} · to ${target}%`) : `${hm(s.bat / 100 * cap / Math.max(avgDis, 1))} remaining`;
+    const wMax = Math.max(...s.wHist.map(Math.abs), 1);
+    const order = [['performance', 'ph ph-lightning', 'max boost, fans audible'], ['balanced', 'ph ph-scales', 'default'], ['power-saver', 'ph ph-leaf', 'caps boost, dims panel']];
+    const cur = this.pwrDraw(s.profile);
+    const profRows = order.map(([name, icon, desc], i) => {
+      const on = s.profile === name, est = s.bat / 100 * cap / (avgDis * this.pwrDraw(name) / cur);
+      return {
+        name, icon, desc, marker: i === s.pwrSel ? '▌' : '', bg: i === s.pwrSel ? '#2f343e' : 'transparent',
+        radio: on ? '(•)' : '( )', radioColor: on ? '#e5c07b' : '#5c6370', nameColor: on ? '#abb2bf' : '#7f848e',
+        iconColor: on ? (name === 'performance' ? '#ef596f' : name === 'power-saver' ? '#89ca78' : '#61afef') : '#5c6370',
+        est: s.ac ? '' : '~' + hm(est), pick: () => this.setState({ profile: name, pwrSel: i }),
+      };
+    });
+    const briF = Math.round(s.bright / 5);
+    const setBri = e => { const r = e.currentTarget.getBoundingClientRect(); this.setState({ bright: Math.max(5, Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 20) * 5) }); };
+    const sess = [['lock', 'ph ph-lock', 'lock'], ['suspend', 'ph ph-moon', 'suspend'], ['hibernate', 'ph ph-snowflake', 'hibernate'], ['reboot', 'ph ph-arrow-clockwise', 'reboot'], ['poweroff', 'ph ph-power', 'shut down']];
+    const energy = s.bat / 100 * cap;
+    return {
+      pwrClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', pwrPe: open ? 'auto' : 'none',
+      togglePwr: () => this.setState(st => ({ pwrOpen: !st.pwrOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false })),
+      closePwr: () => this.setState({ pwrOpen: false }), pwrBtnBg: open ? '#404754' : 'transparent',
+      battery: pct,
+      batIcon: s.ac ? 'ph-fill ph-battery-charging' : pct > 60 ? 'ph-fill ph-battery-high' : pct > 20 ? 'ph-fill ph-battery-medium' : 'ph-fill ph-battery-warning',
+      batColor: s.ac ? '#89ca78' : pct <= 15 ? '#ef596f' : pct <= 30 ? '#e5c07b' : '#abb2bf',
+      batTitle: `Battery ${pct}% · ${s.ac ? (held ? 'on hold' : 'charging') : 'discharging'}`,
+      pwrState: s.ac ? (held ? '■ on hold' : '▲ charging') : '▼ discharging', pwrStateColor: s.ac ? '#89ca78' : pct <= 20 ? '#ef596f' : '#e5c07b',
+      acLabel: s.ac ? '[a] ac ● USB-C PD 65W' : '[a] ac ○ unplugged',
+      batCells: Array.from({ length: 20 }, (_, i) => ({ bg: i < lit ? lvl : '#353b45' })),
+      etaText: eta, etaColor: s.ac ? '#89ca78' : '#abb2bf',
+      rateLabel: s.ac ? 'charging speed' : 'discharge rate',
+      rateNow: `${w > 0 ? '+' : w < 0 ? '−' : ''}${Math.abs(w).toFixed(1)} W`, rateColor: w > 0 ? '#89ca78' : w < 0 ? '#e5c07b' : '#5c6370',
+      rateAvg: `${(s.wSum / s.wN).toFixed(1)} W`,
+      wCols: s.wHist.map(v => ({ h: Math.max(2, Math.abs(v) / wMax * 100) + '%', bg: v >= 0 ? '#89ca78' : '#e5c07b', o: 0.4 + Math.abs(v) / wMax * 0.6 })),
+      wMaxLabel: `${wMax.toFixed(0)} W · 60s`,
+      batInfo: [
+        { k: 'energy', v: `${energy.toFixed(1)} / ${cap.toFixed(1)} Wh`, c: '#abb2bf' }, { k: 'health', v: '92.4%', c: '#89ca78' },
+        { k: 'voltage', v: `${(14.8 + s.bat / 100 * 2.2).toFixed(2)} V`, c: '#abb2bf' }, { k: 'cycles', v: '612', c: '#abb2bf' },
+        { k: 'design', v: '61.7 Wh', c: '#5c6370' }, { k: 'model', v: 'SMP 5B11F21946', c: '#5c6370' },
+      ],
+      profRows,
+      bri: { on: '█'.repeat(briF), off: '░'.repeat(20 - briF), pct: s.bright + '%' },
+      briSet: setBri, briDrag: e => { if (e.buttons === 1) setBri(e); },
+      pwrToggleAc: () => this.setState({ ac: !s.ac }), pwrToggleLimit: () => this.setState({ limit: !s.limit }),
+      limitBox: s.limit ? '[x]' : '[ ]', limitColor: s.limit ? '#e5c07b' : '#5c6370',
+      sessRows: sess.map(([id, icon, label]) => {
+        const armed = s.sessArmed === id;
+        return { icon, label: armed ? 'confirm?' : label, title: label, run: () => this.pwrSession(id), color: armed ? '#ef596f' : '#abb2bf', border: armed ? '#ef596f' : '#404754' };
+      }),
+      sessHasMsg: !!s.sessMsg, sessMsg: s.sessMsg,
+      pwrHints: [{ k: '1-3', l: 'mode' }, { k: 'j/k ⏎', l: 'select' }, { k: 'h/l', l: 'brightness' }, { k: 'c', l: 'charge limit' }, { k: 'a', l: 'ac' }, { k: 'esc', l: 'close' }],
+    };
+  }
+  sysSeed() {
+    const R = (a, b) => a + Math.random() * (b - a);
+    const P = [
+      [1, 'systemd', '/usr/lib/systemd/systemd --system --deserialize=42', 'root', 0.0, 14, 1],
+      [402, 'systemd-journald', '/usr/lib/systemd/systemd-journald', 'root', 0.05, 38, 1],
+      [612, 'NetworkManager', '/usr/bin/NetworkManager --no-daemon', 'root', 0.1, 22, 4],
+      [640, 'bluetoothd', '/usr/lib/bluetooth/bluetoothd', 'root', 0.0, 6, 1],
+      [1021, 'Hyprland', '/usr/bin/Hyprland', 'coel', 3.2, 312, 14],
+      [1044, 'Xwayland', '/usr/bin/Xwayland :0 -rootless -core', 'coel', 0.4, 96, 8],
+      [1102, 'quickshell', '/usr/bin/quickshell -c coel', 'coel', 1.1, 148, 11],
+      [1110, 'pipewire', '/usr/bin/pipewire', 'coel', 0.8, 18, 3],
+      [1111, 'wireplumber', '/usr/bin/wireplumber', 'coel', 0.2, 34, 5],
+      [1113, 'pipewire-pulse', '/usr/bin/pipewire-pulse', 'coel', 0.1, 12, 2],
+      [1188, 'swww-daemon', '/usr/bin/swww-daemon --format xrgb', 'coel', 0.0, 42, 3],
+      [1204, 'kitty', '/usr/bin/kitty --single-instance', 'coel', 0.6, 88, 6],
+      [1231, 'fish', '/usr/bin/fish', 'coel', 0.0, 9, 1],
+      [1502, 'nvim', 'nvim src/bar/Bar.qml', 'coel', 0.3, 64, 4],
+      [1519, 'rust-analyzer', '/usr/lib/rust-analyzer', 'coel', 6.5, 1480, 22],
+      [1770, 'cargo', 'cargo build --release', 'coel', 30, 620, 16],
+      [1834, 'firefox', '/usr/lib/firefox/firefox', 'coel', 4.1, 1210, 96],
+      [1871, 'Isolated Web Co', '/usr/lib/firefox/firefox -contentproc -isForBrowser 8 tab', 'coel', 2.7, 540, 28],
+      [1902, 'Isolated Web Co', '/usr/lib/firefox/firefox -contentproc -isForBrowser 9 tab', 'coel', 0.9, 310, 24],
+      [2210, 'discord', '/opt/discord/Discord --ozone-platform=wayland', 'coel', 1.4, 690, 42],
+      [2288, 'steam', '/home/coel/.local/share/Steam/ubuntu12_32/steam -silent', 'coel', 0.6, 410, 64],
+      [2301, 'steamwebhelper', 'steamwebhelper --type=renderer', 'coel', 0.8, 260, 18],
+      [2417, 'nextcloud', '/usr/bin/nextcloud --background', 'coel', 0.1, 120, 12],
+      [2610, 'ssh-agent', '/usr/bin/ssh-agent -D -a /run/user/1000/ssh-agent.socket', 'coel', 0.0, 3, 1],
+    ];
+    return {
+      sysOpen: false, sysQuery: '', sysSort: 'cpu', sysDesc: true, sysSelPid: 1770, sysKillPid: null,
+      cores: Array.from({ length: 8 }, () => R(4, 30)), cpuHist: Array.from({ length: 60 }, () => R(6, 30)),
+      downHist: Array.from({ length: 40 }, () => R(20, 900)), upHist: Array.from({ length: 40 }, () => R(5, 120)),
+      down: 420, up: 38, rx: 3480, tx: 412, memUsed: 10240, memCached: 7340, swapUsed: 212, uptime: 11537, temp: 52, freq: '2.41',
+      disks: [
+        { mount: '/', dev: 'nvme0n1p2', fs: 'btrfs', used: 212, total: 476 },
+        { mount: '/home', dev: 'nvme0n1p3', fs: 'ext4', used: 611, total: 931 },
+        { mount: '/boot', dev: 'nvme0n1p1', fs: 'vfat', used: 0.14, total: 1 },
+        { mount: '/mnt/games', dev: 'sda1', fs: 'ext4', used: 1712, total: 1863 },
+      ],
+      procs: P.map(([pid, name, cmd, user, base, mem, thr]) => ({ pid, name, cmd, user, base, cpu: base, mem, thr, state: base > 2 ? 'running' : 'sleeping' })),
+    };
+  }
+  sysTick() {
+    const s = this.state, R = (a, b) => a + Math.random() * (b - a), cl = (v, a, b) => Math.max(a, Math.min(b, v));
+    const burst = Math.random() < 0.18;
+    const cores = s.cores.map(v => cl(v * 0.45 + R(3, burst ? 90 : 34) * 0.55 + (Math.random() < 0.05 ? 35 : 0), 1, 100));
+    const total = cores.reduce((a, b) => a + b, 0) / cores.length;
+    const down = Math.random() < 0.2 ? R(2000, 9000) : R(20, 900), up = Math.random() < 0.1 ? R(300, 1400) : R(5, 120);
+    const procs = s.procs.map(p => {
+      const cpu = p.name === 'cargo' ? R(0, 95) : Math.max(0, p.base * R(0.3, 1.8));
+      return { ...p, cpu, mem: Math.max(1, p.mem + (p.mem > 200 ? R(-6, 6) : 0)), state: cpu > 2 ? 'running' : 'sleeping' };
+    });
+    this.setState({
+      cores, cpu: Math.round(total), cpuHist: [...s.cpuHist.slice(1), total], downHist: [...s.downHist.slice(1), down], upHist: [...s.upHist.slice(1), up],
+      down, up, rx: s.rx + down / 1024, tx: s.tx + up / 1024, memUsed: cl(s.memUsed + R(-60, 60), 8000, 14000), uptime: s.uptime + 1,
+      temp: Math.round(cl(44 + total * 0.45 + R(-2, 2), 38, 95)), freq: (1.6 + total / 100 * 3.5).toFixed(2), procs,
+    });
+  }
+  sysSorted() {
+    const s = this.state, q = s.sysQuery.trim().toLowerCase(), k = s.sysSort, dir = s.sysDesc ? -1 : 1;
+    return s.procs.filter(p => !q || p.name.toLowerCase().includes(q) || p.cmd.toLowerCase().includes(q) || p.user.includes(q) || String(p.pid).startsWith(q))
+      .sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : a.pid - b.pid) * dir);
+  }
+  sysEnd(pid) { this.setState(st => ({ procs: st.procs.filter(p => p.pid !== pid), sysKillPid: null })); }
+  sysKey(e) {
+    const s = this.state, k = e.key;
+    if (e.target.tagName === 'INPUT') { if (k === 'Escape' || k === 'Enter' || k === 'ArrowDown') e.target.blur(); return; }
+    if (s.sysKillPid) {
+      if (k === 'y' || k === 'Enter') this.sysEnd(s.sysKillPid);
+      else if (k === 'K') this.sysEnd(s.sysKillPid);
+      else if (k === 'n' || k === 'Escape') this.setState({ sysKillPid: null });
+      return;
+    }
+    if (k === 'Escape') return s.sysQuery ? this.setState({ sysQuery: '' }) : this.setState({ sysOpen: false });
+    if (k === '/') { e.preventDefault(); return this.sysRef.current && this.sysRef.current.focus(); }
+    const list = this.sysSorted(), i = Math.max(0, list.findIndex(p => p.pid === s.sysSelPid));
+    if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); list[Math.min(list.length - 1, i + 1)] && this.setState({ sysSelPid: list[Math.min(list.length - 1, i + 1)].pid }); }
+    else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); list[Math.max(0, i - 1)] && this.setState({ sysSelPid: list[Math.max(0, i - 1)].pid }); }
+    else if (k === 's') { const o = ['cpu', 'mem', 'pid', 'name', 'thr']; const n = o[(o.indexOf(s.sysSort) + 1) % o.length]; this.setState({ sysSort: n, sysDesc: n !== 'name' && n !== 'pid' }); }
+    else if (k === 'r') this.setState({ sysDesc: !s.sysDesc });
+    else if ((k === 'x' || k === 'Delete') && list[i]) this.setState({ sysKillPid: list[i].pid });
+  }
+  sysVals() {
+    const s = this.state, open = s.sysOpen;
+    if (!this.sysRef) this.sysRef = React.createRef();
+    const heat = v => v < 35 ? '#89ca78' : v < 65 ? '#e5c07b' : '#ef596f';
+    const blocks = (v, n) => { const f = Math.round(v / 100 * n); return { on: '■'.repeat(f), off: '■'.repeat(n - f) }; };
+    const G = mb => mb >= 1024 ? (mb / 1024).toFixed(1) + 'G' : Math.round(mb) + 'M';
+    const rate = kb => kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB/s' : Math.round(kb) + ' KB/s';
+    const fmtT = gb => gb >= 1000 ? (gb / 1024).toFixed(1) + 'T' : gb < 1 ? Math.round(gb * 1024) + 'M' : Math.round(gb) + 'G';
+    const up = s.uptime, uh = Math.floor(up / 3600), um = Math.floor(up % 3600 / 60);
+    const hist = s.cpuHist, l1 = hist.slice(-1)[0] / 100 * 8, l5 = hist.slice(-5).reduce((a, b) => a + b, 0) / 5 / 100 * 8, l15 = hist.reduce((a, b) => a + b, 0) / hist.length / 100 * 8;
+    const memTotal = 31.3 * 1024, swapTotal = 8192, avail = memTotal - s.memUsed;
+    const mx = a => Math.max(...a, 1);
+    const dMax = mx(s.downHist), uMax = mx(s.upHist);
+    const list = this.sysSorted(), selP = list.find(p => p.pid === s.sysSelPid) || list[0];
+    const procRows = list.map(p => {
+      const isSel = selP && p.pid === selP.pid;
+      return {
+        pid: p.pid, name: p.name, user: p.user, thr: p.thr, mem: G(p.mem), cpu: p.cpu.toFixed(1),
+        marker: isSel ? '▌' : '', bg: isSel ? '#2f343e' : 'transparent',
+        nameColor: p.cpu > 10 ? '#abb2bf' : p.cpu > 0.05 ? '#abb2bf' : '#7f848e', userColor: p.user === 'root' ? '#d19a66' : '#5c6370',
+        cpuColor: p.cpu < 0.05 ? '#5c6370' : heat(p.cpu),
+        select: () => this.setState({ sysSelPid: p.pid }), kill: () => this.setState({ sysSelPid: p.pid, sysKillPid: p.pid }),
+      };
+    });
+    const cols = [['pid', 'pid', 'right'], ['name', 'program', 'left'], ['user', 'user', 'left'], ['thr', 'thr', 'right'], ['mem', 'mem', 'right'], ['cpu', 'cpu%', 'right']];
+    const procCols = cols.map(([k, label, align]) => ({
+      label: s.sysSort === k ? label + (s.sysDesc ? '▾' : '▴') : label, align, color: s.sysSort === k ? '#e5c07b' : '#5c6370',
+      sort: () => this.setState(st => st.sysSort === k ? { sysDesc: !st.sysDesc } : { sysSort: k, sysDesc: k !== 'name' && k !== 'pid' && k !== 'user' }),
+    }));
+    const kp = s.procs.find(p => p.pid === s.sysKillPid);
+    const diskRows = s.disks.map(d => {
+      const pct = d.used / d.total * 100, b = blocks(pct, 22);
+      return { mount: d.mount, meta: `${d.dev} · ${d.fs}`, free: fmtT(d.total - d.used), freeColor: pct > 90 ? '#ef596f' : pct > 75 ? '#e5c07b' : '#89ca78', ...b, color: heat(pct), used: fmtT(d.used), total: fmtT(d.total) };
+    });
+    const freeTotal = s.disks.reduce((a, d) => a + d.total - d.used, 0);
+    const mrow = (k, v, total, color, label) => ({ k, ...blocks(v / total * 100, 16), color, v: label });
+    return {
+      sysClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', sysPe: open ? 'auto' : 'none',
+      toggleSys: () => this.setState(st => ({ sysOpen: !st.sysOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, pwrOpen: false })),
+      closeSys: () => this.setState({ sysOpen: false, sysKillPid: null }),
+      sysBtnBg: open ? '#404754' : 'transparent', sysBtnColor: s.cpu >= 80 ? '#ef596f' : '#abb2bf',
+      sysUptime: `${uh}h ${String(um).padStart(2, '0')}m`, sysLoad: `${l1.toFixed(2)} ${l5.toFixed(2)} ${l15.toFixed(2)}`,
+      cpuTemp: s.temp, tempColor: s.temp > 80 ? '#ef596f' : s.temp > 65 ? '#e5c07b' : '#abb2bf', cpuFreq: s.freq, cpuTotalColor: heat(s.cpu),
+      cpuCols: hist.map(v => ({ h: Math.max(2, v) + '%', bg: heat(v) })),
+      coreRows: s.cores.map((v, i) => ({ l: 'c' + i, ...blocks(v, 10), color: heat(v), pct: Math.round(v) + '%' })),
+      memHead: `${G(s.memUsed)} / ${G(memTotal)}`,
+      memUsedW: (s.memUsed / memTotal * 100).toFixed(1) + '%', memCacheW: (s.memCached / memTotal * 100).toFixed(1) + '%',
+      memRows: [
+        mrow('used', s.memUsed, memTotal, '#61afef', G(s.memUsed)),
+        mrow('cached', s.memCached, memTotal, '#2bbac5', G(s.memCached)),
+        mrow('avail', avail, memTotal, '#89ca78', G(avail)),
+        mrow('swap', s.swapUsed, swapTotal, '#d19a66', `${G(s.swapUsed)}/${G(swapTotal)}`),
+      ],
+      diskRows, diskHead: `${fmtT(freeTotal)} free total`,
+      netHead: 'LUC · 866 Mb/s', netDown: rate(s.down), netUp: rate(s.up), netRx: G(s.rx), netTx: G(s.tx),
+      downCols: s.downHist.map(v => ({ h: Math.max(3, v / dMax * 100) + '%', o: 0.35 + v / dMax * 0.65 })),
+      upCols: s.upHist.map(v => ({ h: Math.max(3, v / uMax * 100) + '%', o: 0.35 + v / uMax * 0.65 })),
+      procCount: list.length === s.procs.length ? s.procs.length : `${list.length}/${s.procs.length}`,
+      sortLabel: s.sysSort + (s.sysDesc ? ' ▾' : ' ▴'),
+      sysCycleSort: () => { const o = ['cpu', 'mem', 'pid', 'name', 'thr']; const n = o[(o.indexOf(s.sysSort) + 1) % o.length]; this.setState({ sysSort: n, sysDesc: n !== 'name' && n !== 'pid' }); },
+      sysRef: this.sysRef, sysQuery: s.sysQuery, sysHasQuery: !!s.sysQuery,
+      sysOnQuery: e => this.setState({ sysQuery: e.target.value }), sysClearQuery: () => this.setState({ sysQuery: '' }),
+      procCols, procRows, procEmpty: !list.length, procHasSel: !!selP,
+      sel: selP ? { name: selP.name, state: selP.state, cmd: selP.cmd } : {},
+      sysAskKill: () => selP && this.setState({ sysKillPid: selP.pid }),
+      sysKilling: !!kp,
+      kill: kp ? { name: kp.name, pid: kp.pid, user: kp.user, msg: kp.user === 'root' ? 'This is a system process. Ending it may destabilise the session — requires polkit authentication.' : 'SIGTERM asks it to exit cleanly; SIGKILL ends it immediately and unsaved work is lost.' } : {},
+      sysTerm: () => kp && this.sysEnd(kp.pid), sysKill9: () => kp && this.sysEnd(kp.pid), sysCancelKill: () => this.setState({ sysKillPid: null }),
+      sysHints: s.sysKillPid ? [] : [{ k: '/', l: 'search' }, { k: 'j/k', l: 'move' }, { k: 's', l: 'sort' }, { k: 'r', l: 'reverse' }, { k: 'x', l: 'kill' }, { k: 'esc', l: s.sysQuery ? 'clear' : 'close' }],
+    };
+  }
+  dkey(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  seedTodos() {
+    const t = new Date(), off = n => this.dkey(new Date(t.getFullYear(), t.getMonth(), t.getDate() + n));
+    return {
+      [off(0)]: [
+        { id: 1, t: '09:30', text: 'standup', done: true },
+        { id: 2, t: '14:00', text: 'dentist — bring insurance card', done: false },
+        { id: 3, t: '19:00', text: 'call mom', done: false },
+        { id: 4, t: '', text: 'review quickshell PR #214', done: true },
+        { id: 5, t: '', text: 'pick up PLA filament', done: false },
+      ],
+      [off(1)]: [{ id: 6, t: '10:00', text: '1:1 with Sam', done: false }, { id: 7, t: '', text: 'water plants', done: false }],
+      [off(3)]: [{ id: 8, t: '', text: 'rent due', done: false }],
+      [off(-2)]: [{ id: 9, t: '', text: 'backup NAS', done: true }],
+      [off(9)]: [{ id: 10, t: '20:00', text: 'concert — doors open', done: false }],
+    };
+  }
+  calSetSel(d) { this.setState({ calSel: this.dkey(d), calY: d.getFullYear(), calM: d.getMonth(), tdSel: 0 }); }
+  calSelDate() { const [y, m, d] = this.state.calSel.split('-').map(Number); return new Date(y, m - 1, d); }
+  tdSave(todos) { this.setState({ todos }); try { localStorage.setItem('qs-bar-todos', JSON.stringify(todos)); } catch (e) {} }
+  tdList() { return this.state.todos[this.state.calSel] || []; }
+  tdUpdate(fn) { const s = this.state; this.tdSave({ ...s.todos, [s.calSel]: fn(s.todos[s.calSel] || []) }); }
+  tdAdd() {
+    const raw = this.state.tdDraft.trim(); if (!raw) return;
+    const m = raw.match(/^(\d{1,2}):(\d{2})\s+(.+)$/);
+    const item = { id: Date.now(), t: m ? `${m[1].padStart(2, '0')}:${m[2]}` : '', text: m ? m[3] : raw, done: false };
+    this.tdUpdate(l => [...l, item].sort((a, b) => (a.t || '99') < (b.t || '99') ? -1 : (a.t || '99') > (b.t || '99') ? 1 : 0));
+    this.setState({ tdDraft: '' });
+  }
+  calKey(e) {
+    const s = this.state, k = e.key;
+    if (e.target.tagName === 'INPUT') { if (k === 'Escape') e.target.blur(); return; }
+    if (k === 'Escape') return this.setState({ calOpen: false });
+    if (k === 'Tab') { e.preventDefault(); return this.setState({ calFocus: s.calFocus === 'cal' ? 'todo' : 'cal' }); }
+    if (k === 'a') { e.preventDefault(); return this.tdRef.current && this.tdRef.current.focus(); }
+    const d = this.calSelDate();
+    if (k === 't') return this.calSetSel(new Date());
+    if (k === '[' || k === 'H') return this.calSetSel(new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), 28)));
+    if (k === ']' || k === 'L') return this.calSetSel(new Date(d.getFullYear(), d.getMonth() + 1, Math.min(d.getDate(), 28)));
+    if (s.calFocus === 'cal') {
+      const step = { h: -1, ArrowLeft: -1, l: 1, ArrowRight: 1, k: -7, ArrowUp: -7, j: 7, ArrowDown: 7 }[k];
+      if (step) { e.preventDefault(); this.calSetSel(new Date(d.getFullYear(), d.getMonth(), d.getDate() + step)); }
+      else if (k === 'Enter') this.setState({ calFocus: 'todo' });
+      return;
+    }
+    const list = this.tdList(), i = Math.min(s.tdSel, list.length - 1);
+    if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); this.setState({ tdSel: Math.min(list.length - 1, i + 1) }); }
+    else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); this.setState({ tdSel: Math.max(0, i - 1) }); }
+    else if ((k === ' ' || k === 'Enter') && list[i]) { e.preventDefault(); this.tdUpdate(l => l.map((x, j) => j === i ? { ...x, done: !x.done } : x)); }
+    else if (k === 'x' && list[i]) this.tdUpdate(l => l.filter((_, j) => j !== i));
+  }
+  calVals() {
+    const s = this.state, now = s.now, open = s.calOpen, P = this.props;
+    if (!this.tdRef) this.tdRef = React.createRef();
+    const F = { 0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111', 4: '101101111001001', 5: '111100111001111', 6: '111100111101111', 7: '111001001001001', 8: '111101111101111', 9: '111101111001111' };
+    const is24 = (P.clockFormat ?? 'Day @ 12h') === 'Day @ 24h';
+    const h = now.getHours(), hh = is24 ? h : (h % 12 || 12);
+    const str = String(hh).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+    const glyph = (bits, on) => ({ cols: bits.length === 5 ? '10px' : 'repeat(3,10px)', cells: bits.split('').map(b => ({ bg: b === '1' ? on : 'transparent' })) });
+    const blink = now.getSeconds() % 2 === 0 ? '#61afef' : '#404754';
+    const clkGlyphs = [glyph(F[str[0]], '#61afef'), glyph(F[str[1]], '#61afef'), glyph('01010', blink), glyph(F[str[2]], '#61afef'), glyph(F[str[3]], '#61afef')];
+    const start = new Date(now.getFullYear(), 0, 1), doy = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - start) / 864e5) + 1;
+    const isoWeek = d => { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dn = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - dn); const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t - y0) / 864e5 + 1) / 7); };
+    const leap = new Date(now.getFullYear(), 1, 29).getDate() === 29;
+    const sel = this.calSelDate(), selKey = s.calSel, todayKey = this.dkey(now);
+    const first = new Date(s.calY, s.calM, 1), lead = (first.getDay() + 6) % 7;
+    const calCells = Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(s.calY, s.calM, 1 - lead + i), k = this.dkey(d), inM = d.getMonth() === s.calM;
+      const isT = k === todayKey, isS = k === selKey, l = s.todos[k] || [], open_ = l.filter(x => !x.done).length;
+      const wknd = d.getDay() === 0 || d.getDay() === 6;
+      return {
+        label: d.getDate(), weight: isT ? 500 : 400,
+        color: isT ? '#282c34' : !inM ? '#4b5263' : wknd ? '#5c6370' : '#abb2bf',
+        bg: isT ? '#61afef' : isS ? '#2f343e' : 'transparent',
+        border: isS ? (s.calFocus === 'cal' ? '#e5c07b' : '#5c6370') : 'transparent',
+        dot: !l.length ? 'transparent' : open_ ? (isT ? '#282c34' : '#e5c07b') : (isT ? '#282c34' : '#5c6370'),
+        pick: () => this.calSetSel(d),
+      };
+    });
+    const list = s.todos[selKey] || [], ti = Math.min(s.tdSel, list.length - 1), tf = s.calFocus === 'todo';
+    const nowHM = `${String(h).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const tdRows = list.map((x, i) => {
+      const isSel = i === ti && tf, overdue = !x.done && x.t && selKey === todayKey && x.t < nowHM;
+      return {
+        marker: isSel ? '▌' : '', bg: isSel ? '#2f343e' : 'transparent',
+        box: x.done ? '[x]' : '[ ]', boxColor: x.done ? '#89ca78' : '#5c6370',
+        time: x.t || '', timeColor: x.done ? '#4b5263' : overdue ? '#ef596f' : '#e5c07b',
+        text: x.text, textColor: x.done ? '#5c6370' : '#abb2bf', deco: x.done ? 'line-through' : 'none',
+        delColor: isSel ? '#5c6370' : 'transparent',
+        select: () => this.setState({ calFocus: 'todo', tdSel: i }),
+        toggle: e => { e.stopPropagation(); this.tdUpdate(l => l.map(y => y.id === x.id ? { ...y, done: !y.done } : y)); },
+        remove: e => { e.stopPropagation(); this.tdUpdate(l => l.filter(y => y.id !== x.id)); },
+      };
+    });
+    const done = list.filter(x => x.done).length, todayOpen = (s.todos[todayKey] || []).filter(x => !x.done).length;
+    const rel = Math.round((new Date(sel.getFullYear(), sel.getMonth(), sel.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
+    const relLabel = rel === 0 ? 'today' : rel === 1 ? 'tomorrow' : rel === -1 ? 'yesterday' : sel.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const hints = tf
+      ? [{ k: 'tab', l: 'calendar' }, { k: 'j/k', l: 'move' }, { k: 'space', l: 'done' }, { k: 'x', l: 'delete' }, { k: 'a', l: 'add' }, { k: 'esc', l: 'close' }]
+      : [{ k: 'tab', l: 'todos' }, { k: 'hjkl', l: 'day' }, { k: '[ ]', l: 'month' }, { k: 't', l: 'today' }, { k: 'a', l: 'add' }, { k: 'esc', l: 'close' }];
+    return {
+      calClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', calPe: open ? 'auto' : 'none',
+      closeCal: () => this.setState({ calOpen: false }), calToday: () => this.calSetSel(new Date()),
+      calWeek: isoWeek(now), calStatus: todayOpen ? `${todayOpen} open today` : '✓ all done today', calStatusColor: todayOpen ? '#e5c07b' : '#89ca78',
+      clkGlyphs, clkAmpm: is24 ? '' : (h < 12 ? 'AM' : 'PM'), clkSec: String(now.getSeconds()).padStart(2, '0'),
+      clkDate: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+      clkMeta: `day ${doy}/${leap ? 366 : 365} · ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'local'}`,
+      calMonthLabel: first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toLowerCase(),
+      calPrev: () => this.calSetSel(new Date(s.calY, s.calM - 1, Math.min(sel.getDate(), 28))),
+      calNext: () => this.calSetSel(new Date(s.calY, s.calM + 1, Math.min(sel.getDate(), 28))),
+      calWeekdays: ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].map((l, i) => ({ l, color: i > 4 ? '#5c6370' : '#e5c07b' })),
+      calCells, calBorder: !tf ? '#4b5263' : '#404754', calLegend: !tf ? '#61afef' : '#5c6370',
+      tdBorder: tf ? '#4b5263' : '#404754', tdLegend: tf ? '#61afef' : '#5c6370',
+      tdDayLabel: relLabel, tdSummary: list.length ? `${done}/${list.length} done` : '',
+      tdRows, tdEmpty: !list.length, tdRef: this.tdRef, tdDraft: s.tdDraft,
+      tdOnDraft: e => this.setState({ tdDraft: e.target.value }),
+      tdOnKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.tdAdd(); } },
+      tdAdd: () => this.tdAdd(), calHints: hints,
+    };
+  }
+  aAvail(n) {
+    const c = this.state.cards[n.card], p = c.profile;
+    if (p === 'Off') return false;
+    if (n.req === 'headset') return p.startsWith('Headset');
+    if (n.req === 'hdmi') return p.includes('HDMI') || p === 'Pro Audio';
+    if (n.req === 'duplex') return p !== 'Analog Stereo Output';
+    return true;
+  }
+  aSet(dir, id, patch) { const key = dir === 'out' ? 'sinks' : 'sources'; this.setState(st => ({ [key]: st[key].map(n => n.id === id ? { ...n, ...patch } : n) })); }
+  aSetCard(i, patch) { this.setState(st => ({ cards: st.cards.map((c, j) => j === i ? { ...c, ...patch } : c) })); }
+  aKey(e) {
+    const s = this.state, k = e.key;
+    if (k === 'Escape') return this.setState({ audioOpen: false });
+    if (k === '1') return this.setState({ aView: 'devices' });
+    if (k === '2') return this.setState({ aView: 'cards' });
+    const cyc = (arr, v, d = 1) => arr[(arr.indexOf(v) + d + arr.length) % arr.length];
+    if (s.aView === 'cards') {
+      const i = s.aCardSel, c = s.cards[i];
+      if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); this.setState({ aCardSel: Math.min(s.cards.length - 1, i + 1) }); }
+      else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); this.setState({ aCardSel: Math.max(0, i - 1) }); }
+      else if (k === 'p') this.aSetCard(i, { profile: cyc(c.profiles, c.profile) });
+      else if (k === 'r') this.aSetCard(i, { rate: cyc(c.rates, c.rate) });
+      else if (k === 'q') this.aSetCard(i, { quantum: cyc([64, 128, 256, 512, 1024, 2048], c.quantum) });
+      return;
+    }
+    if (k === 'Tab') { e.preventDefault(); return this.setState({ aFocus: s.aFocus === 'out' ? 'in' : 'out' }); }
+    const dir = s.aFocus, list = dir === 'out' ? s.sinks : s.sources, key = dir === 'out' ? 'aOutSel' : 'aInSel', n = list[s[key]];
+    if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); this.setState({ [key]: Math.min(list.length - 1, s[key] + 1) }); }
+    else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); this.setState({ [key]: Math.max(0, s[key] - 1) }); }
+    else if (!n || !this.aAvail(n)) return;
+    else if (k === 'h' || k === 'ArrowLeft') { e.preventDefault(); this.aSet(dir, n.id, { vol: Math.max(0, n.vol - 5) }); }
+    else if (k === 'l' || k === 'ArrowRight') { e.preventDefault(); this.aSet(dir, n.id, { vol: Math.min(100, n.vol + 5) }); }
+    else if (k === 'm') this.aSet(dir, n.id, { mute: !n.mute });
+    else if (k === 'Enter' || k === 'd') this.setState({ [dir === 'out' ? 'defSink' : 'defSource']: n.id });
+  }
+  aVals() {
+    const s = this.state, open = s.audioOpen, dev = s.aView === 'devices';
+    const cyc = (arr, v) => arr[(arr.indexOf(v) + 1) % arr.length];
+    const mk = (list, dir) => {
+      const def = dir === 'out' ? s.defSink : s.defSource, focus = s.aFocus === dir, sel = dir === 'out' ? s.aOutSel : s.aInSel;
+      return list.map((n, i) => {
+        const av = this.aAvail(n), isDef = n.id === def, isSel = i === sel && focus, c = s.cards[n.card];
+        const filled = Math.round(n.vol / 5);
+        const setVol = e => {
+          if (!av) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          this.aSet(dir, n.id, { vol: Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 20) * 5 });
+        };
+        return {
+          name: n.name, marker: isSel ? '▌' : '', bg: isSel ? '#2f343e' : 'transparent', isSel,
+          radio: isDef ? '(•)' : '( )', radioColor: isDef ? '#61afef' : '#5c6370',
+          nameColor: av ? '#abb2bf' : '#5c6370',
+          on: '█'.repeat(filled), off: '░'.repeat(20 - filled),
+          barColor: !av || n.mute ? '#5c6370' : isDef ? '#61afef' : '#abb2bf',
+          pct: av ? `${n.vol}%` : '—', pctColor: n.mute || !av ? '#5c6370' : '#abb2bf',
+          muteIcon: n.mute ? (dir === 'out' ? 'ph-fill ph-speaker-simple-x' : 'ph-fill ph-microphone-slash') : (dir === 'out' ? 'ph ph-speaker-simple-high' : 'ph ph-microphone'),
+          muteColor: n.mute ? '#ef596f' : '#5c6370',
+          sub: av ? `${n.node} · #${n.id}` : `unavailable — card profile is "${c.profile}"`,
+          select: () => this.setState({ aFocus: dir, [dir === 'out' ? 'aOutSel' : 'aInSel']: i }),
+          makeDefault: e => { e.stopPropagation(); av && this.setState({ [dir === 'out' ? 'defSink' : 'defSource']: n.id, aFocus: dir, [dir === 'out' ? 'aOutSel' : 'aInSel']: i }); },
+          setVol, dragVol: e => { if (e.buttons === 1) setVol(e); },
+          toggleMute: e => { e.stopPropagation(); av && this.aSet(dir, n.id, { mute: !n.mute }); },
+        };
+      });
+    };
+    const sink = s.sinks.find(n => n.id === s.defSink) || s.sinks[0], src = s.sources.find(n => n.id === s.defSource) || s.sources[0];
+    const srcLive = this.aAvail(src) && !src.mute;
+    const lv = srcLive ? s.level * (0.4 + src.vol / 100 * 0.6) : 0, cells = 28, lit = Math.round(lv * cells);
+    const aLevelCells = Array.from({ length: cells }, (_, i) => ({ bg: i < lit ? (i < 18 ? '#89ca78' : i < 24 ? '#e5c07b' : '#ef596f') : '#353b45' }));
+    const ci = Math.min(s.aCardSel, s.cards.length - 1), c = s.cards[ci];
+    const aCardRows = s.cards.map((cd, i) => ({
+      name: cd.name, icon: 'ph ' + cd.icon, api: cd.api, profile: cd.profile,
+      profileColor: cd.profile === 'Off' ? '#ef596f' : '#5c6370', iconColor: cd.profile === 'Off' ? '#5c6370' : '#61afef',
+      marker: i === ci ? '▌' : '', bg: i === ci ? '#2f343e' : 'transparent', select: () => this.setState({ aCardSel: i }),
+    }));
+    const portVisible = p => c.profile !== 'Off' && (!p.hdmi || c.profile.includes('HDMI') || c.profile === 'Pro Audio') && (!p.headset || c.profile.startsWith('Headset')) && !(p.dir === 'in' && c.profile === 'Analog Stereo Output');
+    const ports = dir => c.ports.filter(p => p.dir === dir && portVisible(p)).map(p => ({
+      name: p.name, radio: p.active ? '(•)' : '( )', radioColor: p.active ? '#e5c07b' : '#5c6370',
+      nameColor: p.avail ? '#abb2bf' : '#5c6370', note: p.avail ? '' : 'unplugged',
+      pick: () => p.avail && this.aSetCard(ci, { ports: c.ports.map(q => q.dir === dir ? { ...q, active: q === p } : q) }),
+    }));
+    const aOutPorts = ports('out'), aInPorts = ports('in');
+    const lat = c.quantum / c.rate * 1000;
+    const codecM = c.profile.match(/\((LDAC|AAC|SBC|mSBC|CVSD)\)/);
+    const hints = dev
+      ? [{ k: 'tab', l: s.aFocus === 'out' ? 'input' : 'output' }, { k: 'j/k', l: 'move' }, { k: 'h/l', l: 'volume' }, { k: 'm', l: 'mute' }, { k: '⏎', l: 'set default' }, { k: '2', l: 'cards' }, { k: 'esc', l: 'close' }]
+      : [{ k: 'j/k', l: 'card' }, { k: 'p', l: 'profile' }, { k: 'r', l: 'rate' }, { k: 'q', l: 'quantum' }, { k: '1', l: 'devices' }, { k: 'esc', l: 'close' }];
+    const sinkBt = s.cards[sink.card].bus === 'bluetooth';
+    return {
+      aClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', aPe: open ? 'auto' : 'none',
+      toggleAudio: () => this.setState(st => ({ audioOpen: !st.audioOpen, netOpen: false, btOpen: false, calOpen: false, sysOpen: false, pwrOpen: false })),
+      closeAudio: () => this.setState({ audioOpen: false }),
+      aWheel: e => this.aSet('out', sink.id, { vol: Math.max(0, Math.min(100, sink.vol + (e.deltaY > 0 ? -5 : 5))) }),
+      aBtnBg: open ? '#404754' : 'transparent', aBtnColor: sink.mute ? '#5c6370' : '#abb2bf',
+      aBtnIcon: sink.mute ? 'ph-fill ph-speaker-simple-x' : sinkBt ? 'ph-fill ph-headphones' : sink.vol === 0 ? 'ph-fill ph-speaker-simple-none' : sink.vol < 50 ? 'ph-fill ph-speaker-simple-low' : 'ph-fill ph-speaker-simple-high',
+      aBtnLabel: sink.mute ? 'muted' : `${sink.vol}%`,
+      aTabs: [{ key: '1', label: 'devices', v: 'devices' }, { key: '2', label: 'cards', v: 'cards' }].map(t => ({ ...t, bg: s.aView === t.v ? '#404754' : 'transparent', color: s.aView === t.v ? '#abb2bf' : '#5c6370', go: () => this.setState({ aView: t.v }) })),
+      aIsDevices: dev, aIsCards: !dev,
+      aOutRows: mk(s.sinks, 'out'), aInRows: mk(s.sources, 'in'),
+      aOutBorder: s.aFocus === 'out' ? '#4b5263' : '#404754', aOutLegend: s.aFocus === 'out' ? '#61afef' : '#5c6370',
+      aInBorder: s.aFocus === 'in' ? '#4b5263' : '#404754', aInLegend: s.aFocus === 'in' ? '#61afef' : '#5c6370',
+      aDefSinkName: sink.name, aDefSourceName: src.name,
+      aLevelCells, aLevelDb: srcLive ? `${Math.max(-60, 20 * Math.log10(Math.max(lv, 0.001))).toFixed(0)} dB` : src.mute ? 'muted' : 'no signal',
+      aCardRows, aCardCount: s.cards.length, c,
+      aCycProfile: () => this.aSetCard(ci, { profile: cyc(c.profiles, c.profile) }),
+      aCycRate: () => this.aSetCard(ci, { rate: cyc(c.rates, c.rate) }),
+      aCycQuantum: () => this.aSetCard(ci, { quantum: cyc([64, 128, 256, 512, 1024, 2048], c.quantum) }),
+      aLatency: lat.toFixed(1), aLatencyColor: lat <= 6 ? '#89ca78' : lat <= 22 ? '#abb2bf' : '#e5c07b',
+      aHasCodec: !!codecM, aCodec: codecM ? codecM[1] : '',
+      aOutPorts, aInPorts, aNoOutPorts: !aOutPorts.length, aNoInPorts: !aInPorts.length,
+      aToggleSuspend: () => this.aSetCard(ci, { suspend: !c.suspend }),
+      aSuspendBox: c.suspend ? '[x]' : '[ ]', aSuspendColor: c.suspend ? '#e5c07b' : '#5c6370',
+      aHints: hints,
+    };
+  }
+  btTick() {
+    const s = this.state;
+    if (s.btPower && s.btScanning) this.setState(st => ({ btNearby: st.btNearby.map(n => ({ ...n, rssi: Math.max(-95, Math.min(-40, n.rssi + Math.round(Math.random() * 6 - 3))) })) }));
+    const p = s.btPair;
+    if (p && (p.stage === 'confirm' || p.stage === 'type')) {
+      if (p.left <= 1) { clearInterval(this.btType); this.setState({ btPair: { ...p, stage: 'failed', reason: 'timed out waiting for the device', left: 0 } }); }
+      else this.setState({ btPair: { ...p, left: p.left - 1 } });
+    }
+  }
+  btStartPair(mac) {
+    const dev = this.state.btNearby.find(n => n.mac === mac); if (!dev) return;
+    clearTimeout(this.btT); clearInterval(this.btType);
+    this.setState({ btPair: { dev, stage: 'request' } });
+    this.btT = setTimeout(() => {
+      if (!this.state.btPair) return;
+      if (dev.method === 'just-works') return this.btFinishPair();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      this.setState({ btPair: { dev, stage: dev.method, code, left: 30, typed: 0 } });
+      if (dev.method === 'type') {
+        this.btT = setTimeout(() => {
+          this.btType = setInterval(() => {
+            const p = this.state.btPair;
+            if (!p || p.stage !== 'type') return clearInterval(this.btType);
+            if (p.typed >= 6) { clearInterval(this.btType); return this.btFinishPair(); }
+            this.setState({ btPair: { ...p, typed: p.typed + 1 } });
+          }, 520);
+        }, 2600);
+      }
+    }, 1000);
+  }
+  btFinishPair() {
+    const p = this.state.btPair; if (!p) return;
+    const dev = p.dev;
+    this.setState({ btPair: { ...p, stage: 'done' } });
+    clearTimeout(this.btT);
+    this.btT = setTimeout(() => this.setState(st => {
+      const paired = [...st.btPaired, { mac: dev.mac, name: dev.name, kind: dev.kind, icon: dev.icon, connected: true, battery: dev.kind === 'phone' || dev.kind === 'unknown' ? null : 90, trusted: false, profile: dev.profile, rssi: dev.rssi }];
+      return { btPair: null, btPaired: paired, btNearby: st.btNearby.filter(n => n.mac !== dev.mac), btFocus: 'paired', btSel: paired.length - 1 };
+    }), 1100);
+  }
+  btCancel() { clearTimeout(this.btT); clearInterval(this.btType); this.setState({ btPair: null }); }
+  btToggleConnect(mac) {
+    if (this.state.btBusy) return;
+    this.setState({ btBusy: mac });
+    setTimeout(() => this.setState(st => ({ btBusy: null, btPaired: st.btPaired.map(d => d.mac === mac ? { ...d, connected: !d.connected, rssi: d.connected ? null : -55 } : d) })), 1000);
+  }
+  btTrust(mac) { this.setState(st => ({ btPaired: st.btPaired.map(d => d.mac === mac ? { ...d, trusted: !d.trusted } : d) })); }
+  btForget(mac) {
+    this.setState(st => {
+      const d = st.btPaired.find(x => x.mac === mac); if (!d) return null;
+      return { btPaired: st.btPaired.filter(x => x.mac !== mac), btSel: Math.max(0, st.btSel - 1), btNearby: [{ mac: d.mac, name: d.name, kind: d.kind, icon: d.icon, rssi: -60, method: d.kind === 'keyboard' ? 'type' : 'confirm', profile: d.profile }, ...st.btNearby] };
+    });
+  }
+  btKey(e) {
+    const s = this.state, k = e.key, p = s.btPair;
+    if (e.target.tagName === 'INPUT') return;
+    if (p) {
+      if ((k === 'y' || k === 'Enter') && p.stage === 'confirm') this.btFinishPair();
+      else if (k === 'r' && p.stage === 'failed') this.btStartPair(p.dev.mac);
+      else if ((k === 'n' || k === 'Escape') && p.stage !== 'done') this.btCancel();
+      return;
+    }
+    if (k === 'Escape') return this.setState({ btOpen: false });
+    if (k === 'p') return this.setState(st => ({ btPower: !st.btPower }));
+    if (!s.btPower) return;
+    if (k === 'v') return this.setState(st => ({ btVisible: !st.btVisible }));
+    if (k === 's') return this.setState(st => ({ btScanning: !st.btScanning }));
+    if (k === 'Tab') { e.preventDefault(); return this.setState(st => ({ btFocus: st.btFocus === 'paired' ? 'nearby' : 'paired' })); }
+    const pf = s.btFocus === 'paired', list = pf ? s.btPaired : s.btNearby, key = pf ? 'btSel' : 'btNSel', idx = Math.min(s[key], list.length - 1);
+    if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); this.setState({ [key]: Math.min(list.length - 1, idx + 1) }); }
+    else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); this.setState({ [key]: Math.max(0, idx - 1) }); }
+    else if (!list[idx]) return;
+    else if (k === 'Enter') pf ? this.btToggleConnect(list[idx].mac) : this.btStartPair(list[idx].mac);
+    else if (pf && k === 'c') this.btToggleConnect(list[idx].mac);
+    else if (pf && k === 't') this.btTrust(list[idx].mac);
+    else if (pf && k === 'f') this.btForget(list[idx].mac);
+  }
+  btVals() {
+    const s = this.state, open = s.btOpen, spinner = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'[s.spin % 10];
+    const bars = r => { const b = r >= -55 ? 4 : r >= -67 ? 3 : r >= -80 ? 2 : 1; return { strong: '▂▄▆█'.slice(0, b), weak: '▂▄▆█'.slice(b), sigColor: b >= 3 ? '#89ca78' : b === 2 ? '#e5c07b' : '#ef596f' }; };
+    const batColor = v => v == null ? '#5c6370' : v <= 20 ? '#ef596f' : v <= 40 ? '#e5c07b' : '#89ca78';
+    const pf = s.btFocus === 'paired';
+    const psel = Math.min(s.btSel, Math.max(0, s.btPaired.length - 1)), nsel = Math.min(s.btNSel, Math.max(0, s.btNearby.length - 1));
+    const btPairedRows = s.btPaired.map((d, i) => {
+      const isSel = i === psel, busy = s.btBusy === d.mac;
+      return {
+        name: d.name, icon: 'ph ' + d.icon, marker: isSel && pf ? '▌' : '', bg: isSel && pf ? '#2f343e' : 'transparent',
+        iconColor: d.connected ? '#61afef' : '#5c6370',
+        status: busy ? `${spinner} ${d.connected ? 'disconnecting' : 'connecting'}` : d.connected ? '● connected' : '○ paired',
+        statusColor: busy ? '#e5c07b' : d.connected ? '#89ca78' : '#5c6370',
+        bat: d.connected && d.battery != null ? d.battery + '%' : '', batColor: batColor(d.battery),
+        select: () => this.setState({ btFocus: 'paired', btSel: i }), toggle: () => this.btToggleConnect(d.mac),
+      };
+    });
+    const btNearRows = s.btNearby.map((n, i) => {
+      const isSel = i === nsel && !pf;
+      return {
+        ...bars(n.rssi), name: n.name, icon: 'ph ' + n.icon, kind: n.kind, nameColor: n.kind === 'unknown' ? '#5c6370' : '#abb2bf',
+        marker: isSel ? '▌' : '', bg: isSel ? '#2f343e' : 'transparent', isSel,
+        select: () => this.setState({ btFocus: 'nearby', btNSel: i }), pair: e => { e && e.stopPropagation(); this.btStartPair(n.mac); },
+      };
+    });
+    const cur = s.btPaired[psel];
+    const meter = v => '█'.repeat(Math.round(v / 10)) + '░'.repeat(10 - Math.round(v / 10));
+    const btInfo = cur ? [
+      { k: 'address', v: cur.mac, c: '#abb2bf' }, { k: 'type', v: cur.kind, c: '#abb2bf' },
+      { k: 'profile', v: cur.profile, c: '#abb2bf' }, { k: 'signal', v: cur.connected && cur.rssi ? `${cur.rssi} dBm` : '—', c: '#abb2bf' },
+      { k: 'trusted', v: cur.trusted ? 'yes' : 'no', c: cur.trusted ? '#89ca78' : '#5c6370' },
+      { k: 'battery', v: cur.battery != null ? `${meter(cur.battery)} ${cur.battery}%` : '—', c: batColor(cur.battery) },
+    ] : [];
+    const p = s.btPair;
+    let pr = {};
+    if (p) {
+      const st = p.stage, d = p.dev;
+      const msgs = {
+        request: [`${spinner} requesting pairing…`, '#e5c07b'],
+        confirm: ['Check that this passkey is shown on the device, then confirm on both sides.', '#abb2bf'],
+        type: [p.typed ? `Receiving keystrokes… ${p.typed}/6` : `Type this code on ${d.name}, then press Enter on it.`, '#abb2bf'],
+        done: [`✓ paired with ${d.name}`, '#89ca78'],
+        failed: [`✗ pairing failed — ${p.reason}`, '#ef596f'],
+      };
+      const code = p.code || '';
+      const bl = Math.round((p.left || 0) / 3);
+      pr = {
+        title: st === 'failed' ? '✗ pairing failed' : st === 'done' ? '✓ paired' : '⚠ pairing request',
+        border: st === 'failed' ? '#ef596f' : st === 'done' ? '#89ca78' : '#e5c07b',
+        name: d.name, mac: d.mac, icon: 'ph ' + d.icon, msg: msgs[st][0], msgColor: msgs[st][1],
+        showCode: st === 'confirm' || st === 'type', showTimer: st === 'confirm' || st === 'type', left: p.left,
+        digits: code.split('').map((ch, i) => {
+          const typed = st === 'type' && i < p.typed;
+          return { ch, color: typed ? '#89ca78' : '#e5c07b', border: typed ? '#89ca78' : '#404754', gap: i === 2 ? '10px' : '0' };
+        }),
+        barOn: '█'.repeat(bl), barOff: '░'.repeat(10 - bl), barColor: p.left <= 8 ? '#ef596f' : '#5c6370',
+        canConfirm: st === 'confirm', canRetry: st === 'failed', canCancel: st !== 'done',
+        cancelLabel: st === 'failed' ? 'esc dismiss' : st === 'confirm' ? 'n reject' : 'esc cancel',
+      };
+    }
+    const connected = s.btPaired.filter(d => d.connected).length;
+    const btHints = p ? [] : !s.btPower ? [{ k: 'p', l: 'power on' }, { k: 'esc', l: 'close' }] : pf
+      ? [{ k: 'tab', l: 'nearby' }, { k: 'j/k', l: 'move' }, { k: '⏎', l: 'connect' }, { k: 't', l: 'trust' }, { k: 'f', l: 'forget' }, { k: 'esc', l: 'close' }]
+      : [{ k: 'tab', l: 'devices' }, { k: 'j/k', l: 'move' }, { k: '⏎', l: 'pair' }, { k: 's', l: 'scan' }, { k: 'esc', l: 'close' }];
+    return {
+      btClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', btPe: open ? 'auto' : 'none',
+      toggleBt: () => this.setState(st => ({ btOpen: !st.btOpen, netOpen: false, calOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })), closeBt: () => this.setState({ btOpen: false }),
+      btBtnBg: open ? '#404754' : 'transparent', btBtnColor: !s.btPower ? '#5c6370' : '#abb2bf',
+      btBtnIcon: !s.btPower ? 'ph ph-bluetooth-slash' : connected ? 'ph ph-bluetooth-connected' : 'ph ph-bluetooth',
+      btBtnLabel: s.btPower && connected ? String(connected) : '',
+      btStatus: !s.btPower ? '○ off' : s.btVisible ? '◉ discoverable' : '● on', btStatusColor: !s.btPower ? '#5c6370' : s.btVisible ? '#d55fde' : '#89ca78',
+      btTogglePower: () => this.setState(st => ({ btPower: !st.btPower })), btToggleVisible: () => s.btPower && this.setState(st => ({ btVisible: !st.btVisible })),
+      btPowerBg: s.btPower ? '#404754' : 'transparent', btPowerColor: s.btPower ? '#abb2bf' : '#5c6370',
+      btVisBg: s.btVisible ? '#404754' : 'transparent', btVisColor: s.btVisible ? '#abb2bf' : '#5c6370',
+      btOn: s.btPower, btOff: !s.btPower,
+      btPairedRows, btPairedCount: s.btPaired.length, btPairedBorder: pf ? '#4b5263' : '#404754', btPairedLegend: pf ? '#61afef' : '#5c6370',
+      btNearRows, btNearCount: s.btNearby.length, btNearBorder: !pf ? '#4b5263' : '#404754', btNearLegend: !pf ? '#61afef' : '#5c6370',
+      btNearEmpty: !s.btNearby.length, btNearEmptyText: s.btScanning ? 'searching…' : 'scan is off — press s',
+      btToggleScan: () => this.setState(st => ({ btScanning: !st.btScanning })), btScanLabel: s.btScanning ? `${spinner} scanning` : '[s] scan',
+      btHasCur: !!cur, btInfo,
+      btCurToggle: () => cur && this.btToggleConnect(cur.mac), btCurToggleLabel: cur && cur.connected ? 'disconnect' : 'onnect',
+      btCurTrust: () => cur && this.btTrust(cur.mac), btCurTrustLabel: cur && cur.trusted ? 'untrust' : 'rust',
+      btCurForget: () => cur && this.btForget(cur.mac),
+      btPairing: !!p, pr, btHints,
+      btConfirm: () => this.btFinishPair(), btCancelPair: () => this.btCancel(), btRetry: () => p && this.btStartPair(p.dev.mac),
+    };
+  }
+  avail() { return this.state.networks.filter(n => n.ssid !== this.state.current).sort((a, b) => b.sig - a.sig); }
+  connect(ssid) {
+    const n = this.state.networks.find(x => x.ssid === ssid);
+    if (!n) return;
+    if (!n.saved && n.sec !== 'Open') return this.openEdit(ssid, 'connect');
+    this.setState({ connecting: ssid, current: null, view: 'main' });
+    clearTimeout(this.ct);
+    this.ct = setTimeout(() => this.setState(s => ({ current: ssid, connecting: null, sel: 0, networks: s.networks.map(x => x.ssid === ssid ? { ...x, saved: true } : x) })), 1400);
+  }
+  openEdit(ssid, mode = 'edit') {
+    const n = this.state.networks.find(x => x.ssid === ssid);
+    if (!n) return;
+    const secFull = { WPA3: 'WPA3 Personal', WPA2: 'WPA2 Personal', Open: 'Open', '802.1X': 'WPA2 Enterprise' }[n.sec] || n.sec;
+    this.setState({ view: 'edit', draft: { orig: ssid, mode, ssid, sec: secFull, pass: n.saved ? 'correct-horse-42' : '', show: false, ipMode: 'Automatic (DHCP)', addr: '192.168.1.42/24', gw: '192.168.1.1', dns: '1.1.1.1, 1.0.0.1', mac: 'Stable', auto: n.saved ? n.auto !== false : true, metered: false } });
+  }
+  saveDraft() {
+    const d = this.state.draft; if (!d) return;
+    const short = { 'WPA3 Personal': 'WPA3', 'WPA2 Personal': 'WPA2', 'WPA2 Enterprise': '802.1X', Open: 'Open' }[d.sec];
+    this.setState(s => ({ view: 'main', draft: null, current: s.current === d.orig ? d.ssid : s.current, networks: s.networks.map(x => x.ssid === d.orig ? { ...x, ssid: d.ssid, sec: short, saved: true, auto: d.auto } : x) }),
+      () => { if (d.mode === 'connect') this.connect(d.ssid); });
+  }
+  forgetDraft() {
+    const d = this.state.draft; if (!d) return;
+    this.setState(s => ({ view: 'main', draft: null, current: s.current === d.orig ? null : s.current, networks: s.networks.map(x => x.ssid === d.orig ? { ...x, saved: false } : x) }));
+  }
+  rescan() {
+    if (this.state.scanning) return;
+    this.setState({ scanning: true });
+    setTimeout(() => this.setState(s => ({ scanning: false, networks: s.networks.map(n => ({ ...n, sig: Math.max(8, Math.min(96, n.sig + Math.round(Math.random() * 14 - 7))) })) })), 1600);
+  }
+  toggleHotspot() {
+    const s = this.state;
+    if (s.hs.on) {
+      const prev = s.hs.prev;
+      this.setState({ hs: { ...s.hs, on: false, prev: null } }, () => prev && this.connect(prev));
+    } else {
+      this.setState({ hs: { ...s.hs, on: true, prev: s.current }, current: null, connecting: null });
+    }
+  }
+  handleKey(e) {
+    const s = this.state;
+    if (s.pwrOpen) return this.pwrKey(e);
+    if (s.sysOpen) return this.sysKey(e);
+    if (s.calOpen) return this.calKey(e);
+    if (s.audioOpen) { if (e.target.tagName === 'INPUT') return; return this.aKey(e); }
+    if (s.btOpen) return this.btKey(e);
+    if (!s.netOpen) return;
+    if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); if (e.key === 'Enter' && s.view === 'edit') this.saveDraft(); return; }
+    const k = e.key, av = this.avail();
+    if (k === 'Escape') return s.view === 'main' ? this.setState({ netOpen: false }) : this.setState({ view: 'main', draft: null });
+    if (k === '1') return this.setState({ view: 'main', draft: null });
+    if (k === '2') return this.setState({ view: 'hotspot', draft: null });
+    if (s.view === 'main') {
+      if (k === 'j' || k === 'ArrowDown') { e.preventDefault(); this.setState({ sel: Math.min(av.length - 1, s.sel + 1) }); }
+      else if (k === 'k' || k === 'ArrowUp') { e.preventDefault(); this.setState({ sel: Math.max(0, s.sel - 1) }); }
+      else if (k === 'Enter' && av[s.sel]) this.connect(av[s.sel].ssid);
+      else if (k === 'e') s.current ? this.openEdit(s.current) : av[s.sel] && this.openEdit(av[s.sel].ssid);
+      else if (k === 'E' && av[s.sel]) this.openEdit(av[s.sel].ssid);
+      else if (k === 'd' && s.current) this.setState({ current: null });
+      else if (k === 'r') this.rescan();
+    } else if (s.view === 'hotspot' && k === ' ') { e.preventDefault(); this.toggleHotspot(); }
+  }
+  netVals() {
+    const s = this.state, open = s.netOpen;
+    const cyc = (arr, v) => arr[(arr.indexOf(v) + 1) % arr.length];
+    const sigColor = v => v >= 65 ? '#89ca78' : v >= 40 ? '#e5c07b' : '#ef596f';
+    const spinner = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'[s.spin % 10];
+    const av = this.avail(), sel = Math.min(s.sel, Math.max(0, av.length - 1));
+    const curN = s.networks.find(n => n.ssid === s.current);
+    const rows = av.map((n, i) => {
+      const b = n.sig >= 75 ? 4 : n.sig >= 50 ? 3 : n.sig >= 25 ? 2 : 1, isSel = i === sel;
+      return {
+        ssid: n.ssid, strong: '▂▄▆█'.slice(0, b), weak: '▂▄▆█'.slice(b), sigColor: sigColor(n.sig),
+        sec: n.sec.toLowerCase(), secColor: n.sec === 'Open' ? '#ef596f' : '#5c6370', band: n.band,
+        marker: isSel ? '▌' : '', bg: isSel ? '#2f343e' : 'transparent', isSel, showSaved: !isSel && n.saved,
+        select: () => this.setState({ sel: i }), connect: e => { e && e.stopPropagation(); this.connect(n.ssid); },
+        edit: e => { e && e.stopPropagation(); this.openEdit(n.ssid); },
+      };
+    });
+    const meterN = curN ? Math.round(curN.sig / 10) : 0;
+    const cur = curN ? { ssid: curN.ssid, band: curN.band, ch: curN.ch, sig: curN.sig, sigColor: sigColor(curN.sig), meterOn: '█'.repeat(meterN), meterOff: '░'.repeat(10 - meterN) } : {};
+    const curInfo = curN ? [
+      { k: 'security', v: curN.sec === 'Open' ? 'none' : curN.sec + (curN.sec === 'WPA3' ? '-SAE' : '-PSK') },
+      { k: 'link', v: curN.band === '5 GHz' ? '866 Mb/s' : '144 Mb/s' },
+      { k: 'ipv4', v: '192.168.1.42/24' }, { k: 'gateway', v: '192.168.1.1' },
+      { k: 'dns', v: '1.1.1.1' }, { k: 'ipv6', v: 'fe80::a6c3:f0ff' },
+      { k: 'mac', v: 'a4:c3:f0:8e:12:9b' }, { k: 'uptime', v: '3h 12m' },
+    ] : [];
+    const vpnOn = s.vpns.filter(v => v.on).length;
+    const vpnRows = s.vpns.map(v => ({
+      name: v.name, type: v.type, check: v.on ? '[x]' : '[ ]', checkColor: v.on ? '#d55fde' : '#5c6370',
+      status: v.on ? `up · ${v.ip}` : 'down', statusColor: v.on ? '#89ca78' : '#5c6370',
+      toggle: () => this.setState(st => ({ vpns: st.vpns.map(x => x.name === v.name ? { ...x, on: !x.on } : x) })),
+    }));
+    const d = s.draft, setD = patch => this.setState(st => ({ draft: { ...st.draft, ...patch } }));
+    const dv = d ? {
+      ...d, needsPass: d.sec !== 'Open', passType: d.show ? 'text' : 'password', showLabel: d.show ? '[hide]' : '[show]',
+      manual: d.ipMode === 'Manual', canForget: d.mode === 'edit' && (s.networks.find(n => n.ssid === d.orig) || {}).saved,
+      autoBox: d.auto ? '[x]' : '[ ]', autoColor: d.auto ? '#61afef' : '#5c6370',
+      meteredBox: d.metered ? '[x]' : '[ ]', meteredColor: d.metered ? '#61afef' : '#5c6370',
+      onSsid: e => setD({ ssid: e.target.value }), onPass: e => setD({ pass: e.target.value }),
+      onAddr: e => setD({ addr: e.target.value }), onGw: e => setD({ gw: e.target.value }), onDns: e => setD({ dns: e.target.value }),
+      cycleSec: () => setD({ sec: cyc(['WPA3 Personal', 'WPA2 Personal', 'WPA2 Enterprise', 'Open'], d.sec) }),
+      cycleIp: () => setD({ ipMode: cyc(['Automatic (DHCP)', 'Manual', 'Link-local only'], d.ipMode) }),
+      cycleMac: () => setD({ mac: cyc(['Stable', 'Random', 'Permanent'], d.mac) }),
+      toggleShow: () => setD({ show: !d.show }), toggleAuto: () => setD({ auto: !d.auto }), toggleMetered: () => setD({ metered: !d.metered }),
+    } : {};
+    const hs = s.hs, setH = patch => this.setState(st => ({ hs: { ...st.hs, ...patch } }));
+    const hsClients = [
+      { name: 'pixel-8', ip: '10.42.0.23', mac: '3a:1f:9c:04:e2:71', since: '12m' },
+      { name: 'ipad-air', ip: '10.42.0.57', mac: '6e:b0:22:c8:19:0d', since: '3m' },
+    ];
+    const view = s.view;
+    const tabs = [
+      { key: '1', label: 'wifi', v: 'main' }, { key: '2', label: 'hotspot', v: 'hotspot' },
+    ].map(t => ({ ...t, bg: view === t.v || (view === 'edit' && t.v === 'main') ? '#404754' : 'transparent', color: view === t.v || (view === 'edit' && t.v === 'main') ? '#abb2bf' : '#5c6370', keyColor: '#e5c07b', go: () => this.setState({ view: t.v, draft: null }) }));
+    const hints = view === 'main'
+      ? [{ k: 'j/k', l: 'move' }, { k: '⏎', l: 'connect' }, { k: 'e', l: 'edit' }, { k: 'd', l: 'disconnect' }, { k: 'r', l: 'rescan' }, { k: 'esc', l: 'close' }]
+      : view === 'edit'
+        ? [{ k: 'tab', l: 'next field' }, { k: '⏎', l: 'save' }, { k: 'esc', l: 'cancel' }]
+        : [{ k: 'space', l: hs.on ? 'stop' : 'start' }, { k: '1', l: 'wifi' }, { k: 'esc', l: 'back' }];
+    const statusText = hs.on ? '◉ hotspot' : s.connecting ? `${spinner} connecting` : s.current ? '● online' : '○ offline';
+    const statusColor = hs.on ? '#d19a66' : s.connecting ? '#e5c07b' : s.current ? '#89ca78' : '#5c6370';
+    return {
+      netClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', netPe: open ? 'auto' : 'none',
+      toggleNet: () => this.setState(st => ({ netOpen: !st.netOpen, calOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })), closeNet: () => this.setState({ netOpen: false }),
+      wifiBg: open ? '#404754' : 'transparent',
+      wifiColor: hs.on ? '#d19a66' : s.current ? '#abb2bf' : '#5c6370',
+      wifiIcon: hs.on ? 'ph ph-broadcast' : s.connecting ? 'ph ph-wifi-medium' : s.current ? 'ph-fill ph-wifi-high' : 'ph ph-wifi-slash',
+      wifiLabel: hs.on ? 'hotspot' : s.connecting ? '…' : s.current || 'offline',
+      statusText, statusColor, tabs, hints,
+      isMain: view === 'main', isEdit: view === 'edit', isHotspot: view === 'hotspot',
+      hasCurrent: !!curN, cur, curInfo, rx: s.rx, tx: s.tx,
+      connectingNow: !!s.connecting, connecting: s.connecting, spinner,
+      idle: !curN && !s.connecting, idleText: hs.on ? '○ wlan0 is serving a hotspot' : '○ not connected — pick a network below',
+      editCurrent: () => this.openEdit(s.current), disconnect: () => this.setState({ current: null }),
+      rows, availCount: av.length, rescan: () => this.rescan(), scanLabel: s.scanning ? `${spinner} scanning` : '[r] rescan',
+      vpnRows, vpnSummary: vpnOn ? `${vpnOn} active` : 'none active',
+      d: dv, editTitle: d ? (d.mode === 'connect' ? `connect ─ ${d.orig}` : `edit ─ ${d.orig}`) : '',
+      saveLabel: d && d.mode === 'connect' ? '< connect >' : '< save >',
+      saveDraft: () => this.saveDraft(), forgetDraft: () => this.forgetDraft(), backMain: () => this.setState({ view: 'main', draft: null }),
+      hs, hsStatus: hs.on ? '● broadcasting' : '○ off', hsStatusColor: hs.on ? '#89ca78' : '#5c6370',
+      hsOnSsid: e => setH({ ssid: e.target.value }), hsOnPass: e => setH({ pass: e.target.value }),
+      hsPassType: hs.show ? 'text' : 'password', hsShowLabel: hs.show ? '[hide]' : '[show]', hsToggleShow: () => setH({ show: !hs.show }),
+      hsCycleSec: () => !hs.on && setH({ sec: cyc(['WPA3 Personal', 'WPA2 Personal', 'WPA2/WPA3 mixed'], hs.sec) }),
+      hsCycleBand: () => !hs.on && setH({ band: cyc(['5 GHz', '2.4 GHz', 'Auto'], hs.band) }),
+      hsCycleShare: () => !hs.on && setH({ share: cyc(['eth0 · ethernet', 'usb0 · tether', 'none (local only)'], hs.share) }),
+      hsToggleHidden: () => !hs.on && setH({ hidden: !hs.hidden }),
+      hsHiddenBox: hs.hidden ? '[x]' : '[ ]', hsHiddenColor: hs.hidden ? '#d19a66' : '#5c6370',
+      hsToggle: () => this.toggleHotspot(), hsBtnLabel: hs.on ? '< stop hotspot >' : '< start hotspot >', hsBtnBg: hs.on ? '#ef596f' : '#d19a66',
+      hsNote: hs.on ? `wlan0 → ${hs.share.split(' ')[0]} · 10.42.0.1/24` : 'wi‑fi will disconnect while active',
+      hsClients, hsClientCount: hsClients.length,
+      ...this.btVals(spinner),
+    };
+  }
+  renderVals() {
+    const P = this.props, s = this.state, now = s.now;
+    const colors = { 1: '#61afef', 2: '#ef596f', 3: '#e5c07b', 4: '#89ca78', 5: '#d55fde', 6: '#d19a66', 7: '#2bbac5', 8: '#ef596f', 9: '#61afef' };
+    const count = P.workspaceCount ?? 5, style = P.workspaceStyle ?? 'numbers';
+    const dots = { active: '●', occ: '●', empty: '○' };
+    const workspaces = Array.from({ length: count }, (_, i) => {
+      const n = i + 1, act = n === s.active, occ = s.occupied.includes(n);
+      return {
+        n, color: occ || act ? colors[n] : '#5c6370',
+        opacity: act ? 1 : occ ? 0.4 : 0.6, weight: act ? 500 : 400,
+        markOpacity: act && P.activeUnderline !== false ? 1 : 0,
+        label: style === 'dots' ? (act ? dots.active : occ ? dots.occ : dots.empty) : n,
+        select: () => this.setState(st => ({ active: n, occupied: st.occupied.includes(n) ? st.occupied : [...st.occupied, n] })),
+      };
+    });
+    const onWsWheel = e => { const d = e.deltaY > 0 ? 1 : -1; this.setState(st => ({ active: ((st.active - 1 + d + count) % count) + 1 })); };
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const h12 = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const h24 = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const fmt = P.clockFormat ?? 'Day @ 12h';
+    const clockText = fmt === 'Day @ 24h' ? `${day} @ ${h24}` : fmt === 'Date · 12h' ? `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${h12}` : `${day} @ ${h12}`;
+    return {
+      ...this.netVals(), ...this.btVals(), ...this.aVals(), ...this.calVals(), ...this.sysVals(), ...this.pwrVals(),
+      workspaces, onWsWheel, clockText,
+      clockBg: s.calOpen ? '#404754' : 'transparent',
+      toggleCal: () => this.setState(st => ({ calOpen: !st.calOpen, netOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })),
+      calOpen: s.calOpen,
+      tray: [{ name: 'Discord', icon: 'ph ph-discord-logo' }, { name: 'Steam', icon: 'ph ph-steam-logo' }, { name: 'Nextcloud', icon: 'ph ph-cloud-check' }],
+      volIcon: s.muted ? 'ph-fill ph-speaker-simple-x' : 'ph-fill ph-speaker-simple-high',
+      volColor: s.muted ? '#5c6370' : '#abb2bf', volTitle: s.muted ? 'Muted — click to unmute' : 'Volume 70% — click to mute',
+      toggleMute: () => this.setState(st => ({ muted: !st.muted })),
+      cpu: s.cpu,
+      frameMargin: `0 ${P.frameWidth ?? 8}px ${P.frameWidth ?? 8}px`,
+      frameRadius: `${P.cornerRadius ?? 16}px`,
+    };
+  }
+}
+</script>
+</body>
+</html>

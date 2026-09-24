@@ -12,6 +12,7 @@
     ./modules/globalprotect.nix
     ./modules/nix-ld.nix
     ./modules/filesystems.nix
+    ./modules/ultraleap.nix
   ];
 
   ##############################################################################

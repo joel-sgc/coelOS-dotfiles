@@ -9,7 +9,7 @@ Scope {
   property color borderColor: "#61afef"
   property int radius: 12
   property bool enabled: true
-  property int barHeight: 48
+  property int barHeight: 36
 
   Variants {
     model: Quickshell.screens

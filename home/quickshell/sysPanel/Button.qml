@@ -3,22 +3,12 @@ import QtQuick.Layouts
 import Quickshell
 
 // ===== BUTTON =====
-// Generic icon button: nerd-font glyph, optionally with a live label tacked
-// on (Cpu.qml/Battery.qml's "NN%"), + click action.
-//
-// icon/label are two separate Text items with independently tunable sizes
-// -- not one concatenated string at one font size like before. Nerd Fonts'
-// own icon glyphs are wildly inconsistent in optical size at the same
-// pixel size: bluetooth/wifi/cpu (all nf-md-* Material Design Icons
-// codepoints, confirmed via each glyph's actual Unicode value, not just
-// eyeballed) render visibly smaller than the battery glyphs (also nf-md-*)
-// at 16px, and volume's icon is a Font Awesome codepoint (nf-fa-*), a
-// legacy icon set that's well known to render notably smaller than MDI in
-// Nerd Fonts generally. `iconSize` below is a best-effort starting point
-// for evening that out, not a measured pixel match -- I can't screenshot
-// this session's compositor to see the real render (tried grim/spectacle,
-// neither works from here), so nudge individual `iconSize`s in Buttons.qml
-// if any of these still look off once you actually see it.
+// Generic pill button matching the design mock's bar chips exactly: fixed
+// 26px height, 5px-radius hover background, 7px horizontal padding,
+// Phosphor icon (14px) + optional JetBrains Mono label (13px), 6px gap
+// between them. The mock draws every bar button (workspace, tray, bt/net/
+// audio/sys/pwr) at this same height/radius/hover treatment; only the
+// content and per-button icon size (Battery.qml bumps to 15) differ.
 Item {
   id: buttonRoot
 
@@ -30,22 +20,35 @@ Item {
 
   property string icon: ""
   property string label: ""
-  property int iconSize: 16
-  property int labelSize: 14
+  property int iconSize: 14
+  property int labelSize: 13
+  // 0 means unconstrained. labelMinWidth right-aligns and reserves space
+  // (Cpu.qml's "NN%" not jittering the row's width as the digit count
+  // changes); labelMaxWidth elides (Network.qml's essid, which can be
+  // arbitrarily long) -- both match specific mock behaviors, not just a
+  // generic just-in-case knob.
+  property int labelMinWidth: 0
+  property int labelMaxWidth: 0
 
-  implicitWidth: row.implicitWidth + 8
-  implicitHeight: row.implicitHeight
+  implicitWidth: row.implicitWidth + 14
+  implicitHeight: 26
+
+  Rectangle {
+    anchors.fill: parent
+    radius: 5
+    color: mouseArea.containsMouse ? root.hoverColor : "transparent"
+  }
 
   RowLayout {
     id: row
     anchors.verticalCenter: parent.verticalCenter
-    x: 4
-    spacing: 4
+    x: 7
+    spacing: 6
 
     Text {
       text: buttonRoot.icon
       color: root.fgColor
-      font.family: "FiraCode Nerd Font Mono"
+      font.family: "Phosphor"
       font.pixelSize: buttonRoot.iconSize
     }
 
@@ -53,14 +56,20 @@ Item {
       visible: buttonRoot.label.length > 0
       text: buttonRoot.label
       color: root.fgColor
-      font.family: "FiraCode Nerd Font Mono"
+      font.family: "JetBrains Mono"
       font.pixelSize: buttonRoot.labelSize
+      horizontalAlignment: Text.AlignRight
+      elide: buttonRoot.labelMaxWidth > 0 ? Text.ElideRight : Text.ElideNone
+      Layout.minimumWidth: buttonRoot.labelMinWidth
+      Layout.maximumWidth: buttonRoot.labelMaxWidth > 0 ? buttonRoot.labelMaxWidth : Infinity
     }
   }
 
   MouseArea {
+    id: mouseArea
     anchors.fill: parent
     acceptedButtons: Qt.LeftButton | Qt.RightButton
+    hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     onClicked: (mouse) => {
       if (mouse.button === Qt.RightButton && buttonRoot.rightCommand.length > 0) {

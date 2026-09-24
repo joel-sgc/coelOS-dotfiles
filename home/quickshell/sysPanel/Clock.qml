@@ -5,19 +5,41 @@ import QtQuick
 // format tokens (dddd/hh/mm/AP) do this natively via Qt.formatDateTime,
 // no manual strftime-style parsing needed. Re-reads Date.now() every 30s;
 // no seconds shown, so that's plenty granular without a 1s timer running
-// forever. Plain Text rather than Button -- nothing to click here, waybar's
-// clock only pops its own tooltip calendar, which isn't ported (that's a
-// real popup, out of scope for "a few buttons").
-Text {
+// forever. Emits clicked() for Panel.qml to toggle the calendar Popup --
+// the calendar's own content isn't built yet (that's a later phase), this
+// just wires the button through.
+//
+// Now a proper chip (padded background, radius 6) matching the mock,
+// rather than bare text -- `active` is set true while the calendar popup
+// is open, so the button stays highlighted the whole time it's open, not
+// just on hover, same as {{ clockBg }} in the mock.
+Item {
   id: clockRoot
 
+  property bool active: false
+  signal clicked()
+
+  implicitWidth: label.implicitWidth + 24
+  implicitHeight: 26
+
   function refresh() {
-    text = Qt.formatDateTime(new Date(), "dddd @ hh:mm AP");
+    label.text = Qt.formatDateTime(new Date(), "dddd @ hh:mm AP");
   }
 
-  color: root.fgColor
-  font.family: "FiraCode Nerd Font Mono"
-  font.pixelSize: 16
+  Rectangle {
+    anchors.fill: parent
+    radius: 6
+    color: (clockRoot.active || mouseArea.containsMouse) ? root.hoverColor : "transparent"
+  }
+
+  Text {
+    id: label
+    anchors.centerIn: parent
+    color: root.fgColor
+    font.family: "JetBrains Mono"
+    font.pixelSize: 14
+    font.letterSpacing: 0.3
+  }
 
   Component.onCompleted: refresh()
 
@@ -26,5 +48,13 @@ Text {
     running: true
     repeat: true
     onTriggered: clockRoot.refresh()
+  }
+
+  MouseArea {
+    id: mouseArea
+    anchors.fill: parent
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onClicked: clockRoot.clicked()
   }
 }

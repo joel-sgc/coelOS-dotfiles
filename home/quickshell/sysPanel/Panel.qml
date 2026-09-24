@@ -28,6 +28,8 @@ Scope {
 
   property var bgColor: "#282c34"
   property var fgColor: "#abb2bf"
+  property var mutedColor: "#5c6370"
+  property var hoverColor: "#404754"
   property var colors: [
     "#61afef",  // Blue
     "#ef596f",  // Red
@@ -35,6 +37,7 @@ Scope {
     "#89ca78",  // Green
     "#d55fde"   // Purple
   ]
+  property int barHeight: 36
 
   Variants {
     model: Quickshell.screens
@@ -47,7 +50,18 @@ Scope {
 
         property var bgColor: panelScope.bgColor
         property var fgColor: panelScope.fgColor
+        property var mutedColor: panelScope.mutedColor
+        property var hoverColor: panelScope.hoverColor
         property var colors: panelScope.colors
+        property int barHeight: panelScope.barHeight
+
+        // Phase-1 plumbing check: the clock is the only button wired to a
+        // real Popup so far (see Popup.qml) -- the other five still launch
+        // their existing terminal tools (bluepala/netpala/pulsemixer/btop)
+        // unchanged until their own phases replace that with inline
+        // dropdowns. Only one popup open at a time will matter once more
+        // of them exist; not needed yet with just this one.
+        property bool calOpen: false
 
         property int workspaceCount: {
           let maxWs = 5;
@@ -63,15 +77,15 @@ Scope {
           right: true
         }
 
-        implicitHeight: 48
+        implicitHeight: root.barHeight
         color: root.bgColor
 
         RowLayout {
           anchors.verticalCenter: parent.verticalCenter
-          spacing: 16
+          spacing: 14
 
           Logo {
-            Layout.leftMargin: 16
+            Layout.leftMargin: 12
           }
 
           Workspaces {  }
@@ -79,12 +93,28 @@ Scope {
 
         Clock {
           anchors.centerIn: parent
+          active: root.calOpen
+          onClicked: root.calOpen = !root.calOpen
         }
 
         Buttons {
           anchors.verticalCenter: parent.verticalCenter
           anchors.right: parent.right
-          anchors.rightMargin: 16
+          anchors.rightMargin: 12
+        }
+
+        Popup {
+          screen: root.screen
+          open: root.calOpen
+          barHeight: root.barHeight
+          centerHorizontally: true
+
+          Text {
+            text: "calendar (coming in a later phase)"
+            color: root.fgColor
+            font.family: "JetBrains Mono"
+            font.pixelSize: 13
+          }
         }
       }
     }

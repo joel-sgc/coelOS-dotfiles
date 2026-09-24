@@ -1,4 +1,5 @@
 import Quickshell.Services.UPower
+import "./Phosphor.js" as Phosphor
 
 // ===== BATTERY =====
 // Ported from home/waybar.nix's battery module -- same on-click
@@ -14,7 +15,8 @@ Button {
   readonly property int pct: device.ready ? Math.round(device.percentage * 100) : 0
 
   visible: device.ready && device.isLaptopBattery
-  icon: charging ? "󰂄" : "󰁹"
+  icon: charging ? Phosphor.icon("battery-charging") : Phosphor.icon("battery-full")
+  iconSize: 15
   label: pct + "%"
   command: [ "coel-power-profiles-menu" ]
 }

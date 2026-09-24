@@ -30,6 +30,15 @@
     netpala.url = "github:joel-sgc/netpala";
     bluepala.url = "github:joel-sgc/bluepala";
 
+    # Ultraleap Gemini hand tracking (Leap Motion camera driver). Ultraleap's
+    # own Linux downloads have gone dark; this builds the service from the
+    # last hash-pinned .deb it still references and packages leapc-cffi/
+    # leapc-python-api properly for Nix. See modules/ultraleap.nix.
+    ultraleap-nix = {
+      url = "github:Makesesama/ultraleap-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Not in nixpkgs yet; the project ships its own flake (crane + fenix,
     # pins its own Rust toolchain independent of nixpkgs' rustc), so this is
     # a real declarative build straight from source, not a wrapped installer

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import "./Phosphor.js" as Phosphor
 
 // ===== CPU =====
 // Ported from home/waybar.nix's cpu module -- same on-click (btop)/
@@ -15,9 +16,12 @@ Button {
 
   property int usage: 0
 
-  icon: "󰍛"
-  iconSize: 20
+  icon: Phosphor.icon("cpu")
   label: usage + "%"
+  // Right-aligned, reserved-width label -- matches the mock's
+  // min-width:3ch so the row doesn't jitter as usage crosses a digit
+  // boundary (9% -> 10%, 99% -> 100%).
+  labelMinWidth: 24
   command: [ "ghostty", "--class=com.joelsgc.floating", "-e", "btop" ]
   rightCommand: [ "ghostty" ]
 

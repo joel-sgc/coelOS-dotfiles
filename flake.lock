@@ -365,6 +365,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "opencode": "opencode",
         "steam-config-nix": "steam-config-nix",
+        "ultraleap-nix": "ultraleap-nix",
         "zen-browser": "zen-browser"
       }
     },
@@ -449,6 +450,26 @@
       "original": {
         "owner": "nix-systems",
         "repo": "x86_64-linux",
+        "type": "github"
+      }
+    },
+    "ultraleap-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1762780223,
+        "narHash": "sha256-u3pLHSjv9gL/qKwDouCnCqgqo2hzUV5P3dRZDnJ+oD4=",
+        "owner": "Makesesama",
+        "repo": "ultraleap-nix",
+        "rev": "44936b83495bba8c6f8196e0aa59658b80a9b705",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Makesesama",
+        "repo": "ultraleap-nix",
         "type": "github"
       }
     },
