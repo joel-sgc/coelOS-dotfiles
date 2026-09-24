@@ -44,6 +44,14 @@ const codepoints = {
   snowflake: 0xe5aa, // ph-snowflake (hibernate)
   "arrow-clockwise": 0xe036, // ph-arrow-clockwise (reboot)
   power: 0xe3da, // ph-power (shut down)
+
+  // BluetoothDropdown.qml -- device-type icons
+  headphones: 0xe2a6, // ph-headphones (also reused for earbuds -- no
+  // dedicated Phosphor earbuds glyph)
+  mouse: 0xe33a, // ph-mouse
+  keyboard: 0xe2d8, // ph-keyboard
+  "device-mobile": 0xe1e0, // ph-device-mobile (phone)
+  question: 0xe3e8, // ph-question (unknown device)
 };
 
 function icon(name) {

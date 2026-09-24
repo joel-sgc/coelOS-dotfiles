@@ -134,6 +134,30 @@ Scope {
             onCloseRequested: root.openPopup = ""
           }
         }
+
+        Popup {
+          screen: root.screen
+          open: root.openPopup === "bluetooth"
+          barHeight: root.barHeight
+          // Rough estimate of where the bluetooth button sits (it's not
+          // the rightmost bar button, unlike power/battery, so this can't
+          // just be a small fixed offset from the bar's right edge).
+          // First guess (260) landed with the popup's right edge flush
+          // against the button's *left* edge instead of under the
+          // button -- short by roughly one button's width (icon-only, no
+          // label, so just ~30px: 14px padding + ~16px glyph).
+          rightMargin: 230
+          contentWidth: 480
+          onCloseRequested: root.openPopup = ""
+
+          BluetoothDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            onCloseRequested: root.openPopup = ""
+          }
+        }
       }
     }
   }

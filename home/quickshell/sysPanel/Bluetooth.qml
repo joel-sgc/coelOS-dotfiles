@@ -2,11 +2,10 @@ import Quickshell.Bluetooth
 import "./Phosphor.js" as Phosphor
 
 // ===== BLUETOOTH =====
-// Ported from home/waybar.nix's bluetooth module -- same icon states (no
-// controller and off/disabled all share one icon there too, so they
-// collapse the same way here). No device-count tooltip -- that lived in
-// waybar's tooltip, a real popup widget, out of scope here; the bar icon
-// itself was always state-only, which is what this matches.
+// Bar icon still reflects the real adapter (Quickshell.Bluetooth) -- only
+// the dropdown this opens (BluetoothDropdown.qml) is hardcoded for now,
+// same split PowerDropdown.qml already has between real bar-button state
+// and (for now, on this one) placeholder dropdown content.
 Button {
   readonly property var adapter: Bluetooth.defaultAdapter
   readonly property int connectedCount: {
@@ -26,5 +25,6 @@ Button {
   }
 
   icon: iconState
-  command: [ "ghostty", "--class=com.joelsgc.floating", "-e", "bluepala" ]
+  active: root.openPopup === "bluetooth"
+  onClicked: root.openPopup = root.openPopup === "bluetooth" ? "" : "bluetooth"
 }

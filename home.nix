@@ -45,6 +45,7 @@
     ./home/desktop-entries.nix
     ./home/udiskie.nix
     ./home/poweralertd.nix
+    ./home/bluetooth-agent.nix
     ./home/kanshi.nix
     ./home/kde-window-shortcuts.nix
     ./home/kde-shortcuts.nix
