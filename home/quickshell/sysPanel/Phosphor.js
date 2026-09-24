@@ -52,6 +52,9 @@ const codepoints = {
   keyboard: 0xe2d8, // ph-keyboard
   "device-mobile": 0xe1e0, // ph-device-mobile (phone)
   question: 0xe3e8, // ph-question (unknown device)
+
+  // NetworkDropdown.qml
+  broadcast: 0xe0f2, // ph-broadcast (hotspot active)
 };
 
 function icon(name) {

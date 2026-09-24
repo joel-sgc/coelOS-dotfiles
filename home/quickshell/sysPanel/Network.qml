@@ -2,13 +2,17 @@ import Quickshell.Networking
 import "./Phosphor.js" as Phosphor
 
 // ===== NETWORK =====
-// Ported from home/waybar.nix's network module -- 3-step wifi signal icon
-// (Phosphor only has low/medium/high, not waybar's finer steps), same
-// ethernet/disconnected distinction, same inline essid label (waybar's
-// format-wifi was "{icon}    {essid} ", shown right in the bar, not just
-// the tooltip -- so the label here isn't new, it's matching what waybar
-// actually displayed). signalStrength is a 0..1 fraction, confirmed live
-// against this laptop's real "LUC" connection (0.57), not assumed.
+// Bar icon still reflects the real wifi/wired device (Quickshell.
+// Networking) -- 3-step wifi signal icon (Phosphor only has low/medium/
+// high), same ethernet/disconnected distinction, same inline essid label
+// (waybar's format-wifi was "{icon}    {essid} ", shown right in the bar,
+// not just the tooltip). signalStrength is a 0..1 fraction, confirmed
+// live against this laptop's real "LUC" connection (0.57), not assumed.
+//
+// Only the dropdown this opens (NetworkDropdown.qml) is hardcoded for
+// now -- same split as Bluetooth.qml/PowerDropdown.qml between real
+// bar-button state and (for now, on this one) placeholder dropdown
+// content.
 Button {
   readonly property var wifiDevice: {
     for (const dev of Networking.devices.values) {
@@ -51,5 +55,6 @@ Button {
   // Elides rather than pushing the rest of the bar around -- matches the
   // mock's max-width:110px on the essid label.
   // labelMaxWidth: 110
-  command: [ "ghostty", "--class=com.joelsgc.floating", "-e", "netpala" ]
+  active: root.openPopup === "network"
+  onClicked: root.openPopup = root.openPopup === "network" ? "" : "network"
 }

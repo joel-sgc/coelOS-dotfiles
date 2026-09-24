@@ -158,6 +158,28 @@ Scope {
             onCloseRequested: root.openPopup = ""
           }
         }
+
+        Popup {
+          screen: root.screen
+          open: root.openPopup === "network"
+          barHeight: root.barHeight
+          // Same rough-estimate caveat as bluetooth's rightMargin above.
+          // First guess (195) was short by another button-unit the same
+          // way bluetooth's first guess was -- shifted right by one more
+          // increment on top of that correction.
+          rightMargin: 145
+          contentWidth: 500
+          onCloseRequested: root.openPopup = ""
+
+          NetworkDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            popupOpen: root.openPopup === "network"
+            onCloseRequested: root.openPopup = ""
+          }
+        }
       }
     }
   }
