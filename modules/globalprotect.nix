@@ -57,6 +57,19 @@ in
 
   systemd.tmpfiles.rules = [
     "d /var/lib/globalprotect 0775 root globalprotect -"
+
+    # Real host mountpoint the FHS sandboxes (both the root daemon and the
+    # per-user agent below) bind /var/lib/globalprotect onto. It's just an
+    # empty bind-mount target, no real content of its own -- but it
+    # predates this NixOS module (leftover from GlobalProtect's original
+    # native install, which drops it root:root 0700) and bwrap has to
+    # mkdir its own mountpoint *inside* it as whichever user is running
+    # the sandbox. That mkdir succeeds for the daemon (root) but fails for
+    # the per-user agent, which isn't root -- "bwrap: Can't mkdir
+    # /opt/paloaltonetworks/globalprotect: Permission denied", and the
+    # agent's sandbox never starts as a result. Same root:globalprotect
+    # 0775 treatment as /var/lib/globalprotect above fixes it the same way.
+    "d /opt/paloaltonetworks 0775 root globalprotect -"
   ];
 
   systemd.services.globalprotect-daemon = {

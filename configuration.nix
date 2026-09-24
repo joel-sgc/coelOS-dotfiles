@@ -164,6 +164,7 @@
     kwallet
     kwalletmanager
     kate
+    gwenview
   ];
 
   # Linking Ghostty to DBus
@@ -403,6 +404,19 @@
   services.udev.extraRules = ''
     KERNEL=="sda", GROUP="kvm", MODE="0660"
   '';
+
+  ##############################################################################
+  # Gaming
+  #
+  # Steam itself has to be enabled here, not in home-manager: it needs
+  # 32-bit graphics libraries (programs.steam.enable turns on
+  # hardware.graphics.enable32Bit for us), controller udev rules, and the
+  # FHS/pressure-vessel sandbox, none of which a user profile can provide.
+  # Per-game settings (Proton version, launch options, mod files) live in
+  # home/steam.nix.
+  ##############################################################################
+
+  programs.steam.enable = true;
 
   ##############################################################################
   # Other Services

@@ -10,6 +10,29 @@ let
 
   theme = import ./theme/onedark.nix;
 
+  # Menu icons, by codepoint (see home/icons.nix for why they're never
+  # written as raw glyphs in source).
+  icons = import ./icons.nix { inherit lib; };
+
+  # Fills @icon:<name>@ placeholders in a menu script's text with the real
+  # glyph. Fails the build on an unknown name (a typo, or an icon someone
+  # forgot to define) instead of shipping a menu with a literal
+  # "@icon:whatever@" in its label.
+  withIcons =
+    file:
+    let
+      text = builtins.readFile file;
+      names = builtins.attrNames icons;
+      out = builtins.replaceStrings (map (n: "@icon:${n}@") names) (map (n: icons.${n}) names) text;
+      # Only a well-formed @icon:some-name@ counts as a leftover, so a
+      # comment describing the syntax (like "@icon:<name>@") is fine.
+      leftover = lib.filter (l: builtins.match ".*@icon:[a-z0-9-]+@.*" l != null) (lib.splitString "\n" out);
+    in
+    if leftover != [ ] then
+      throw "${toString file}: unknown icon placeholder (define it in home/icons.nix): ${lib.head leftover}"
+    else
+      out;
+
   # --- Menu scripts -----------------------------------------------------
   # Ported from the old Arch/Omarchy dotfiles' configs/rofi/*.sh. Every menu
   # entry from the originals is present here — anything without a real Nix
@@ -52,32 +75,32 @@ let
   # `alacritty --class com.joelsgc.floating -e ...` convention.
 
   # Place these 2 in between "Settings" and "Update" when ready
-  # 󱧘  Install\n\
-  # 󱧙  Uninstall\n\
+  # Install (icon U+F19D8, not defined in home/icons.nix yet)
+  # Uninstall (icon U+F19D9, not defined in home/icons.nix yet)
   mainMenu = pkgs.writeShellApplication {
     name = "coel-main-menu";
     runtimeInputs = [ pkgs.rofi ];
     text = ''
-            choice=$(printf \
-            "󰀻  Programs\n\
-      󱓞  Actions\n\
-        Settings\n\
-        Rebuild\n\
-        Update\n\
-        About\n\
-      󰤆  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
+      choice=$(printf \
+      "${icons.programs}  Programs\n\
+      ${icons.actions}  Actions\n\
+      ${icons.settings}  Settings\n\
+      ${icons.rebuild}  Rebuild\n\
+      ${icons.update}  Update\n\
+      ${icons.about}  About\n\
+      ${icons.system}  System\n" | rofi -dmenu -i -p "Main Menu" -no-fixed-num-lines)
 
-            case "$choice" in
-            	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
-            	*Actions*) exec coel-actions-menu ;;
-            	*Settings*) exec coel-settings-menu ;;
-            	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
-            	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
-            	*Rebuild*) exec ghostty --class=com.joelsgc.floating -e coel-rebuild ;;
-            	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
-            	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
-            	*System*) exec coel-power-menu ;;
-            esac
+      case "$choice" in
+      	*Programs*) rofi -show drun -theme-str 'listview { lines: 10; }' ;;
+      	*Actions*) exec coel-actions-menu ;;
+      	*Settings*) exec coel-settings-menu ;;
+      	*Install*) exec ghostty --class=com.joelsgc.floating -e coel-package-search ;;
+      	*Uninstall*) exec coel-todo "Nix has no imperative package uninstaller menu — remove the package from home.nix or configuration.nix and rebuild instead." ;;
+      	*Rebuild*) exec ghostty --class=com.joelsgc.floating -e coel-rebuild ;;
+      	*Update*) exec ghostty --class=com.joelsgc.floating -e coel-update ;;
+      	*About*) exec ghostty --class=com.joelsgc.info -e bash -c "fastfetch; read -n1 -r" ;;
+      	*System*) exec coel-power-menu ;;
+      esac
     '';
   };
 
@@ -87,27 +110,29 @@ let
   # is the direct equivalent (same command as ~/reload-nix.sh), Update is
   # the same thing plus `--upgrade` to update flake inputs (nixpkgs, etc.)
   # before building.
+  # Both hold the window open whether the rebuild succeeds or fails (see
+  # showDone): a failed rebuild is exactly when the output matters most.
   rebuild = pkgs.writeShellApplication {
     name = "coel-rebuild";
+    runtimeInputs = [ showDone ];
     text = ''
+      trap 'coel-show-done --status "$?"' EXIT
+
       echo "Rebuilding CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos"
       echo
       sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos"
-      echo
-      read -n 1 -s -r -p "Done. Press any key to close..."
-      echo
     '';
   };
 
   update = pkgs.writeShellApplication {
     name = "coel-update";
+    runtimeInputs = [ showDone ];
     text = ''
+      trap 'coel-show-done --status "$?"' EXIT
+
       echo "Updating CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos --upgrade"
       echo
       sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos" --upgrade
-      echo
-      read -n 1 -s -r -p "Done. Press any key to close..."
-      echo
     '';
   };
 
@@ -177,18 +202,18 @@ let
     text = builtins.readFile ./rofi/scripts/coel-package-search.sh;
   };
 
-  powerMenu = pkgs.writeShellScriptBin "coel-power-menu" (builtins.readFile ./rofi/scripts/power-menu.sh);
+  powerMenu = pkgs.writeShellScriptBin "coel-power-menu" (withIcons ./rofi/scripts/power-menu.sh);
 
-  actionsMenu = pkgs.writeShellScriptBin "coel-actions-menu" (builtins.readFile ./rofi/scripts/actions-menu.sh);
+  actionsMenu = pkgs.writeShellScriptBin "coel-actions-menu" (withIcons ./rofi/scripts/actions-menu.sh);
 
-  settingsMenu = pkgs.writeShellScriptBin "coel-settings-menu" (builtins.readFile ./rofi/scripts/settings-menu.sh);
+  settingsMenu = pkgs.writeShellScriptBin "coel-settings-menu" (withIcons ./rofi/scripts/settings-menu.sh);
 
   # Ported from config.sh. Monitors/Keybindings/Input/Autostart/Window Rules
   # all used to be separate files; ours are unified into home/hyprland.nix
   # (hyprlock/hypridle settings live in home/hypridle.nix), so several
   # entries below point at the same file — that's a real difference from the
   # old per-concern file split, not a mistake.
-  configMenu = pkgs.writeShellScriptBin "coel-config-menu" (builtins.readFile ./rofi/scripts/config-menu.sh);
+  configMenu = pkgs.writeShellScriptBin "coel-config-menu" (withIcons ./rofi/scripts/config-menu.sh);
 
   powerProfilesMenu = pkgs.writeShellScriptBin "coel-power-profiles-menu" ''
     #!/usr/bin/env bash
@@ -250,13 +275,45 @@ let
   };
 
   # --- Fingerprint helpers ------------------------------------------------
+  # Keeps a one-shot script's terminal window open until a key is pressed, so
+  # output stays scrollable. Ported from the old dotfiles' bin/show-done.sh,
+  # which worked because those scripts had no `set -e`: a failing command
+  # fell through to this wait instead of ending the script. Ours are built
+  # with writeShellApplication (`set -euo pipefail`), so a failure would exit
+  # before ever reaching it and ghostty would close with the error gone.
+  # Scripts that want it install it as an EXIT trap instead of calling it
+  # at the bottom, which fires on failure too:
+  #
+  #   trap 'coel-show-done --status "$?"' EXIT
+  #
+  # `--status N` picks the message: "Done!" for 0, a red failure line
+  # otherwise. An optional TITLE can still be passed as the first argument.
   showDone = pkgs.writeShellApplication {
     name = "coel-show-done";
     runtimeInputs = [ pkgs.gum ];
     text = ''
-      TITLE="''${1:-Done! Press any key to close...}"
+      status=0
+      if [ "''${1:-}" = "--status" ]; then
+        status="''${2:-0}"
+        shift 2
+      fi
+
+      # Ctrl+C, or the window itself being closed (SIGHUP/SIGTERM): nobody
+      # is left to read anything, and the old scripts closed on Ctrl+C too.
+      case "$status" in
+        129 | 130 | 143) exit "$status" ;;
+      esac
+
+      if [ "$status" -ne 0 ]; then
+        printf '\n\033[1;31mFailed (exit %s) -- scroll up to see what went wrong.\033[0m\n' "$status"
+        TITLE="''${1:-Press any key to close...}"
+      else
+        TITLE="''${1:-Done! Press any key to close...}"
+      fi
+
       echo
       gum spin --spinner "globe" --title "$TITLE" -- bash -c 'read -n 1 -s'
+      exit "$status"
     '';
   };
 
@@ -267,9 +324,10 @@ let
       showDone
     ];
     text = ''
+      trap 'coel-show-done --status "$?"' EXIT
+
       sudo pkill fprintd || true
       sudo fprintd-enroll "$USER"
-      exec coel-show-done
     '';
   };
 
@@ -277,10 +335,11 @@ let
     name = "coel-fingerprint-delete";
     runtimeInputs = [ showDone ];
     text = ''
+      trap 'coel-show-done --status "$?"' EXIT
+
       sudo -v
       sleep 0.2
       sudo fprintd-delete "$USER"
-      exec coel-show-done
     '';
   };
 
@@ -292,8 +351,8 @@ let
   fingerprintMenu = pkgs.writeShellScriptBin "coel-fingerprint-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \
-    "   Enroll\n\
-       Delete\n" | rofi -dmenu -i -p "Fingerprint" -lines 10 -no-fixed-num-lines)
+    "${icons.enroll}  Enroll\n\
+    ${icons.delete}  Delete\n" | rofi -dmenu -i -p "Fingerprint" -lines 10 -no-fixed-num-lines)
 
     exit_code=$?
 

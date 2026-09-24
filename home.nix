@@ -26,9 +26,12 @@
     ./home/fresh.nix
     ./home/quickshell.nix
     ./home/kicad.nix
+    ./home/dynamixel-wizard.nix
     ./home/ghostty.nix
     ./home/development.nix
     ./home/zen-browser.nix
+    ./home/chromium.nix
+    ./home/mimeapps.nix
     ./home/hyprland.nix
     ./home/mako.nix
     ./home/hypridle.nix
@@ -54,6 +57,8 @@
     ./home/flatpak.nix
     inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
+    inputs.steam-config-nix.homeModules.default
+    ./home/steam.nix
 
     # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala).
     inputs.netpala.homeManagerModules.default

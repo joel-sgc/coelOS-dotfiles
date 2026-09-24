@@ -19,6 +19,14 @@
 
     nix-flatpak.url = "github:gmodena/nix-flatpak";
 
+    # Declarative per-game Steam config (Proton version, launch options,
+    # DLL overrides, mod files). Steam has no home-manager module of its
+    # own; this one patches Steam's config files for us. See home/steam.nix.
+    steam-config-nix = {
+      url = "github:different-name/steam-config-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     netpala.url = "github:joel-sgc/netpala";
     bluepala.url = "github:joel-sgc/bluepala";
 

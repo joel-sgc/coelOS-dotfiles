@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
+# @icon:<name>@ placeholders are filled with Nerd Font glyphs at build time
+# (see power-menu.sh / home/icons.nix). Don't paste the glyphs in here.
 choice=$(printf \
-"   Audio\n\
- 󰖩  WiFi\n\
- 󰂯  Bluetooth\n\
- 󱐋  Power Profiles\n\
- 󰍹  Monitors\n\
-   Keybindings\n\
- 󰍽  Input\n\
- 󰈷  Fingerprint\n\
-   Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
+"@icon:audio@  Audio\n\
+@icon:wifi@  WiFi\n\
+@icon:bluetooth@  Bluetooth\n\
+@icon:power-profiles@  Power Profiles\n\
+@icon:monitors@  Monitors\n\
+@icon:keybindings@  Keybindings\n\
+@icon:input@  Input\n\
+@icon:fingerprint@  Fingerprint\n\
+@icon:config@  Config\n" | rofi -dmenu -i -p "Settings" -lines 10 -no-fixed-num-lines)
 
 exit_code=$?
 
@@ -27,4 +29,3 @@ esac
 if [ "$exit_code" -ne 0 ]; then
     exec coel-main-menu
 fi
-

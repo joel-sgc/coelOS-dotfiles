@@ -127,6 +127,36 @@ let
       echo "GP_STATUS: disconnected"
     '';
   };
+
+  # The agent (re)creates ~/GP_HTML every time it starts. It's the scratch
+  # area for the browser-based SAML login handoff: the agent writes a page
+  # there, opens it in the browser, and the browser posts the response back
+  # into GP_HTML/defaultbrowser/. The path is built from $HOME inside the
+  # vendor binaries, so it can't be renamed or moved. LUC login here is
+  # plain password + OTP (see vpnConnect), so nothing uses it after startup
+  # and it just sits in the home directory as clutter.
+  #
+  # So: delete it, but only once it's been idle. Anything in it (or the
+  # folder itself) touched in the last 15 minutes means a browser login
+  # could be mid-flight, so leave it alone and let the next run retry. The
+  # client makes it again on demand, so removing it is harmless.
+  gpHtmlCleanup = pkgs.writeShellApplication {
+    name = "coel-gp-html-cleanup";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+    ];
+    text = ''
+      dir="$HOME/GP_HTML"
+      [ -d "$dir" ] || exit 0
+
+      if [ -n "$(find "$dir" -mmin -15 -print -quit)" ]; then
+        exit 0
+      fi
+
+      rm -rf -- "$dir"
+    '';
+  };
 in
 {
   # Exposes `globalprotect-agent-fhs` on PATH so the vendor `globalprotect`
@@ -151,5 +181,24 @@ in
       Restart = "on-failure";
       RestartSec = 1;
     };
+  };
+
+  # Sweeps ~/GP_HTML every few minutes; see gpHtmlCleanup above for why and
+  # for what "idle" means.
+  systemd.user.services.gp-html-cleanup = {
+    Unit.Description = "Remove idle ~/GP_HTML left by the GlobalProtect agent";
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${gpHtmlCleanup}/bin/coel-gp-html-cleanup";
+    };
+  };
+
+  systemd.user.timers.gp-html-cleanup = {
+    Unit.Description = "Periodically remove idle ~/GP_HTML";
+    Timer = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "5min";
+    };
+    Install.WantedBy = [ "timers.target" ];
   };
 }
