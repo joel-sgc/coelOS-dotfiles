@@ -55,13 +55,13 @@ Scope {
         property var colors: panelScope.colors
         property int barHeight: panelScope.barHeight
 
-        // Phase-1 plumbing check: the clock is the only button wired to a
-        // real Popup so far (see Popup.qml) -- the other five still launch
-        // their existing terminal tools (bluepala/netpala/pulsemixer/btop)
-        // unchanged until their own phases replace that with inline
-        // dropdowns. Only one popup open at a time will matter once more
-        // of them exist; not needed yet with just this one.
-        property bool calOpen: false
+        // Which dropdown (if any) is open, by name -- "" means none.
+        // A single string rather than one bool per button so opening one
+        // popup always closes any other (matches the design mock's own
+        // togglePwr/toggleBt/etc, each of which zeroes out every other
+        // *Open flag) without an O(n^2) tangle of "close everyone else"
+        // calls as more dropdowns get wired up across phases 3-6.
+        property string openPopup: ""
 
         property int workspaceCount: {
           let maxWs = 5;
@@ -93,8 +93,8 @@ Scope {
 
         Clock {
           anchors.centerIn: parent
-          active: root.calOpen
-          onClicked: root.calOpen = !root.calOpen
+          active: root.openPopup === "calendar"
+          onClicked: root.openPopup = root.openPopup === "calendar" ? "" : "calendar"
         }
 
         Buttons {
@@ -105,15 +105,33 @@ Scope {
 
         Popup {
           screen: root.screen
-          open: root.calOpen
+          open: root.openPopup === "calendar"
           barHeight: root.barHeight
           centerHorizontally: true
+          onCloseRequested: root.openPopup = ""
 
           Text {
             text: "calendar (coming in a later phase)"
             color: root.fgColor
             font.family: "JetBrains Mono"
             font.pixelSize: 13
+          }
+        }
+
+        Popup {
+          screen: root.screen
+          open: root.openPopup === "power"
+          barHeight: root.barHeight
+          rightMargin: 8
+          contentWidth: 470
+          onCloseRequested: root.openPopup = ""
+
+          PowerDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            onCloseRequested: root.openPopup = ""
           }
         }
       }

@@ -34,6 +34,16 @@ const codepoints = {
 
   "battery-full": 0xe0c0, // ph-battery-full (generic, non-tiered)
   "battery-charging": 0xe0ba, // ph-battery-charging
+
+  // PowerDropdown.qml
+  lightning: 0xe2de, // ph-lightning (performance profile)
+  scales: 0xe750, // ph-scales (balanced profile)
+  leaf: 0xe2da, // ph-leaf (power-saver profile)
+  lock: 0xe2fa, // ph-lock (lock)
+  moon: 0xe330, // ph-moon (suspend)
+  snowflake: 0xe5aa, // ph-snowflake (hibernate)
+  "arrow-clockwise": 0xe036, // ph-arrow-clockwise (reboot)
+  power: 0xe3da, // ph-power (shut down)
 };
 
 function icon(name) {

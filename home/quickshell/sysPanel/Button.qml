@@ -30,13 +30,21 @@ Item {
   property int labelMinWidth: 0
   property int labelMaxWidth: 0
 
+  // For buttons that toggle a Popup instead of (or as well as) launching
+  // a command -- Battery.qml is the first (opens PowerDropdown), the rest
+  // will follow it in their own phases. Stays highlighted the whole time
+  // its popup is open, same as the hover background, not just on hover
+  // (matches Clock.qml's own `active` and the mock's {{ xBtnBg }} pattern).
+  property bool active: false
+  signal clicked()
+
   implicitWidth: row.implicitWidth + 14
   implicitHeight: 26
 
   Rectangle {
     anchors.fill: parent
     radius: 5
-    color: mouseArea.containsMouse ? root.hoverColor : "transparent"
+    color: (buttonRoot.active || mouseArea.containsMouse) ? root.hoverColor : "transparent"
   }
 
   RowLayout {
@@ -72,9 +80,10 @@ Item {
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     onClicked: (mouse) => {
+      buttonRoot.clicked();
       if (mouse.button === Qt.RightButton && buttonRoot.rightCommand.length > 0) {
         Quickshell.execDetached(buttonRoot.rightCommand);
-      } else {
+      } else if (buttonRoot.command.length > 0) {
         Quickshell.execDetached(buttonRoot.command);
       }
     }

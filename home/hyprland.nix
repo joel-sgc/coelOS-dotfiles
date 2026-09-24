@@ -185,7 +185,17 @@ in
         # either way (sysPanel/Phosphor.js resolves codepoints to glyphs
         # at QML runtime, not via a Nix-time text substitution), so
         # pointing straight at source here is safe again.
-        "${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
+        #
+        # QML_DISABLE_DISK_CACHE=1: Qt keeps a compiled-QML bytecode cache
+        # across process launches, keyed loosely enough that it served a
+        # stale compile of a fixed file straight through a full process
+        # restart during this panel's own development (confirmed live: the
+        # same load error persisted across kill+relaunch until this env
+        # var was set) -- exactly the kind of edit-and-save-but-nothing-
+        # changes confusion "quick reload" exists to avoid. The config
+        # here is small enough that losing the cache's JIT-skip benefit on
+        # every launch isn't a real cost.
+        "env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
       ];
 
       bind = [
