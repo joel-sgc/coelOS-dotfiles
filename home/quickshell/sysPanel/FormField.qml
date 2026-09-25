@@ -34,6 +34,11 @@ RowLayout {
   // something clickable to flip that with instead of dots you're stuck
   // looking at forever.
   property bool showToggle: false
+  // Extra text after the value, own color -- AudioDropdown.qml's sample
+  // rate/quantum rows use this for the computed latency ("1024 · 21.3
+  // ms"), color-coded separately from the cycle value itself.
+  property string trailingNote: ""
+  property color trailingNoteColor: "#5c6370"
   signal valueEdited(string newValue)
   signal cycled()
   signal toggleVisibility()
@@ -124,18 +129,59 @@ RowLayout {
   }
 
   Item {
-    // Row doesn't allow anchored children (it positions them itself via
-    // x/y), so the click target here is a sibling of the Row inside
-    // this Item, not a child of the Row.
+    // A free-sizing Row here (the previous version) has no upper bound on
+    // its content width -- fine for NetworkDropdown's short cycle values
+    // ("Automatic (DHCP)", "Stable"), but AudioDropdown's profile strings
+    // ("Headset Head Unit (mSBC)") run long enough to push the Row past
+    // this Item's bounds and off the edge of the popup's own window
+    // surface, with nothing there to clip it -- it doesn't get visually
+    // clamped, it just renders past where the window buffer ends, which
+    // reads as the window being "cut off" on the right. Anchoring the
+    // value text between the ‹/› markers and eliding it bounds this to
+    // the Item's actual width regardless of value length.
     Layout.fillWidth: true
     Layout.preferredHeight: 20
     visible: fieldRoot.mode === "cycle"
-    Row {
+    Text {
+      id: cycLeft
+      anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
-      spacing: 6
-      Text { text: "‹"; color: fieldRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-      Text { text: fieldRoot.value; color: fieldRoot.fieldEnabled ? fieldRoot.fgColor : fieldRoot.labelColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-      Text { text: "›"; color: fieldRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+      text: "‹"
+      color: fieldRoot.hoverColor
+      font.family: "JetBrains Mono"
+      font.pixelSize: 13
+    }
+    Text {
+      id: cycRight
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      text: "›"
+      color: fieldRoot.hoverColor
+      font.family: "JetBrains Mono"
+      font.pixelSize: 13
+    }
+    Text {
+      id: trailingNoteText
+      visible: fieldRoot.trailingNote.length > 0
+      anchors.right: cycRight.left
+      anchors.rightMargin: 10
+      anchors.verticalCenter: parent.verticalCenter
+      text: fieldRoot.trailingNote
+      color: fieldRoot.trailingNoteColor
+      font.family: "JetBrains Mono"
+      font.pixelSize: 13
+    }
+    Text {
+      anchors.left: cycLeft.right
+      anchors.leftMargin: 6
+      anchors.right: trailingNoteText.visible ? trailingNoteText.left : cycRight.left
+      anchors.rightMargin: 6
+      anchors.verticalCenter: parent.verticalCenter
+      elide: Text.ElideRight
+      text: fieldRoot.value
+      color: fieldRoot.fieldEnabled ? fieldRoot.fgColor : fieldRoot.labelColor
+      font.family: "JetBrains Mono"
+      font.pixelSize: 13
     }
     MouseArea {
       anchors.fill: parent

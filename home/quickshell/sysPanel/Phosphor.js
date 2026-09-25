@@ -55,6 +55,11 @@ const codepoints = {
 
   // NetworkDropdown.qml
   broadcast: 0xe0f2, // ph-broadcast (hotspot active)
+
+  // AudioDropdown.qml
+  microphone: 0xe326, // ph-microphone (source unmuted)
+  "microphone-slash": 0xe328, // ph-microphone-slash (source muted)
+  usb: 0xe956, // ph-usb (USB audio interface card icon)
 };
 
 function icon(name) {

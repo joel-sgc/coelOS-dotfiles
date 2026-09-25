@@ -32,7 +32,8 @@ Button {
 
   icon: iconState
   label: muted ? "" : Math.round(vol * 100) + "%"
-  command: [ "ghostty", "--class=com.joelsgc.floating", "-e", "pulsemixer" ]
+  active: root.openPopup === "audio"
+  onClicked: root.openPopup = root.openPopup === "audio" ? "" : "audio"
 
   PwObjectTracker {
     objects: sink ? [ sink ] : []

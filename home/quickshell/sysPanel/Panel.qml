@@ -180,6 +180,32 @@ Scope {
             onCloseRequested: root.openPopup = ""
           }
         }
+
+        Popup {
+          screen: root.screen
+          open: root.openPopup === "audio"
+          barHeight: root.barHeight
+          // Same rough-estimate caveat as bluetooth/network above --
+          // Volume sits between Network and Cpu in Buttons.qml, so this
+          // should land somewhere short of network's 145, not yet
+          // confirmed against the real bar.
+          rightMargin: 90
+          // Widened from the mock's 540 -- this machine's real ALSA
+          // device names ("Radeon High Definition Audio Controller Pro
+          // 7") run considerably longer than the mock's placeholder
+          // names, and 540 wasn't leaving the name column enough room.
+          contentWidth: 600
+          onCloseRequested: root.openPopup = ""
+
+          AudioDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            popupOpen: root.openPopup === "audio"
+            onCloseRequested: root.openPopup = ""
+          }
+        }
       }
     }
   }
