@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 
@@ -80,21 +81,10 @@ Scope {
         implicitHeight: root.barHeight
         color: root.bgColor
 
-        // Only the bottom edge -- top/left/right already sit flush
-        // against the real screen edge (Border.qml's own job), so a
-        // full 4-side border here would just double up on those. This
-        // is the one edge that actually meets desktop content below.
-        // Semi-transparent white rather than a flat grey: a fixed hue
-        // (the #404754 tried first) disappears against any wallpaper
-        // close to that same color, but a translucent white lightens
-        // whatever's underneath just enough to read as an edge
-        // regardless of what that happens to be.
-        Rectangle {
-          anchors.bottom: parent.bottom
-          width: parent.width
-          height: 1
-          color: "#26ffffff"
-        }
+        // Above Border.qml's own screen-edge overlay (which sits one
+        // layer down, at Top) so the bar's popups/dropdowns render over
+        // the border frame instead of being drawn behind it.
+        WlrLayershell.layer: WlrLayer.Overlay
 
         RowLayout {
           anchors.verticalCenter: parent.verticalCenter

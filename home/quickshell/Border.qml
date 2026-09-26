@@ -43,7 +43,9 @@ Scope {
         visible: root.enabled
         color: "transparent"
 
-        WlrLayershell.layer: WlrLayer.Overlay
+        // One layer below Panel.qml's own Overlay bar, so the bar and its
+        // popups always render in front of this screen-edge frame.
+        WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         mask: Region { item: null }
@@ -51,6 +53,7 @@ Scope {
         Canvas {
           id: frame
           anchors.fill: parent
+          z: -1
         
           property int borderWidth: root.borderWidth
           property color borderColor: root.borderColor
