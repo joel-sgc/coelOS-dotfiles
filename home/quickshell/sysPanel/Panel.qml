@@ -80,6 +80,22 @@ Scope {
         implicitHeight: root.barHeight
         color: root.bgColor
 
+        // Only the bottom edge -- top/left/right already sit flush
+        // against the real screen edge (Border.qml's own job), so a
+        // full 4-side border here would just double up on those. This
+        // is the one edge that actually meets desktop content below.
+        // Semi-transparent white rather than a flat grey: a fixed hue
+        // (the #404754 tried first) disappears against any wallpaper
+        // close to that same color, but a translucent white lightens
+        // whatever's underneath just enough to read as an edge
+        // regardless of what that happens to be.
+        Rectangle {
+          anchors.bottom: parent.bottom
+          width: parent.width
+          height: 1
+          color: "#26ffffff"
+        }
+
         RowLayout {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 14
@@ -203,6 +219,33 @@ Scope {
             hoverColor: root.hoverColor
             colors: root.colors
             popupOpen: root.openPopup === "audio"
+            onCloseRequested: root.openPopup = ""
+          }
+        }
+
+        Popup {
+          screen: root.screen
+          open: root.openPopup === "system"
+          barHeight: root.barHeight
+          // Same rough-estimate caveat as every other dropdown above --
+          // Cpu sits directly before Battery (the rightmost button) in
+          // Buttons.qml, so this should be small, just enough to clear
+          // Battery's own width, not yet confirmed against the real bar.
+          rightMargin: 50
+          // 32px more than SystemDropdown.qml's own implicitWidth (788)
+          // -- that's Popup.qml's fixed 16px-per-side content padding,
+          // not a separate number (see AudioDropdown's own header
+          // comment for why getting this relationship wrong overflows
+          // the window's own surface).
+          contentWidth: 820
+          onCloseRequested: root.openPopup = ""
+
+          SystemDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            popupOpen: root.openPopup === "system"
             onCloseRequested: root.openPopup = ""
           }
         }

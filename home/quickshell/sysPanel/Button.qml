@@ -36,7 +36,10 @@ Item {
   // its popup is open, same as the hover background, not just on hover
   // (matches Clock.qml's own `active` and the mock's {{ xBtnBg }} pattern).
   property bool active: false
-  signal clicked()
+  // Carries which mouse button triggered the click -- Cpu.qml needs this
+  // to only toggle its popup on left-click while still letting right-click
+  // fall through to rightCommand (plain terminal) unchanged.
+  signal clicked(int button)
 
   implicitWidth: row.implicitWidth + 14
   implicitHeight: 26
@@ -80,7 +83,7 @@ Item {
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     onClicked: (mouse) => {
-      buttonRoot.clicked();
+      buttonRoot.clicked(mouse.button);
       if (mouse.button === Qt.RightButton && buttonRoot.rightCommand.length > 0) {
         Quickshell.execDetached(buttonRoot.rightCommand);
       } else if (buttonRoot.command.length > 0) {

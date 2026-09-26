@@ -22,8 +22,13 @@ Button {
   // min-width:3ch so the row doesn't jitter as usage crosses a digit
   // boundary (9% -> 10%, 99% -> 100%).
   labelMinWidth: 24
-  command: [ "ghostty", "--class=com.joelsgc.floating", "-e", "btop" ]
+  // Left-click now opens the system dropdown instead of btop directly;
+  // right-click still opens a plain terminal, unchanged.
   rightCommand: [ "ghostty" ]
+  active: root.openPopup === "system"
+  onClicked: (button) => {
+    if (button !== Qt.RightButton) root.openPopup = root.openPopup === "system" ? "" : "system";
+  }
 
   Process {
     id: sampler
