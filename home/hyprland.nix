@@ -88,7 +88,7 @@ in
 
       general = {
         gaps_in = 4;
-        gaps_out = "8, 12, 12, 12";
+        gaps_out = "8, 20, 20, 20";
         border_size = 2;
 
         # Primary duo (blue + yellow) gradient on focus, matching the
