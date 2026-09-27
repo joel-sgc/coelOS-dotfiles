@@ -35,6 +35,17 @@ PanelWindow {
 
   property bool open: false
   property int barHeight: 36
+  // The bar's own PanelWindow (Panel.qml's `root`) -- included in the
+  // focus grab below so a click on a *different* bar button doesn't get
+  // treated as a dismiss-only "click outside" (which HyprlandFocusGrab
+  // swallows without passing it through), requiring a separate first
+  // click just to close this popup before the new button's click could
+  // even register. Treating the bar as part of the grabbed area means
+  // that click reaches the other button's own handler normally, which
+  // switches root.openPopup straight to the new value -- this popup then
+  // closes as an ordinary side effect of its own `open` binding going
+  // false, not because anything here had to notice and react to it.
+  property var barWindow: null
   // Anchored to the bar's right edge by default (most buttons live
   // there); set centerHorizontally for the ones under the bar's center
   // (currently just the clock/calendar).
@@ -75,7 +86,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
   HyprlandFocusGrab {
-    windows: [ popupRoot ]
+    windows: popupRoot.barWindow ? [ popupRoot, popupRoot.barWindow ] : [ popupRoot ]
     active: popupRoot.open
     onCleared: popupRoot.closeRequested()
   }

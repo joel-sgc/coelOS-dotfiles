@@ -114,6 +114,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "calendar"
           barHeight: root.barHeight
           centerHorizontally: true
@@ -135,6 +136,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "power"
           barHeight: root.barHeight
           rightMargin: 8
@@ -152,6 +154,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "bluetooth"
           barHeight: root.barHeight
           // Rough estimate of where the bluetooth button sits (it's not
@@ -176,6 +179,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "network"
           barHeight: root.barHeight
           // Same rough-estimate caveat as bluetooth's rightMargin above.
@@ -198,6 +202,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "audio"
           barHeight: root.barHeight
           // Same rough-estimate caveat as bluetooth/network above --
@@ -224,6 +229,7 @@ Scope {
 
         Popup {
           screen: root.screen
+          barWindow: root
           open: root.openPopup === "system"
           barHeight: root.barHeight
           // Same rough-estimate caveat as every other dropdown above --
