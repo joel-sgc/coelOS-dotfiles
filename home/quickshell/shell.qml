@@ -30,19 +30,67 @@ ShellRoot {
   // instances anchor their top margin to it as well.
   property int barHeight: 36
 
+  // One shared Launcher instance across every screen (not per-screen state
+  // like Panel's own openPopup) -- launcherScreen is which screen it should
+  // actually render on, set by whichever screen's Logo button opened it
+  // (or, for the Hyprland-keybind path, Launcher.qml's own IpcHandler).
+  property bool launcherOpen: false
+  property var launcherScreen: null
+  // Forces the launcher onto a specific category on open (currently just
+  // "clipboard", via super+V) -- cleared on a plain toggle so a later
+  // super+space doesn't keep re-forcing whatever category super+V last set.
+  property string launcherRequestedCategory: ""
+  function toggleLauncher(screen) {
+    launcherRequestedCategory = "";
+    if (launcherOpen && launcherScreen === screen) launcherOpen = false;
+    else { launcherScreen = screen; launcherOpen = true; }
+  }
+  function openLauncherCategory(screen, catId) {
+    if (launcherOpen && launcherScreen === screen && launcherRequestedCategory === catId) {
+      launcherOpen = false;
+    } else {
+      launcherScreen = screen;
+      launcherRequestedCategory = catId;
+      launcherOpen = true;
+    }
+  }
+
   // Waybar-like panel
   Panel {
+    id: panel
     colors: root.colors
     bgColor: root.bgColor
     fgColor: root.fgColor
     mutedColor: root.mutedColor
     hoverColor: root.hoverColor
     barHeight: root.barHeight
+    onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
   }
 
-  // Wraparound border
+  // Wraparound border -- borderColor is intentionally bound to the opaque
+  // bgColor here rather than left at Border.qml's own translucent default;
+  // confirmed with the user, not an oversight.
   Border {
     borderColor: root.bgColor
     barHeight: root.barHeight
+  }
+
+  // Spotlight-style launcher (rofi replacement) -- see Launcher.qml
+  Launcher {
+    open: root.launcherOpen
+    activeScreen: root.launcherScreen
+    bgColor: root.bgColor
+    fgColor: root.fgColor
+    mutedColor: root.mutedColor
+    hoverColor: root.hoverColor
+    colors: root.colors
+    requestedCategory: root.launcherRequestedCategory
+    onCloseRequested: root.launcherOpen = false
+    onToggleRequested: (screen) => root.toggleLauncher(screen)
+    onOpenCategoryRequested: (screen, catId) => root.openLauncherCategory(screen, catId)
+    // "panels" category items (Network/Bluetooth/.../Calendar) -- forward
+    // straight into Panel's own openPopup state, same as clicking that
+    // bar button directly would.
+    onOpenPanelRequested: (screen, name) => panel.openPanelRequested(screen, name)
   }
 }

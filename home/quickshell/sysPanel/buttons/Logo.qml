@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 
 // ===== LOGO =====
@@ -10,10 +9,15 @@ import Quickshell.Widgets
 // shadow the outer PanelWindow's "root", which is how every sibling file
 // reaches panel state -- harmless before since this file never needed
 // root.*, but it does now for hoverColor).
+//
+// Used to run coel-main-menu (an external rofi script) directly via
+// Quickshell.execDetached -- now emits clicked() instead, same as every
+// other bar button, so Panel.qml can toggle the in-process Launcher
+// (Launcher.qml/LauncherPanel.qml) that replaces it.
 Item {
   id: logoRoot
 
-  property var command: ["coel-main-menu"]
+  signal clicked()
 
   implicitWidth: 28
   implicitHeight: 28
@@ -36,6 +40,6 @@ Item {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: Quickshell.execDetached(logoRoot.command)
+    onClicked: logoRoot.clicked()
   }
 }

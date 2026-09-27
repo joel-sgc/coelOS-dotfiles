@@ -22,6 +22,13 @@ in
       # (coral, #ef596f) -- coral is their emphasis/accent color, not their
       # failure-state color.
       "urgency=critical".border-color = theme.error;
+
+      # Toggled by LauncherPanel.qml's "Do not disturb" item via
+      # `makoctl mode -t dnd` -- mako's own recipe for a DND mode:
+      # suppress popups (but keep logging to history, unlike dismissing)
+      # while this mode is active. `makoctl mode` (no args) is how the
+      # launcher reads back whether it's currently on.
+      "mode=dnd".invisible = 1;
     };
   };
 }

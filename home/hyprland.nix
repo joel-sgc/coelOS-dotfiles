@@ -1,5 +1,4 @@
 {
-  config,
   pkgs,
   lib,
   ...
@@ -200,8 +199,20 @@ in
 
       bind = [
         "$mainMod, T, exec, $terminal"
-        "$mainMod, space, exec, ${config.programs.rofi.finalPackage}/bin/rofi -show drun"
-        "$mainMod SHIFT, space, exec, coel-main-menu"
+        # Both used to point at rofi (drun / coel-main-menu's own dmenu) --
+        # now the same Quickshell launcher (Launcher.qml/LauncherPanel.qml)
+        # covers both jobs itself: its own app search replaces drun, and
+        # its category list replaces coel-main-menu's. `quickshell ipc call`
+        # talks to the IpcHandler in Launcher.qml, not a separate process --
+        # but the running instance above was launched with `-c
+        # ~/.nixos/home/quickshell`, so with no path/config flag `ipc call`
+        # looks for the *default* `~/.config/quickshell/shell.qml` instance
+        # instead, finds none, and silently no-ops ("No running instances
+        # for ..."). `-p` (quickshell's actual flag for "path to a config",
+        # confirmed against `quickshell ipc --help` -- `-c` there means a
+        # named XDG config, not a path) targets the real instance.
+        "$mainMod, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
+        "$mainMod SHIFT, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
         "$mainMod, period, exec, coel-emoji-picker"
         "$mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock"
         "$mainMod, W, killactive"
@@ -217,7 +228,12 @@ in
         "$mainMod SHIFT, right, resizeactive, -10"
         "$mainMod SHIFT, up, resizeactive, 0 -10"
         "$mainMod SHIFT, down, resizeactive, 0 10"
-        "$mainMod, V, exec, ${pkgs.cliphist}/bin/cliphist list | ${config.programs.rofi.finalPackage}/bin/rofi -dmenu | ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"
+        # Was cliphist|rofi|cliphist|wl-copy -- the launcher's own clipboard
+        # tab (LauncherPanel.qml) now covers this with a real preview
+        # (formatted text / actual images, not rofi's plain-text dmenu
+        # list), reachable directly via openClipboard()'s IpcHandler
+        # function rather than a separate shell pipeline.
+        "$mainMod, V, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openClipboard"
         ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
         ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"
         ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"

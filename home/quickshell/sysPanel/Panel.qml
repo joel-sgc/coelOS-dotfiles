@@ -43,6 +43,18 @@ Scope {
   ]
   property int barHeight: 36
 
+  // Bubbled up from whichever screen's Logo button was clicked, since
+  // shell.qml owns the actual Launcher open/closed state (one launcher
+  // instance shared across every screen, not per-screen state like
+  // openPopup below) and needs to know which screen to show it on.
+  signal launcherToggleRequested(var screen)
+  // The reverse direction -- shell.qml calls this (via LauncherPanel's
+  // "panels" category) to open a specific dropdown on a specific screen,
+  // same as clicking that screen's own bar button would. A signal rather
+  // than a settable property because openPopup lives per-screen inside
+  // the Variants delegate below, not on panelScope itself.
+  signal openPanelRequested(var screen, string name)
+
   Variants {
     model: Quickshell.screens
 
@@ -66,6 +78,13 @@ Scope {
         // *Open flag) without an O(n^2) tangle of "close everyone else"
         // calls as more dropdowns get wired up across phases 3-6.
         property string openPopup: ""
+
+        Connections {
+          target: panelScope
+          function onOpenPanelRequested(screen, name) {
+            if (screen === root.screen) root.openPopup = name;
+          }
+        }
 
         property int workspaceCount: {
           let maxWs = 5;
@@ -95,6 +114,7 @@ Scope {
 
           Logo {
             Layout.leftMargin: 12
+            onClicked: panelScope.launcherToggleRequested(root.screen)
           }
 
           Workspaces {  }

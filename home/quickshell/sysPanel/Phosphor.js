@@ -60,6 +60,52 @@ const codepoints = {
   microphone: 0xe326, // ph-microphone (source unmuted)
   "microphone-slash": 0xe328, // ph-microphone-slash (source muted)
   usb: 0xe956, // ph-usb (USB audio interface card icon)
+
+  // LauncherPanel.qml -- category chips + item icons
+  "rocket-launch": 0xe3fe, // ph-rocket-launch (launch category)
+  "sidebar-simple": 0xec24, // ph-sidebar-simple (panels category)
+  "toggle-right": 0xe676, // ph-toggle-right (toggles category)
+  camera: 0xe10e, // ph-camera (capture category)
+  palette: 0xe6c8, // ph-palette (style category)
+  function: 0xebe4, // ph-function (math category)
+  "gear-six": 0xe272, // ph-gear-six (system category)
+  "magnifying-glass": 0xe30c, // ph-magnifying-glass (search input)
+  calculator: 0xe538, // ph-calculator (calculator result row)
+
+  "terminal-window": 0xeae8, // ph-terminal-window (Terminal)
+  globe: 0xe288, // ph-globe (Browser)
+  folder: 0xe24a, // ph-folder (Files)
+  code: 0xe1bc, // ph-code (Editor)
+  "music-notes": 0xe340, // ph-music-notes (Music)
+  "squares-four": 0xe464, // ph-squares-four (App launcher)
+
+  "speaker-simple-high": 0xe450, // ph-speaker-simple-high (Audio panel)
+  "battery-high": 0xe0c2, // ph-battery-high (Power panel)
+  "calendar-blank": 0xe10a, // ph-calendar-blank (Calendar panel)
+
+  "bell-slash": 0xe0d4, // ph-bell-slash (Do not disturb)
+  "moon-stars": 0xe58e, // ph-moon-stars (Night light)
+  coffee: 0xe1c2, // ph-coffee (Keep awake)
+  "battery-plus": 0xe808, // ph-battery-plus (Charge limit)
+
+  selection: 0xe69a, // ph-selection (Screenshot region)
+  "app-window": 0xe5da, // ph-app-window (Screenshot window)
+  monitor: 0xe32e, // ph-monitor (Screenshot screen)
+  record: 0xe3ee, // ph-record (Record region)
+  eyedropper: 0xe568, // ph-eyedropper (Color picker)
+  "text-aa": 0xe6ee, // ph-text-aa (Text from region / OCR)
+
+  swatches: 0xe5b8, // ph-swatches (theme entries)
+  image: 0xe2ca, // ph-image (Next wallpaper)
+  "sliders-horizontal": 0xe434, // ph-sliders-horizontal (Edit bar config)
+
+  info: 0xe2ce, // ph-info (About this system)
+  "arrows-clockwise": 0xe094, // ph-arrows-clockwise (Update packages)
+  "arrow-counter-clockwise": 0xe038, // ph-arrow-counter-clockwise (Reload shell)
+
+  clipboard: 0xe196, // ph-clipboard (clipboard history entries)
+  "clipboard-text": 0xe198, // ph-clipboard-text (clipboard category)
+  smiley: 0xe436, // ph-smiley (emoji search results)
 };
 
 function icon(name) {
