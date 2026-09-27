@@ -1,5 +1,5 @@
 import Quickshell.Services.Pipewire
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== VOLUME =====
 // Ported from home/waybar.nix's pulseaudio module -- muted gets its own

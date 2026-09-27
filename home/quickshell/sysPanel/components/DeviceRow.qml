@@ -1,5 +1,5 @@
 import QtQuick
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== DEVICE ROW =====
 // One sink/source row in AudioDropdown.qml's output/input sections --

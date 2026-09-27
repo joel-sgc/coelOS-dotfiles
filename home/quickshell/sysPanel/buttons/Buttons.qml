@@ -1,5 +1,7 @@
 import QtQuick.Layouts
 
+import "../components"
+
 // ===== BUTTONS =====
 // Right-hand button group, in the same order as home/waybar.nix's
 // modules-right (tray, bluetooth, network, pulseaudio, cpu, battery).

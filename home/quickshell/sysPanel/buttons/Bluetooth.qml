@@ -1,5 +1,5 @@
 import Quickshell.Bluetooth
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== BLUETOOTH =====
 // Bar icon still reflects the real adapter (Quickshell.Bluetooth) -- only

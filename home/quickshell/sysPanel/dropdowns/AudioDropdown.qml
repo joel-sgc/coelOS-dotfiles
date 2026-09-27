@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import Quickshell.Services.Pipewire
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
+import "../components"
 
 // ===== AUDIO DROPDOWN =====
 // Phase 5b: real data/actions, replacing phase 5a's hardcoded layout.

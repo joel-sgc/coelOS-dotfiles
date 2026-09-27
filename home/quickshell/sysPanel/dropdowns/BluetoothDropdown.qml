@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Bluetooth
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
+import "../components"
 
 // ===== BLUETOOTH DROPDOWN =====
 // Real data/actions via Quickshell.Bluetooth (bluez), phase 3b. Phase 3a
@@ -420,6 +421,11 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
+            // Fixed width (not just content-hugging) so this column's left
+            // edge -- what pStatus anchors off of below -- lands at the
+            // same x on every row, whether a device reports "100%", "5%"
+            // or nothing at all (empty string, no battery data).
+            width: 36
             horizontalAlignment: Text.AlignRight
             text: pRow.modelData.battery >= 0 ? pRow.modelData.battery + "%" : ""
             color: pRow.modelData.battery >= 0 && pRow.modelData.battery <= 20 ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
@@ -431,6 +437,13 @@ Item {
             anchors.right: pBattery.left
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
+            // Same reasoning as pBattery's width above -- "connected" and
+            // "paired" are different lengths, so without a fixed width
+            // this column's own left edge (and the name column's width,
+            // which is measured off it) would still drift per row even
+            // with pBattery's column now fixed.
+            width: 76
+            horizontalAlignment: Text.AlignRight
             text: pRow.modelData.connected ? "connected" : "paired"
             color: pRow.modelData.connected ? dropdownRoot.colors[3] : dropdownRoot.mutedColor
             font.family: "JetBrains Mono"
@@ -497,7 +510,7 @@ Item {
                 delegate: RowLayout {
                   required property var modelData
                   spacing: 6
-                  Text { text: modelData.k; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+                  Text { Layout.preferredWidth: 64; text: modelData.k; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
                   Text { text: modelData.v; color: modelData.c || dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
                 }
               }
@@ -512,7 +525,7 @@ Item {
                 delegate: RowLayout {
                   required property var modelData
                   spacing: 6
-                  Text { text: modelData.k; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+                  Text { Layout.preferredWidth: 64; text: modelData.k; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
                   Text { text: modelData.v; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
                 }
               }

@@ -26,7 +26,7 @@ Item {
 
   IconImage {
     anchors.centerIn: parent
-    source: Qt.resolvedUrl("../logo.svg")
+    source: Qt.resolvedUrl("../../assets/logo.svg")
     mipmap: true
     implicitSize: 16
   }

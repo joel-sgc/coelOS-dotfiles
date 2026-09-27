@@ -4,6 +4,9 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 
+import "./buttons"
+import "./dropdowns"
+
 // One PanelWindow per screen, same Variants-over-Quickshell.screens pattern
 // as Border.qml (which already did this) -- Panel used to be a single bare
 // PanelWindow with no `screen` set, so it only ever rendered on whichever

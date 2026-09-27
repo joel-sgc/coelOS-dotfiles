@@ -1,5 +1,5 @@
 import Quickshell.Networking
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== NETWORK =====
 // Bar icon still reflects the real wifi/wired device (Quickshell.

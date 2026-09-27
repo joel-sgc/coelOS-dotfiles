@@ -1,5 +1,5 @@
 import Quickshell.Services.UPower
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== BATTERY =====
 // Percentage/state come from Quickshell's own UPower service (real DBus

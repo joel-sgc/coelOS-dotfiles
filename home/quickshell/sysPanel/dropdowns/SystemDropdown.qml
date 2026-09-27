@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
+import "../components"
 
 // ===== SYSTEM DROPDOWN =====
 // Phase 6a: layout matching the design mock, state fully hardcoded.
@@ -380,7 +381,18 @@ Item {
             cmd: m[7].length > 0 ? m[7] : name,
           });
         }
+        // Reassigning `processes` (a plain JS array) hands the ListView a
+        // brand-new model every 2.5s tick, which resets its contentY to 0
+        // -- there's no diffing against the old array to know it's "the
+        // same list, mostly." Note which process was at the top before
+        // the reassignment, and scroll straight back to that same pid
+        // (wherever it lands after re-sorting) on the next event-loop
+        // turn, once the view has relaid out against the new model, so a
+        // routine refresh doesn't yank whoever's scrolled down back to
+        // the top.
+        const topPid = dropdownRoot.topVisibleProcess ? dropdownRoot.topVisibleProcess.pid : -1;
         dropdownRoot.processes = out;
+        Qt.callLater(() => dropdownRoot.restoreScrollToPid(topPid));
       }
     }
   }
@@ -405,6 +417,13 @@ Item {
   function cycleSort() {
     const order = ["cpu", "mem", "name", "pid"];
     sortKey = order[(order.indexOf(sortKey) + 1) % order.length];
+  }
+  // Clicking a column header: same column again flips direction (the
+  // usual table-header convention), a different column switches to it
+  // and defaults back to descending.
+  function setSort(key) {
+    if (sortKey === key) sortDesc = !sortDesc;
+    else { sortKey = key; sortDesc = true; }
   }
 
   readonly property var filteredProcesses: {
@@ -432,6 +451,36 @@ Item {
     }));
   }
   readonly property var selectedProcess: processes.find(p => p.pid === selPid) || null
+
+  // Which row is currently scrolled to the top of the list, worked out
+  // from contentY alone rather than tracked separately -- every row is
+  // the same height (ProcessRow.qml's fixed 20) plus the ListView's own
+  // 1px spacing between them, so one full "pitch" per row divides evenly
+  // into the scroll offset. Drives real by-pid scroll restoration below
+  // (see processesProc.onStreamFinished).
+  readonly property int procRowPitch: 21 // ProcessRow.qml height (20) + ListView spacing (1)
+  // Flat +10px nudge before dividing -- confirmed by eye against the
+  // debug readout that without it, a contentY sitting just a few
+  // pixels into a row could still floor down to the row above. A fixed
+  // pixel bias (not a per-row one) fixes it because the ambiguity is a
+  // constant few pixels regardless of which row it happens on.
+  readonly property int topVisibleIndex: filteredProcesses.length > 0
+    ? Math.max(0, Math.min(filteredProcesses.length - 1, Math.floor((procList.contentY + 10) / procRowPitch)))
+    : -1
+  readonly property var topVisibleProcess: topVisibleIndex >= 0 ? filteredProcesses[topVisibleIndex] : null
+
+  // Re-locates whatever process was at the top of the list by pid (its
+  // sorted position may have moved, or it may be gone entirely) and
+  // scrolls straight there -- unlike a raw contentY snapshot/restore,
+  // this survives the list actually reordering between refreshes, not
+  // just growing/shrinking.
+  function restoreScrollToPid(pid) {
+    if (pid < 0) return;
+    const idx = filteredProcesses.findIndex(p => p.pid === pid);
+    if (idx < 0) return;
+    procList.positionViewAtIndex(idx, ListView.Beginning);
+  }
+
   onFilteredProcessesChanged: {
     if (selPid >= 0 && !filteredProcesses.some(p => p.pid === selPid)) {
       selPid = filteredProcesses.length > 0 ? filteredProcesses[0].pid : -1;
@@ -499,7 +548,8 @@ Item {
         moveSel(-1);
         break;
       case Qt.Key_S:
-        cycleSort();
+        if (event.modifiers & Qt.ShiftModifier) sortDesc = !sortDesc;
+        else cycleSort();
         break;
       case Qt.Key_Slash:
         searchInput.forceActiveFocus();
@@ -861,12 +911,12 @@ Item {
           y: -9
           leftPadding: 6
           rightPadding: 6
-          text: "[s] sort: " + dropdownRoot.sortKey
+          text: "[s] sort: " + dropdownRoot.sortKey + (dropdownRoot.sortDesc ? " ▼" : " ▲") + "  [S] flip"
           color: dropdownRoot.mutedColor
           font.family: "JetBrains Mono"
           font.pixelSize: 12
           Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
-          MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.cycleSort() }
+          MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => { if (mouse.modifiers & Qt.ShiftModifier) dropdownRoot.sortDesc = !dropdownRoot.sortDesc; else dropdownRoot.cycleSort(); } }
         }
 
         Column {
@@ -926,21 +976,22 @@ Item {
             id: headerRow
             width: parent.width
             height: 16
-            Text { x: 22; text: "pid"; anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "pid" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.sortKey = "pid" }
+            Text { x: 22; text: "pid" + (dropdownRoot.sortKey === "pid" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "pid" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("pid") }
             }
-            Text { x: 76; text: "name"; anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "name" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.sortKey = "name" }
+            Text { x: 76; text: "name" + (dropdownRoot.sortKey === "name" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "name" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("name") }
             }
-            Text { anchors.right: parent.right; anchors.rightMargin: 8; text: "cpu"; anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "cpu" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.sortKey = "cpu" }
+            Text { anchors.right: parent.right; anchors.rightMargin: 8; text: "cpu" + (dropdownRoot.sortKey === "cpu" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "cpu" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("cpu") }
             }
-            Text { anchors.right: parent.right; anchors.rightMargin: 58; text: "mem"; anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "mem" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.sortKey = "mem" }
+            Text { anchors.right: parent.right; anchors.rightMargin: 58; text: "mem" + (dropdownRoot.sortKey === "mem" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "mem" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("mem") }
             }
           }
 
           ListView {
+            id: procList
             // Stretches to make the whole processes box match the left
             // column's height (memory/disks/net stacked), rather than
             // staying a fixed 280px regardless of how much taller that
@@ -1007,7 +1058,7 @@ Item {
       width: parent.width
       spacing: 14
       readonly property var hints: [
-        { k: "j/k", l: "move" }, { k: "s", l: "sort" }, { k: "/", l: "filter" }, { k: "x", l: "kill" }, { k: "esc", l: "close" },
+        { k: "j/k", l: "move" }, { k: "s", l: "sort" }, { k: "S", l: "asc/desc" }, { k: "/", l: "filter" }, { k: "x", l: "kill" }, { k: "esc", l: "close" },
       ]
       Repeater {
         model: parent.hints

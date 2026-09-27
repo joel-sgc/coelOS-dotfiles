@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
+import "../components"
 
 // ===== NETWORK DROPDOWN =====
 // Phase 4b: real data/actions, replacing phase 4a's hardcoded layout.

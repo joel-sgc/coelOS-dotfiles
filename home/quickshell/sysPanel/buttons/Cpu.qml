@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell.Io
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
 
 // ===== CPU =====
 // Ported from home/waybar.nix's cpu module -- same on-click (btop)/

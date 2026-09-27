@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
-import "./Phosphor.js" as Phosphor
+import "../Phosphor.js" as Phosphor
+import "../components"
 
 // ===== POWER DROPDOWN =====
 // Battery detail, power-profile switch, brightness and session actions --
@@ -519,6 +520,7 @@ Item {
               required property var modelData
               spacing: 4
               Text {
+                Layout.preferredWidth: 64
                 text: modelData.k
                 color: dropdownRoot.mutedColor
                 font.family: "JetBrains Mono"
@@ -545,6 +547,7 @@ Item {
               required property var modelData
               spacing: 4
               Text {
+                Layout.preferredWidth: 64
                 text: modelData.k
                 color: dropdownRoot.mutedColor
                 font.family: "JetBrains Mono"
