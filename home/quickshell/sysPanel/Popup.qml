@@ -64,7 +64,7 @@ PanelWindow {
     right: !centerHorizontally
   }
   margins {
-    top: barHeight
+    top: barHeight + 8
     right: rightMargin
   }
 
