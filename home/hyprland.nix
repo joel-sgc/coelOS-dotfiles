@@ -213,7 +213,11 @@ in
         # named XDG config, not a path) targets the real instance.
         "$mainMod, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
         "$mainMod SHIFT, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
-        "$mainMod, period, exec, coel-emoji-picker"
+        # Was rofi-emoji's coel-emoji-picker -- now opens the launcher
+        # restricted to emoji-only search (LauncherPanel.qml's searchScope),
+        # not just the same launcher pre-filtered to the emoji category
+        # (there isn't one -- emoji is search-only, no chip, same as apps).
+        "$mainMod, period, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openEmoji"
         "$mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock"
         "$mainMod, W, killactive"
         "$mainMod, M, exit"

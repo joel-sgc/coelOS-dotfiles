@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import QtQuick.LocalStorage
 
 import "../Phosphor.js" as Phosphor
 import "../Calc.js" as Calc
@@ -51,6 +52,13 @@ Item {
   // that category instead of leaving catIndex wherever it last was. Empty
   // string (the plain-toggle case) leaves catIndex untouched.
   property string requestedCategory: ""
+  // A live-bound restriction on what fuzzyList() searches at all (not a
+  // one-time jump like requestedCategory above -- stays in effect for as
+  // long as the launcher's open this way). "" = normal search across
+  // everything; "emoji" (super+., openEmoji) = emoji results only, no
+  // categories/apps/clipboard/calculator. General mechanism, one concrete
+  // value wired up so far -- see fuzzyList()'s early-return branch.
+  property string searchScope: ""
 
   signal closeRequested()
   signal openPanelRequested(string name)
@@ -59,6 +67,7 @@ Item {
     query = "";
     view = "";
     selIndex = 0;
+    catIndex = 0;
     msg = "";
     armedId = "";
     if (requestedCategory !== "") {
@@ -132,6 +141,17 @@ Item {
   property string msg: ""
   property bool msgIsArmed: false
   property string armedId: ""
+  // Last *global* (screen) cursor position seen by a row's hover handler --
+  // see the itemDelegate's onPositionChanged below. listFlick.moving alone
+  // didn't fix the scroll-drags-selection bug: Qt Quick treats mouse-wheel
+  // scrolling on a Flickable as a direct contentY change, not a drag/flick
+  // gesture, so `moving` never actually goes true for it. Comparing global
+  // cursor position instead catches the real cause directly -- a row
+  // sliding under a *stationary* cursor during scroll still changes that
+  // row's local mouse coordinates (since the row itself moved), firing
+  // onPositionChanged, even though the cursor never actually moved on
+  // screen. Global position is unaffected by the row moving underneath it.
+  property point lastHoverGlobalPos: Qt.point(-100000, -100000)
   // Last real calculator result, fed back in as `ans` for the next
   // expression -- Calc.js takes it as a plain argument (no `this.state` to
   // close over the way the mock's calcEval() does it).
@@ -335,20 +355,31 @@ Item {
   }
 
   // ----- emoji picker (replacing rofi-emoji / coel-emoji-picker) -----
-  // emoji-data.txt is vendored from the real rofi-emoji package (MIT,
-  // see emoji-data.LICENSE) rather than read from its nix store path --
-  // that path's hash changes with every nixpkgs update, and unlike
-  // Phosphor.js's codepoints this data doesn't need to track upstream
-  // edits closely. Loaded once (Component.onCompleted below), not on every
-  // panel open like the app list -- it's static data, not live state.
-  // Search-only for the same render-count reason as clipboard/apps above,
-  // just more so: 5042 entries, not a few hundred.
+  // Was a one-time vendor of pkgs.rofi-emoji's bundled data -- discovered
+  // (2026-09-27) to be two full Unicode Emoji versions stale (missing all
+  // of 17.0/18.0: shaking face, cracking face, pickle, lighthouse,
+  // meteor, ...), since nothing was ever re-copying it as nixpkgs/upstream
+  // moved on. Now runs update-emoji-data.py, which fetches Unicode.org's
+  // own always-current emoji-test.txt (re-checked at most once a week,
+  // cached at $XDG_CACHE_HOME/quickshell-emoji-data.txt, falling back to
+  // the vendored emoji-data.txt on any network failure) -- see that
+  // script's own header for the full design. Loaded once per launcher
+  // lifetime (the `if (emojiEntries.length === 0)` gate below), not every
+  // panel open like the app list -- even with the weekly refetch check,
+  // no reason to re-run this every time the launcher opens.
+  // Still search-only when reached from the *main* launcher (no chip --
+  // matches/emojiMatches() below stays capped at 20 for the same
+  // render-count reason as clipboard/apps). The dedicated emoji-only
+  // scope (super+., searchScope==="emoji") is different: browsable by
+  // default with no query at all, see fuzzyList()'s searchScope branch --
+  // safe now that the ListView is properly virtualized (the same fix the
+  // clipboard tab needed for the same reason).
   property var emojiEntries: []
-  readonly property string emojiDataPath: Qt.resolvedUrl("../../scripts/emoji-data.txt").toString().replace("file://", "")
+  readonly property string emojiUpdateScriptPath: Qt.resolvedUrl("../../scripts/update-emoji-data.py").toString().replace("file://", "")
   function refreshEmoji() { emojiProc.running = true; }
   Process {
     id: emojiProc
-    command: ["cat", panelRoot.emojiDataPath]
+    command: ["python3", panelRoot.emojiUpdateScriptPath]
     stdout: StdioCollector {
       onStreamFinished: {
         panelRoot.emojiEntries = text.split("\n").filter(l => l.length > 0).map(line => {
@@ -359,8 +390,96 @@ Item {
     }
   }
 
+  // ----- recently used emoji -----
+  // Same physical SQLite database CalendarDropdown.qml's todos live in
+  // (LocalStorage.openDatabaseSync is keyed by name+version, not by which
+  // QML file opens it -- same name/version here really does mean the
+  // same on-disk file) -- just a new table in it, per the user's own
+  // instruction, rather than a second database file for one small table.
+  property var emojiDb: null
+  property var recentEmojiChars: [] // most-recent-first, capped to 5
+  function openEmojiDb() {
+    return LocalStorage.openDatabaseSync(
+      "CoelOSCalendarTodos", "1.0",
+      "Shared CoelOS quickshell local storage (calendar todos, emoji recency)", 1000000);
+  }
+  function emojiDbEnsureSchema() {
+    emojiDb.transaction(function (tx) {
+      tx.executeSql("CREATE TABLE IF NOT EXISTS emoji_recent (char TEXT PRIMARY KEY, used_at INTEGER NOT NULL)");
+    });
+  }
+  function loadRecentEmoji() {
+    const out = [];
+    emojiDb.transaction(function (tx) {
+      const rs = tx.executeSql("SELECT char FROM emoji_recent ORDER BY used_at DESC LIMIT 5");
+      for (let i = 0; i < rs.rows.length; i++) out.push(rs.rows.item(i).char);
+    });
+    recentEmojiChars = out;
+  }
+  // Called from runItem() the moment an emoji is actually used (copied),
+  // not on mere selection -- "recently used" should mean used, not just
+  // scrolled past.
+  function recordEmojiUsed(char) {
+    emojiDb.transaction(function (tx) {
+      tx.executeSql("INSERT OR REPLACE INTO emoji_recent (char, used_at) VALUES (?, ?)", [char, Date.now()]);
+    });
+    loadRecentEmoji();
+  }
+
+  // Shared by fuzzyList()'s normal path and the emoji-only searchScope
+  // below -- scored/sorted, not capped here (callers cap as needed).
+  function emojiMatches(q) {
+    let matches = [];
+    emojiEntries.forEach(e => {
+      const nl = e.name.toLowerCase();
+      const hay = nl + " " + e.keywords.toLowerCase();
+      if (!hay.includes(q)) return;
+      const score = nl.startsWith(q) ? 3 : nl.split(/\s+/).some(w => w.startsWith(q)) ? 2 : e.keywords.toLowerCase().split(" | ").includes(q) ? 2 : 1;
+      matches.push({ label: e.char + "  " + e.name, sub: e.category, icon: "smiley", cat: "emoji", score, emojiChar: e.char });
+    });
+    matches.sort((a, b) => b.score - a.score);
+    return matches;
+  }
+  // Plain (unscored) item shape for browsing rather than searching --
+  // groupLabel drives the rows() header grouping below, distinct from the
+  // score-based "top hit" convention emojiMatches()/the calculator use.
+  function emojiBrowseItem(e, groupLabel) {
+    return { label: e.char + "  " + e.name, sub: e.category, icon: "smiley", groupLabel, emojiChar: e.char };
+  }
+
   function fuzzyList() {
     const raw = query.trim(), q = raw.toLowerCase();
+    // super+. (openEmoji) restricts the whole launcher to emoji-only
+    // search -- excludes categories, apps, clipboard, calculator; just
+    // emoji, per the user's own "exclude categories on command" request.
+    if (searchScope === "emoji") {
+      if (!q) {
+        // Browsable by default here (unlike emoji reached from the main
+        // launcher, which stays search-only) -- safe now that the list is
+        // a real virtualized ListView, same as the clipboard tab. Recently
+        // *used* (copied, not just scrolled past -- see recordEmojiUsed())
+        // emoji are pulled to their own group up top and not duplicated
+        // further down; everything else keeps Unicode's own curated
+        // group/subgroup order from emoji-test.txt.
+        if (emojiEntries.length === 0) return [];
+        const recentSet = new Set(recentEmojiChars);
+        const recentItems = recentEmojiChars
+          .map(ch => emojiEntries.find(e => e.char === ch))
+          .filter(e => !!e)
+          .map(e => emojiBrowseItem(e, "recently used"));
+        const restItems = emojiEntries
+          .filter(e => !recentSet.has(e.char))
+          .map(e => emojiBrowseItem(e, e.category));
+        return recentItems.concat(restItems);
+      }
+      let matches = emojiMatches(q).slice(0, 50);
+      if (matches.length > 0) {
+        let bi = 0;
+        matches.forEach((x, i) => { if (x.score > matches[bi].score) bi = i; });
+        matches = [Object.assign({}, matches[bi], { top: true })].concat(matches.filter((_, i) => i !== bi));
+      }
+      return matches;
+    }
     if (!q) {
       const c = categories[Math.min(catIndex, categories.length - 1)];
       return c.items.map(it => Object.assign({}, it, { cat: c.label }));
@@ -401,19 +520,8 @@ Item {
     // which stays a separate, capped, search-only source (5042 entries is
     // too many to ever browse as a static category list; clipboard's own
     // up-to-hundreds is fine now that the list rendering is virtualized).
-    let emojiMatches = [];
-    emojiEntries.forEach(e => {
-      const nl = e.name.toLowerCase();
-      const hay = nl + " " + e.keywords.toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = nl.startsWith(q) ? 3 : nl.split(/\s+/).some(w => w.startsWith(q)) ? 2 : e.keywords.toLowerCase().split(" | ").includes(q) ? 2 : 1;
-      emojiMatches.push({
-        label: e.char + "  " + e.name, sub: e.category, icon: "smiley", cat: "emoji", score,
-        emojiChar: e.char,
-      });
-    });
-    emojiMatches.sort((a, b) => b.score - a.score);
-    list = list.concat(emojiMatches.slice(0, 20));
+    const emojiMatchList = emojiMatches(q);
+    list = list.concat(emojiMatchList.slice(0, 20));
     if (list.length > 0) {
       let bi = 0;
       list.forEach((x, i) => { if (x.score > list[bi].score) bi = i; });
@@ -444,13 +552,23 @@ Item {
   // back. Each delegate now reads panelRoot.selIndex directly instead
   // (see itemDelegate's own `isSel` below), so rows only changes when
   // `list` itself does (new search, category switch, refreshed data).
+  // Grouped/headered whenever there's a query, OR a scope restriction is
+  // active (e.g. emoji-only's browse-all-by-default view, which has no
+  // query but still wants "recently used" / per-category headers) --
+  // groupLabel lets a caller override the header text away from the
+  // plain `cat` field (used for "recently used" vs. real category names)
+  // without disturbing the "top hit" convention search results still use.
   readonly property var rows: {
     const out = [];
-    let prevCat = null;
+    let prevGroup = null;
+    const grouped = hasQuery || panelRoot.searchScope !== "";
     list.forEach((it, i) => {
-      if (hasQuery) {
-        if (it.top) out.push({ isHeader: true, header: "top hit" });
-        else if (it.cat !== prevCat) { out.push({ isHeader: true, header: it.cat }); prevCat = it.cat; }
+      if (grouped) {
+        if (it.top) { out.push({ isHeader: true, header: "top hit" }); }
+        else {
+          const g = it.groupLabel || it.cat;
+          if (g !== prevGroup) { out.push({ isHeader: true, header: g }); prevGroup = g; }
+        }
       }
       out.push({ isItem: true, idx: i, item: it });
     });
@@ -468,9 +586,27 @@ Item {
   // this has to be done explicitly. `rows` interleaves header rows when
   // searching, so selIndex (an index into `list`) isn't always the same
   // as the row index in `rows`/the ListView -- found by matching `idx`.
+  // positionViewAtIndex jumps the view instantly, unlike a gradual wheel
+  // scroll -- with reuseItems:true that can mean a recycled delegate gets
+  // rebound to a completely different row right under a mouse that never
+  // moved, and (apparently, empirically -- the mapToGlobal check in the
+  // delegate's onPositionChanged doesn't catch every case here the way it
+  // does for wheel-scrolling) that can still hijack keyboard-driven
+  // selection. Rather than chase the exact internal Qt Quick event path
+  // for this one, hover is just flatly suppressed for a short window
+  // around any programmatic scroll -- see hoverSuppressTimer/
+  // suppressHoverSelect below and in the delegate.
+  property bool suppressHoverSelect: false
+  Timer {
+    id: hoverSuppressTimer
+    interval: 250
+    onTriggered: panelRoot.suppressHoverSelect = false
+  }
   function scrollSelectedIntoView() {
     for (let i = 0; i < rows.length; i++) {
       if (rows[i].isItem && rows[i].idx === selIndex) {
+        suppressHoverSelect = true;
+        hoverSuppressTimer.restart();
         listFlick.positionViewAtIndex(i, ListView.Contain);
         return;
       }
@@ -505,6 +641,7 @@ Item {
     }
     if (it.emojiChar) {
       Quickshell.execDetached(["wl-copy", it.emojiChar]);
+      recordEmojiUsed(it.emojiChar);
       msg = "→ copied " + it.emojiChar;
       closeRequested();
       return;
@@ -654,7 +791,7 @@ Item {
           Text {
             visible: searchInput.text.length === 0
             anchors.verticalCenter: parent.verticalCenter
-            text: "search, or calculate — sqrt16, log(2)(8), 5!"
+            text: panelRoot.searchScope === "emoji" ? "search emoji — grinning, heart, fire…" : "search, or calculate — sqrt16, log(2)(8), 5!"
             color: panelRoot.mutedColor
             font.family: "JetBrains Mono"
             font.pixelSize: 18
@@ -670,8 +807,11 @@ Item {
       }
 
       // ----- category chips -----
+      // Hidden entirely while a searchScope restriction is active (e.g.
+      // emoji-only via super+.) -- there's nothing to browse by category
+      // in that mode, categories aren't even consulted by fuzzyList().
       Flow {
-        visible: !panelRoot.hasQuery && !panelRoot.aboutView
+        visible: !panelRoot.hasQuery && !panelRoot.aboutView && panelRoot.searchScope === ""
         x: 14
         width: parent.width - 28
         spacing: 4
@@ -714,7 +854,7 @@ Item {
         }
       }
 
-      Item { visible: !panelRoot.hasQuery && !panelRoot.aboutView; width: 1; height: 10 }
+      Item { visible: !panelRoot.hasQuery && !panelRoot.aboutView && panelRoot.searchScope === ""; width: 1; height: 10 }
 
       Rectangle { width: parent.width; height: 1; color: panelRoot.hoverColor }
 
@@ -783,7 +923,16 @@ Item {
                   anchors.fill: parent
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
-                  onPositionChanged: if (panelRoot.selIndex !== modelData.idx) { panelRoot.selIndex = modelData.idx; panelRoot.msg = ""; panelRoot.armedId = ""; }
+                  // See panelRoot.lastHoverGlobalPos above for why this
+                  // checks *global* cursor position rather than reacting to
+                  // every position-changed event directly.
+                  onPositionChanged: (mouse) => {
+                    if (panelRoot.suppressHoverSelect) return;
+                    const g = rowMouse.mapToGlobal(mouse.x, mouse.y);
+                    if (Math.abs(g.x - panelRoot.lastHoverGlobalPos.x) < 1 && Math.abs(g.y - panelRoot.lastHoverGlobalPos.y) < 1) return;
+                    panelRoot.lastHoverGlobalPos = g;
+                    if (panelRoot.selIndex !== modelData.idx) { panelRoot.selIndex = modelData.idx; panelRoot.msg = ""; panelRoot.armedId = ""; }
+                  }
                   onClicked: { panelRoot.selIndex = modelData.idx; panelRoot.runItem(itemRow.it); }
                 }
 
@@ -1196,5 +1345,10 @@ Item {
       }
     }
   }
-  Component.onCompleted: aboutProc.running = true
+  Component.onCompleted: {
+    aboutProc.running = true;
+    panelRoot.emojiDb = panelRoot.openEmojiDb();
+    panelRoot.emojiDbEnsureSchema();
+    panelRoot.loadRecentEmoji();
+  }
 }

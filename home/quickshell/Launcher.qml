@@ -33,6 +33,10 @@ Scope {
   // (shell.qml clears it back to "" on a plain toggle so a later
   // super+space doesn't keep forcing the same category).
   property string requestedCategory: ""
+  // Same one-shot-set-before-open idea as requestedCategory, but a live
+  // search restriction rather than a starting tab -- forwarded straight
+  // through to LauncherPanel.searchScope, not consumed-and-cleared.
+  property string requestedScope: ""
 
   signal closeRequested()
   // Bubbled up from LauncherPanel's "panels" category items -- shell.qml
@@ -46,6 +50,10 @@ Scope {
   // launcher onto -- used by super+V (openClipboard below) to jump
   // straight to the clipboard tab rather than whatever was last open.
   signal openCategoryRequested(var screen, string catId)
+  // Like openCategoryRequested, but restricts what fuzzyList() searches at
+  // all rather than just picking a starting tab -- used by super+.
+  // (openEmoji below) for an emoji-only launcher.
+  signal openScopeRequested(var screen, string scope)
 
   function resolveFocusedScreen() {
     const mon = Hyprland.focusedMonitor;
@@ -72,6 +80,11 @@ Scope {
     // pipeline (home/hyprland.nix).
     function openClipboard(): void {
       launcherScope.openCategoryRequested(launcherScope.resolveFocusedScreen(), "clipboard");
+    }
+    // `quickshell ipc call launcher openEmoji` -- super+., replacing the
+    // old rofi-emoji-based `coel-emoji-picker` (home/hyprland.nix).
+    function openEmoji(): void {
+      launcherScope.openScopeRequested(launcherScope.resolveFocusedScreen(), "emoji");
     }
   }
 
@@ -117,7 +130,16 @@ Scope {
         LauncherPanel {
           id: panelContent
           anchors.horizontalCenter: parent.horizontalCenter
-          y: parent.height * 0.16
+          // Was `y: parent.height * 0.16`, matching the mock's own literal
+          // `top:16vh` -- true vertical centering instead, per the user
+          // reporting the fixed-offset version sat noticeably higher than
+          // centered on the real screen. Trades away the mock's original
+          // reasoning (a fixed top offset means the card's top edge never
+          // jumps as content height changes with search results) for
+          // matching what "centered" actually means here -- worth
+          // revisiting if the vertical jump while typing turns out to be
+          // more distracting than the off-center position was.
+          anchors.verticalCenter: parent.verticalCenter
           fgColor: launcherScope.fgColor
           mutedColor: launcherScope.mutedColor
           hoverColor: launcherScope.hoverColor
@@ -125,6 +147,7 @@ Scope {
           colors: launcherScope.colors
           panelOpen: winRoot.shown
           requestedCategory: launcherScope.requestedCategory
+          searchScope: launcherScope.requestedScope
           onCloseRequested: launcherScope.closeRequested()
           onOpenPanelRequested: (name) => launcherScope.openPanelRequested(winRoot.modelData, name)
         }

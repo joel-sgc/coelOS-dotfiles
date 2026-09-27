@@ -3,3 +3,4 @@ result
 result-*
 coelos-dotfiles/
 *.tsx
+__pycache__/

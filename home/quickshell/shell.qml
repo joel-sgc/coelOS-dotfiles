@@ -40,17 +40,35 @@ ShellRoot {
   // "clipboard", via super+V) -- cleared on a plain toggle so a later
   // super+space doesn't keep re-forcing whatever category super+V last set.
   property string launcherRequestedCategory: ""
+  // Restricts what the launcher searches at all while open (currently just
+  // "emoji", via super+.) -- same clear-on-plain-toggle rule, and mutually
+  // exclusive with launcherRequestedCategory (opening one clears the other,
+  // so e.g. super+. after a super+V doesn't leave a stale clipboard jump
+  // active underneath an emoji-only search).
+  property string launcherRequestedScope: ""
   function toggleLauncher(screen) {
     launcherRequestedCategory = "";
+    launcherRequestedScope = "";
     if (launcherOpen && launcherScreen === screen) launcherOpen = false;
     else { launcherScreen = screen; launcherOpen = true; }
   }
   function openLauncherCategory(screen, catId) {
+    launcherRequestedScope = "";
     if (launcherOpen && launcherScreen === screen && launcherRequestedCategory === catId) {
       launcherOpen = false;
     } else {
       launcherScreen = screen;
       launcherRequestedCategory = catId;
+      launcherOpen = true;
+    }
+  }
+  function openLauncherScope(screen, scope) {
+    launcherRequestedCategory = "";
+    if (launcherOpen && launcherScreen === screen && launcherRequestedScope === scope) {
+      launcherOpen = false;
+    } else {
+      launcherScreen = screen;
+      launcherRequestedScope = scope;
       launcherOpen = true;
     }
   }
@@ -85,9 +103,11 @@ ShellRoot {
     hoverColor: root.hoverColor
     colors: root.colors
     requestedCategory: root.launcherRequestedCategory
+    requestedScope: root.launcherRequestedScope
     onCloseRequested: root.launcherOpen = false
     onToggleRequested: (screen) => root.toggleLauncher(screen)
     onOpenCategoryRequested: (screen, catId) => root.openLauncherCategory(screen, catId)
+    onOpenScopeRequested: (screen, scope) => root.openLauncherScope(screen, scope)
     // "panels" category items (Network/Bluetooth/.../Calendar) -- forward
     // straight into Panel's own openPopup state, same as clicking that
     // bar button directly would.

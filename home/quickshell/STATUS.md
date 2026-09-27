@@ -224,18 +224,78 @@ shift+space, and the new super+V below) now read `quickshell ipc -p
 ~/.nixos/home/quickshell call launcher <fn>`, verified against the real
 generated `hyprland.conf` after a build and confirmed live by the user.
 
-### Emoji picker (real, search-only, done 2026-09-27)
+### Emoji picker (real, search-only from the main launcher; browsable +
+recency-tracked in emoji-only mode; done/fixed 2026-09-27)
 
-`emojiEntries`, loaded once via a lazy `Component.onCompleted`-style load
-on first panel open (static data, not re-fetched every open like DND
-state). Real dataset, not invented — vendored from the real `rofi-emoji`
-package (`pkgs.rofi-emoji`, MIT, see `scripts/emoji-data.LICENSE`) into
-`scripts/emoji-data.txt` (5042 lines, copied byte-for-byte via `cp`, never
-retyped) rather than read live from its nix store path, since that path's
-hash changes on every nixpkgs update. Matched against name + keywords,
-scored/sorted and capped at 20 results — 5042 is too many to ever browse
-as a static category (no chip exists for it, same "Spotlight not rofi"
-call as app search), so it stays search-only.
+`emojiEntries`, loaded once per launcher lifetime (the `if
+(emojiEntries.length === 0)` gate in `onPanelOpenChanged`), not
+re-fetched every open like DND state. From the *main* launcher, matched
+against name + keywords, scored/sorted and capped at 20 results —
+thousands of entries is too many to ever browse as a static category (no
+chip exists for it, same "Spotlight not rofi" call as app search), so it
+stays search-only there.
+
+**Emoji-only mode (super+., `searchScope==="emoji"`) is different**: at
+the user's request, it's browsable by default with no query at all --
+safe now that the item list is a real virtualized `ListView` (the same
+fix the clipboard tab needed for the same underlying reason: a plain
+`Column`+`Repeater` would've instantiated every one of ~4000 rows up
+front). Recently *used* emoji (copied via Enter/click, not just scrolled
+past -- tracked in `recordEmojiUsed()`, called from `runItem()`'s
+`it.emojiChar` branch) are pulled into their own "recently used" group at
+the top, capped to the last 5, and not duplicated further down; everything
+else keeps Unicode's own curated group/subgroup order from
+`emoji-test.txt`. The `rows` header-grouping logic (previously only active
+`if (hasQuery)`) was generalized to a `groupLabel || cat` field and now
+also triggers whenever `searchScope !== ""`, so this reuses the exact same
+header rendering path search results already use, just with real category
+names instead of arbitrary matches.
+
+Recency is tracked in **the same SQLite database `CalendarDropdown.qml`'s
+todos already live in** (`LocalStorage.openDatabaseSync("CoelOSCalendarTodos",
+"1.0", ...)` -- keyed by name+version, not by which QML file opens it, so
+the same name really does mean the same on-disk file), per the user's own
+explicit instruction, rather than a second database for one small table.
+New table: `emoji_recent (char TEXT PRIMARY KEY, used_at INTEGER NOT
+NULL)`, upserted via `INSERT OR REPLACE` keyed on the emoji character
+itself. Verified for real, not just lint-checked: read the live `.sqlite`
+file directly with Python's `sqlite3` module after this hot-reloaded and
+confirmed `emoji_recent` now sits alongside `todos` in the exact same
+file.
+
+**Data source rebuilt same day it shipped**: originally just vendored
+`pkgs.rofi-emoji`'s bundled `emoji-data.txt` (5042 lines, copied
+byte-for-byte via `cp`, checked into the repo). The user immediately
+noticed it was badly stale — missing all of Unicode Emoji 17.0 and 18.0
+(shaking face, cracking face, pickle, lighthouse, meteor, ...), since
+nothing was ever going to re-copy that snapshot as time passed. Fixed by
+replacing the static `cat scripts/emoji-data.txt` with
+`scripts/update-emoji-data.py`, which fetches Unicode.org's own canonical
+`https://www.unicode.org/Public/emoji/latest/emoji-test.txt` (the file
+the Unicode Consortium itself keeps current — confirmed live E18.0 data
+in it, dated 2026-04-30), caches the parsed result at
+`$XDG_CACHE_HOME/quickshell-emoji-data.txt`, and only re-fetches if that
+cache is more than 7 days old. A failed/timed-out fetch (no network,
+unicode.org unreachable) silently keeps whatever's cached, or falls back
+to the vendored `emoji-data.txt` if there's no cache at all yet — verified
+this fallback path for real (redirected the URL to an unroutable address,
+confirmed it degrades to the vendored 5042-line file without hanging or
+erroring). `emoji-test.txt` has no keywords of its own, only official CLDR
+names grouped by category — the script enriches keywords by exact
+emoji-character lookup against the (now fallback-only) vendored file, so
+existing fuzzy search doesn't regress; brand-new emoji just match on name
+alone until enriched some other way. This is the **first thing in this
+project that makes an outbound network request** — worth knowing if
+anything ever needs to run fully offline/airgapped; everything else here
+is local-only.
+- **Not fully solved, worth knowing**: Nix's own reproducibility model
+  doesn't support "always fetch the newest" at *build* time (a pinned
+  `fetchurl` hash would just re-fetch the same stale content forever) --
+  this refresh happens at *runtime* instead, matching the precedent
+  `list-apps.py` already set for real dynamic data in this launcher. That
+  means the very first launcher use after a long gap still needs one live
+  network fetch (~0.3s observed) before it's current again; after that,
+  cached for up to a week.
 
 Selecting one runs `Quickshell.execDetached(["wl-copy", emojiChar])`
 directly — no shell needed since it's a single argv element, and the text
@@ -355,7 +415,11 @@ M  home/mako.nix                                  <- [mode=dnd] rule
 A  home/quickshell/Launcher.qml                   <- new
 A  home/quickshell/STATUS.md                      <- this file
 A  home/quickshell/scripts/emoji-data.LICENSE     <- new, MIT, from pkgs.rofi-emoji
-A  home/quickshell/scripts/emoji-data.txt         <- new, vendored emoji dataset (5042 lines)
+A  home/quickshell/scripts/emoji-data.txt         <- new, vendored emoji dataset (5042 lines) --
+                                                       now the offline-fallback/keyword-enrichment
+                                                       source only, see update-emoji-data.py
+A  home/quickshell/scripts/update-emoji-data.py   <- new, fetches/caches the real always-current
+                                                       emoji dataset from unicode.org
 A  home/quickshell/scripts/list-apps.py           <- new
 M  home/quickshell/shell.qml                      <- launcher wiring + requestedCategory plumbing
 A  home/quickshell/sysPanel/Calc.js                <- new, calculator engine
