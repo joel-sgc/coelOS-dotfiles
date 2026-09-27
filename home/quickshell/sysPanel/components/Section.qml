@@ -25,6 +25,28 @@ Item {
   // box's "power-profiles-daemon" caption) -- a full Item so callers can
   // put a button or a plain Text there, not just a string.
   property alias rightContent: rightSlotHolder.data
+  // Same idea, swapped in for the plain `label` Text when a caller needs
+  // more than a string there -- CalendarDropdown's month box embeds
+  // ‹prev/label/next› nav directly in the floating label itself, which a
+  // plain string can't do. Leave `label` set to "" when using this; the
+  // two aren't meant to be shown together.
+  property alias leftContent: leftSlotHolder.data
+  // Content pinned to the bottom of the border, below `inner`'s own
+  // stacked content -- CalendarDropdown's todo box uses this for the
+  // add-task row, which the design mock keeps flush with the box's
+  // bottom edge (a CSS flex:1 spacer) regardless of how many todo rows
+  // are above it, rather than letting it sit wherever `inner`'s natural
+  // stack happens to end. Leaves whatever gap is left over between
+  // `inner` and this slot blank, same as the mock's own spacer.
+  property alias bottomContent: bottomSlotHolder.data
+  // Forces the border (and so this Item's own implicitHeight) to be at
+  // least this tall even when `inner` + bottomContent's natural stack is
+  // shorter -- what actually makes bottomContent's "pinned to the
+  // bottom" behavior visible instead of it just sitting directly under
+  // `inner` with no gap. In the same units as this Item's own
+  // implicitHeight (not `inner`'s), so a caller can bind it straight to
+  // another Item's implicitHeight it wants to visually match.
+  property int minHeight: 0
 
   property color borderColor: "#404754"
   property color bgColor: "#282c34"
@@ -45,7 +67,10 @@ Item {
     anchors.topMargin: 9
     anchors.left: parent.left
     anchors.right: parent.right
-    height: inner.implicitHeight + sectionRoot.paddingTop + sectionRoot.paddingBottom
+    readonly property int naturalHeight: inner.implicitHeight
+      + (bottomSlotHolder.children.length > 0 ? bottomSlotHolder.childrenRect.height + sectionRoot.spacing : 0)
+      + sectionRoot.paddingTop + sectionRoot.paddingBottom
+    height: Math.max(naturalHeight, sectionRoot.minHeight - 9)
     color: "transparent"
     border.width: 1
     border.color: sectionRoot.borderColor
@@ -65,7 +90,7 @@ Item {
 
   Text {
     id: labelText
-    visible: sectionRoot.label.length > 0
+    visible: sectionRoot.label.length > 0 && leftSlotHolder.children.length === 0
     x: 8
     y: border.y - height / 2
     leftPadding: 6
@@ -79,6 +104,29 @@ Item {
       z: -1
       anchors.fill: parent
       color: sectionRoot.bgColor
+    }
+  }
+
+  Item {
+    id: leftSlot
+    visible: leftSlotHolder.children.length > 0
+    // Same width/height-from-holder split as rightSlot below, for the
+    // same binding-loop reason.
+    width: leftSlotHolder.childrenRect.width
+    height: leftSlotHolder.childrenRect.height
+    x: 8
+    y: border.y - height / 2
+
+    Rectangle {
+      z: -1
+      anchors.fill: parent
+      anchors.margins: -6
+      color: sectionRoot.bgColor
+    }
+
+    Item {
+      id: leftSlotHolder
+      anchors.fill: parent
     }
   }
 
@@ -112,6 +160,23 @@ Item {
 
     Item {
       id: rightSlotHolder
+      anchors.fill: parent
+    }
+  }
+
+  Item {
+    id: bottomSlot
+    visible: bottomSlotHolder.children.length > 0
+    anchors.left: border.left
+    anchors.leftMargin: sectionRoot.paddingSide
+    anchors.right: border.right
+    anchors.rightMargin: sectionRoot.paddingSide
+    anchors.bottom: border.bottom
+    anchors.bottomMargin: sectionRoot.paddingBottom
+    height: bottomSlotHolder.childrenRect.height
+
+    Item {
+      id: bottomSlotHolder
       anchors.fill: parent
     }
   }

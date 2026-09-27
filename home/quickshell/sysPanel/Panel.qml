@@ -117,13 +117,19 @@ Scope {
           open: root.openPopup === "calendar"
           barHeight: root.barHeight
           centerHorizontally: true
+          // 32px more than CalendarDropdown.qml's own implicitWidth (660)
+          // -- Popup.qml's fixed 16px-per-side content padding, same
+          // contract as every other dropdown here.
+          contentWidth: 692
           onCloseRequested: root.openPopup = ""
 
-          Text {
-            text: "calendar (coming in a later phase)"
-            color: root.fgColor
-            font.family: "JetBrains Mono"
-            font.pixelSize: 13
+          CalendarDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            popupOpen: root.openPopup === "calendar"
+            onCloseRequested: root.openPopup = ""
           }
         }
 
