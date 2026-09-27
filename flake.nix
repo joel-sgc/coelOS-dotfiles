@@ -67,12 +67,16 @@
       system = "x86_64-linux";
       pkgs-unstable = import nixpkgs-unstable {
         inherit system;
-        config.allowUnfree = true; 
+        config.allowUnfree = true;
       };
-    in{
+    in
+    {
       nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; inherit pkgs-unstable; };
+        specialArgs = {
+          inherit inputs;
+          inherit pkgs-unstable;
+        };
         modules = [
           ./configuration.nix
           home-manager.nixosModules.home-manager

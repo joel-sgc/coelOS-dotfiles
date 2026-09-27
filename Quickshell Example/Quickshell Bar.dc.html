@@ -19,7 +19,7 @@
   <div style="padding:0;position:relative;z-index:2;">
     <div data-screen-label="Bar" style="height:36px;display:grid;grid-template-columns:minmax(max-content,1fr) auto minmax(max-content,1fr);column-gap:12px;align-items:center;background:#282c34;padding:0 12px;position:relative;">
       <div style="display:flex;align-items:center;gap:14px;min-width:0;">
-        <button title="CoelOS" style="width:28px;height:28px;display:grid;place-items:center;background:transparent;border:0;border-radius:6px;cursor:pointer;color:#abb2bf;" style-hover="background:#404754;">
+        <button onClick="{{ toggleMenu }}" title="System menu" style="width:28px;height:28px;display:grid;place-items:center;background:{{ menuBtnBg }};border:0;border-radius:6px;cursor:pointer;color:{{ menuBtnColor }};" style-hover="background:#404754;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 7.5A8 8 0 1 0 20 12h-8"></path><path d="M16 12a4 4 0 1 1-4-4"></path></svg>
         </button>
         <div onWheel="{{ onWsWheel }}" style="display:flex;align-items:center;gap:2px;">
@@ -814,6 +814,101 @@
           </div>
         </div>
       </div>
+      <div data-screen-label="Spotlight" style="position:fixed;inset:0;z-index:50;pointer-events:{{ menuPe }};">
+        <div onClick="{{ closeMenu }}" style="position:absolute;inset:0;background:rgba(24,26,31,0.55);opacity:{{ menuOpacity }};transition:opacity 0.16s ease;"></div>
+        <div style="position:absolute;top:16vh;left:50%;width:min(720px, calc(100vw - 32px));transform:{{ menuTransform }};opacity:{{ menuOpacity }};transition:opacity 0.16s ease, transform 0.22s cubic-bezier(0.2,0.8,0.2,1);background:#282c34;border:1px solid #404754;border-radius:14px;box-shadow:0 24px 60px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.25);font-size:12.5px;line-height:1.55;overflow:hidden;">
+
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#61afef" stroke-width="2.4" stroke-linecap="round" style="flex:none;"><path d="M19 7.5A8 8 0 1 0 20 12h-8"></path><path d="M16 12a4 4 0 1 1-4-4"></path></svg>
+            <input ref="{{ menuRef }}" value="{{ menuQuery }}" onChange="{{ menuOnQuery }}" placeholder="search, or calculate — sqrt16, log(2)(8), 5!" spellcheck="false" style="flex:1;min-width:0;background:transparent;border:0;color:#abb2bf;font:inherit;font-size:18px;padding:0;outline:none;caret-color:#61afef;"></input>
+            <span style="color:#5c6370;white-space:nowrap;">{{ menuCountLabel }}</span>
+          </div>
+
+          <sc-if value="{{ menuShowChips }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 10px;">
+              <sc-for list="{{ menuCats }}" as="c" hint-placeholder-count="6">
+                <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:6px;border:0;border-radius:6px;background:{{ c.bg }};color:{{ c.color }};cursor:pointer;padding:2px 10px;" style-hover="background:#353b45;color:#abb2bf;">
+                  <i class="{{ c.icon }}" style="font-size:13px;color:{{ c.iconColor }};"></i>{{ c.label }}
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="height:1px;background:#404754;"></div>
+
+          <sc-if value="{{ menuShowList }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,240px);height:336px;">
+              <div style="overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:#404754 transparent;">
+                <sc-for list="{{ menuRows }}" as="r" hint-placeholder-count="7">
+                  <sc-if value="{{ r.isHeader }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:8px 10px 2px;color:#5c6370;font-size:11px;letter-spacing:0.06em;">{{ r.header }}</div>
+                  </sc-if>
+                  <sc-if value="{{ r.isItem }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ r.run }}" onMouseMove="{{ r.hover }}" style="display:grid;grid-template-columns:{{ r.cols }};gap:10px;align-items:center;padding:{{ r.pad }};border-radius:8px;background:{{ r.bg }};cursor:pointer;">
+                      <span style="width:{{ r.box }};height:{{ r.box }};display:grid;place-items:center;border-radius:6px;background:{{ r.iconBg }};"><i class="{{ r.icon }}" style="font-size:{{ r.iconSize }};color:{{ r.iconColor }};"></i></span>
+                      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span style="color:{{ r.labelColor }};font-size:{{ r.labelSize }};">{{ r.label }}</span> <span style="color:#5c6370;">{{ r.sub }}</span></span>
+                      <span style="color:{{ r.rightColor }};white-space:nowrap;">{{ r.right }}</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+                <sc-if value="{{ menuEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="color:#5c6370;padding:10px;">no matches for “{{ menuQuery }}”</div>
+                </sc-if>
+              </div>
+
+              <div style="border-left:1px solid #404754;padding:18px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;background:#262a31;">
+                <sc-if value="{{ mpHas }}" hint-placeholder-val="{{ true }}">
+                  <span style="width:52px;height:52px;display:grid;place-items:center;border-radius:12px;background:#2f343e;border:1px solid #404754;"><i class="{{ mp.icon }}" style="font-size:26px;color:{{ mp.iconColor }};"></i></span>
+                  <div style="min-width:0;">
+                    <div style="color:#abb2bf;font-size:15px;font-weight:500;overflow-wrap:anywhere;">{{ mp.label }}</div>
+                    <div style="color:#5c6370;overflow-wrap:anywhere;">{{ mp.sub }}</div>
+                  </div>
+                  <div style="height:1px;background:#404754;"></div>
+                  <div style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:3px 10px;">
+                    <sc-for list="{{ mp.rows }}" as="kv" hint-placeholder-count="3">
+                      <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:{{ kv.c }};overflow-wrap:anywhere;">{{ kv.v }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="flex:1;"></div>
+                  <div style="display:flex;align-items:center;gap:8px;"><span style="border:1px solid #404754;border-radius:4px;padding:0 6px;color:#e5c07b;">⏎</span><span style="color:{{ mp.actColor }};">{{ mp.action }}</span></div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ menuShowAbout }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:20px;align-items:flex-start;padding:20px 22px;height:296px;box-sizing:border-box;min-width:0;">
+              <svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#61afef" stroke-width="2.2" stroke-linecap="round" style="flex:none;margin-top:4px;"><path d="M19 7.5A8 8 0 1 0 20 12h-8"></path><path d="M16 12a4 4 0 1 1-4-4"></path></svg>
+              <div style="min-width:0;flex:1;">
+                <div><span style="color:#61afef;font-weight:500;">coel</span><span style="color:#5c6370;">@</span><span style="color:#61afef;font-weight:500;">archlinux</span></div>
+                <div style="color:#404754;">──────────────────</div>
+                <div style="display:grid;grid-template-columns:70px minmax(0,1fr);gap:0 10px;">
+                  <sc-for list="{{ aboutRows }}" as="kv" hint-placeholder-count="10">
+                    <span style="color:#e5c07b;">{{ kv.k }}</span><span style="color:#abb2bf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ kv.v }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;margin-top:10px;">
+                  <sc-for list="{{ aboutSwatches }}" as="c" hint-placeholder-count="8">
+                    <span style="width:22px;height:12px;background:{{ c }};"></span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:14px;padding:7px 16px;border-top:1px solid #404754;background:#252930;min-height:19px;">
+            <span style="color:{{ menuMsgColor }};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ menuMsg }}</span>
+            <sc-if value="{{ menuHasSwatch }}" hint-placeholder-val="{{ false }}">
+              <span style="width:14px;height:14px;border-radius:3px;background:{{ menuSwatch }};border:1px solid #404754;"></span>
+            </sc-if>
+            <div style="display:flex;gap:12px;color:#5c6370;white-space:nowrap;">
+              <sc-for list="{{ menuHints }}" as="h" hint-placeholder-count="4">
+                <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div data-screen-label="Desktop" style="flex:1;min-height:0;margin:{{ frameMargin }};border-radius:{{ frameRadius }};background:radial-gradient(120% 90% at 30% 20%, #2c313c 0%, #1e2127 60%, #1a1d23 100%);box-shadow:inset 0 0 0 1px #404754, inset 0 6px 18px rgba(0,0,0,0.35);"></div>
@@ -822,7 +917,7 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;clockFormat&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Day @ 12h&quot;,&quot;Day @ 24h&quot;,&quot;Date · 12h&quot;],&quot;default&quot;:&quot;Day @ 12h&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;numbers&quot;,&quot;dots&quot;],&quot;default&quot;:&quot;numbers&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:3,&quot;max&quot;:9,&quot;default&quot;:5,&quot;tsType&quot;:&quot;number&quot;},&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:24,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:8,&quot;tsType&quot;:&quot;number&quot;},&quot;cornerRadius&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:32,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;activeUnderline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
 class Component extends DCLogic {
   state = {
-    active: 2, occupied: [1, 2, 3, 4, 5], now: new Date(), cpu: 1, muted: false, ...this.sysSeed(), ...this.pwrSeed(), calOpen: false, calY: new Date().getFullYear(), calM: new Date().getMonth(), calSel: this.dkey(new Date()), calFocus: 'cal', tdSel: 0, tdDraft: '', todos: this.seedTodos(),
+    active: 2, occupied: [1, 2, 3, 4, 5], now: new Date(), cpu: 1, muted: false, ...this.sysSeed(), ...this.pwrSeed(), menuOpen: true, menuQuery: '', menuCat: 0, menuSel: 0, menuView: null, menuArmed: null, menuMsg: '', menuSwatch: null, menuAns: 0, theme: 'one dark', mt: { dnd: false, night: true, awake: false }, calOpen: false, calY: new Date().getFullYear(), calM: new Date().getMonth(), calSel: this.dkey(new Date()), calFocus: 'cal', tdSel: 0, tdDraft: '', todos: this.seedTodos(),
     audioOpen: false, aView: 'devices', aFocus: 'out', aOutSel: 0, aInSel: 0, aCardSel: 0, level: 0.3, defSink: 57, defSource: 64,
     sinks: [
       { id: 48, name: 'Built-in Speakers', node: 'alsa_output.pci-0000_00_1f.3.analog-stereo', card: 0, vol: 62, mute: false, req: null },
@@ -889,9 +984,431 @@ class Component extends DCLogic {
     this.c = setInterval(() => { this.sysTick(); this.pwrTick(); }, 1000);
   }
   componentWillUnmount() { clearInterval(this.t); clearInterval(this.c); clearInterval(this.sp); clearInterval(this.bti); clearInterval(this.lvi); clearInterval(this.btType); window.removeEventListener('keydown', this.onKey); }
+  menuOpenPanel(key) {
+    const all = { netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false };
+    this.setState({ ...all, [key]: true, menuQuery: '', menuView: null });
+  }
+  menuCmd(cmd, extra) { this.setState({ menuMsg: `→ ${cmd}`, menuArmed: null, menuSwatch: null, ...(extra || {}) }); }
+  menuData() {
+    const s = this.state, on = v => v ? { right: '[on]', rightColor: '#89ca78' } : { right: '[off]', rightColor: '#5c6370' };
+    const mt = k => this.setState(st => ({ mt: { ...st.mt, [k]: !st.mt[k] } }));
+    const src = s.sources.find(n => n.id === s.defSource) || s.sources[0];
+    const sink = s.sinks.find(n => n.id === s.defSink) || s.sinks[0];
+    const btConn = s.btPaired.filter(d => d.connected).length;
+    const todayOpen = (s.todos[this.dkey(s.now)] || []).filter(x => !x.done).length;
+    const sess = (id, label, icon, cmd) => ({
+      id, label, icon, cmd, right: s.menuArmed === id ? 'confirm?' : '', rightColor: '#ef596f', danger: true,
+      run: () => s.menuArmed === id ? this.menuCmd(cmd) : this.setState({ menuArmed: id, menuMsg: `press ⏎ again to ${label.toLowerCase()}`, menuSwatch: null }),
+    });
+    const themes = ['one dark', 'tokyo night', 'gruvbox', 'rosé pine'];
+    return [
+      { id: 'launch', label: 'launch', icon: 'ph ph-rocket-launch', items: [
+        { label: 'Terminal', sub: 'kitty', icon: 'ph ph-terminal-window', right: 'super+⏎', cmd: 'kitty', run: () => this.menuCmd('kitty') },
+        { label: 'Browser', sub: 'firefox', icon: 'ph ph-globe', right: 'super+b', cmd: 'firefox', run: () => this.menuCmd('firefox') },
+        { label: 'Files', sub: 'yazi', icon: 'ph ph-folder', right: 'super+e', cmd: 'kitty -e yazi', run: () => this.menuCmd('kitty -e yazi') },
+        { label: 'Editor', sub: 'nvim', icon: 'ph ph-code', right: 'super+n', cmd: 'kitty -e nvim', run: () => this.menuCmd('kitty -e nvim') },
+        { label: 'Music', sub: 'spotify-player', icon: 'ph ph-music-notes', right: 'super+m', cmd: 'kitty -e spotify_player', run: () => this.menuCmd('kitty -e spotify_player') },
+        { label: 'App launcher', sub: 'all applications', icon: 'ph ph-squares-four', right: 'super+space', cmd: 'fuzzel', run: () => this.menuCmd('fuzzel') },
+      ] },
+      { id: 'panels', label: 'panels', icon: 'ph ph-sidebar-simple', items: [
+        { label: 'Network', sub: s.hs.on ? 'hotspot' : s.current || 'offline', icon: 'ph ph-wifi-high', right: 'super+w', run: () => this.menuOpenPanel('netOpen') },
+        { label: 'Bluetooth', sub: s.btPower ? `${btConn} connected` : 'off', icon: 'ph ph-bluetooth', right: 'super+shift+b', run: () => this.menuOpenPanel('btOpen') },
+        { label: 'Audio', sub: sink.mute ? 'muted' : `${sink.name} · ${sink.vol}%`, icon: 'ph ph-speaker-simple-high', right: 'super+a', run: () => this.menuOpenPanel('audioOpen') },
+        { label: 'Power', sub: `${Math.round(s.bat)}% · ${s.profile}`, icon: 'ph ph-battery-high', right: 'super+p', run: () => this.menuOpenPanel('pwrOpen') },
+        { label: 'System monitor', sub: `cpu ${s.cpu}%`, icon: 'ph ph-cpu', right: 'ctrl+shift+esc', run: () => this.menuOpenPanel('sysOpen') },
+        { label: 'Calendar & todo', sub: todayOpen ? `${todayOpen} open today` : 'all done', icon: 'ph ph-calendar-blank', right: 'super+c', run: () => this.menuOpenPanel('calOpen') },
+      ] },
+      { id: 'toggles', label: 'toggles', icon: 'ph ph-toggle-right', items: [
+        { label: 'Wi‑Fi', sub: s.current || '', icon: 'ph ph-wifi-high', ...on(!!s.current), run: () => this.setState(st => ({ current: st.current ? null : 'LUC' })) },
+        { label: 'Bluetooth', sub: '', icon: 'ph ph-bluetooth', ...on(s.btPower), run: () => this.setState(st => ({ btPower: !st.btPower })) },
+        { label: 'Microphone', sub: src.name, icon: 'ph ph-microphone', ...on(!src.mute), run: () => this.aSet('in', src.id, { mute: !src.mute }) },
+        { label: 'Do not disturb', sub: 'silence notifications', icon: 'ph ph-bell-slash', ...on(s.mt.dnd), run: () => mt('dnd') },
+        { label: 'Night light', sub: '4000K after sunset', icon: 'ph ph-moon-stars', ...on(s.mt.night), run: () => mt('night') },
+        { label: 'Keep awake', sub: 'inhibit idle & sleep', icon: 'ph ph-coffee', ...on(s.mt.awake), run: () => mt('awake') },
+        { label: 'Charge limit', sub: 'stop at 80%', icon: 'ph ph-battery-plus', ...on(s.limit), run: () => this.setState(st => ({ limit: !st.limit })) },
+      ] },
+      { id: 'capture', label: 'capture', icon: 'ph ph-camera', items: [
+        { label: 'Screenshot region', sub: '→ clipboard', icon: 'ph ph-selection', right: 'super+shift+s', cmd: 'grim -g "$(slurp)" - | wl-copy', run: () => this.menuCmd('grim -g "$(slurp)" - | wl-copy') },
+        { label: 'Screenshot window', sub: '→ ~/Pictures', icon: 'ph ph-app-window', right: 'super+shift+w', cmd: 'grim -g "$(hyprctl activewindow -j | jq -r .at,.size)"', run: () => this.menuCmd('grim -g "$(hyprctl activewindow -j | jq -r .at,.size)"') },
+        { label: 'Screenshot screen', sub: '→ ~/Pictures', icon: 'ph ph-monitor', right: 'print', cmd: 'grim ~/Pictures/$(date +%F_%T).png', run: () => this.menuCmd('grim ~/Pictures/$(date +%F_%T).png') },
+        { label: 'Record region', sub: '→ ~/Videos', icon: 'ph ph-record', right: 'super+shift+r', cmd: 'wf-recorder -g "$(slurp)"', run: () => this.menuCmd('wf-recorder -g "$(slurp)"') },
+        { label: 'Color picker', sub: 'hex → clipboard', icon: 'ph ph-eyedropper', right: 'super+shift+c', cmd: 'hyprpicker -a', run: () => this.menuCmd('hyprpicker -a  ·  copied #d19a66', { menuSwatch: '#d19a66' }) },
+        { label: 'Text from region', sub: 'ocr → clipboard', icon: 'ph ph-text-aa', right: '', cmd: 'grim -g "$(slurp)" - | tesseract - - | wl-copy', run: () => this.menuCmd('grim -g "$(slurp)" - | tesseract - - | wl-copy') },
+      ] },
+      { id: 'style', label: 'style', icon: 'ph ph-palette', items: [
+        ...themes.map(t => ({ label: t, sub: t === 'one dark' ? 'current bar palette' : '', icon: 'ph ph-swatches', right: s.theme === t ? '(•)' : '( )', rightColor: s.theme === t ? '#e5c07b' : '#5c6370', cmd: `coel-theme set "${t}"`, run: () => this.menuCmd(`coel-theme set "${t}"`, { theme: t }) })),
+        { label: 'Next wallpaper', sub: 'swww', icon: 'ph ph-image', right: 'super+shift+space', cmd: 'swww img "$(coel-wall next)" --transition-type grow', run: () => this.menuCmd('swww img "$(coel-wall next)" --transition-type grow') },
+        { label: 'Edit bar config', sub: '~/.config/quickshell', icon: 'ph ph-sliders-horizontal', right: '', cmd: 'kitty -e nvim ~/.config/quickshell/shell.qml', run: () => this.menuCmd('kitty -e nvim ~/.config/quickshell/shell.qml') },
+      ] },
+      { id: 'math', label: 'math', icon: 'ph ph-function', items: [
+        ...[['sqrt16', 'square root'], ['root(3)(27)', 'nth root'], ['log(2)(1024)', 'log base 2'], ['log_3 81', 'log with _base'], ['ln(e^2)', 'natural log'],
+          ['5!', 'factorial'], ['ncr(10, 3)', 'combinations'], ['sin(30°)', 'trig in degrees'], ['2^10 + 3²', 'powers'], ['17 mod 5', 'modulo'],
+          ['120 + 15%', 'percent of'], ['gcd(48, 18)', 'gcd / lcm'], ['|-4.5| * 2pi', 'abs, implicit ×'], ['ans / 2', 'last result']]
+          .map(([ex, d]) => ({ label: ex, sub: d, icon: 'ph ph-function', right: '', run: () => { this.setState({ menuQuery: ex, menuSel: 0, menuMsg: '' }); this.menuRef && this.menuRef.current && this.menuRef.current.focus(); } })),
+      ] },
+      { id: 'system', label: 'system', icon: 'ph ph-gear-six', items: [
+        { label: 'About this system', sub: '', icon: 'ph ph-info', right: '›', rightColor: '#5c6370', run: () => this.setState({ menuView: 'about', menuMsg: '' }) },
+        { label: 'Update packages', sub: 'pacman + aur', icon: 'ph ph-arrows-clockwise', right: '14 pending', rightColor: '#e5c07b', cmd: 'kitty -e paru -Syu', run: () => this.menuCmd('kitty -e paru -Syu') },
+        { label: 'Reload shell', sub: 'quickshell', icon: 'ph ph-arrow-counter-clockwise', right: 'super+shift+r', cmd: 'quickshell kill && quickshell -d', run: () => this.menuCmd('quickshell kill && quickshell -d') },
+        { label: 'Lock', sub: '', icon: 'ph ph-lock', right: 'super+l', cmd: 'loginctl lock-session', run: () => this.menuCmd('loginctl lock-session') },
+        sess('suspend', 'Suspend', 'ph ph-moon', 'systemctl suspend'),
+        sess('reboot', 'Reboot', 'ph ph-arrow-clockwise', 'systemctl reboot'),
+        sess('poweroff', 'Shut down', 'ph ph-power', 'systemctl poweroff'),
+      ] },
+    ];
+  }
+  calcEval(raw) {
+    if (!raw || raw.length > 240) return null;
+    const SUPM = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁻': '-' };
+    const src = raw.replace(/[×·∙]/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/\*\*/g, '^')
+      .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, m => '^(' + [...m].map(c => SUPM[c]).join('') + ')');
+    const M = Math;
+    const gamma = z => {
+      if (z < 0.5) return M.PI / (M.sin(M.PI * z) * gamma(1 - z));
+      z -= 1; const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+      let x = c[0]; for (let i = 1; i < 9; i++) x += c[i] / (z + i);
+      const t = z + 7.5; return M.sqrt(2 * M.PI) * M.pow(t, z + 0.5) * M.exp(-t) * x;
+    };
+    const fact = n => { if (Number.isInteger(n)) { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; } return gamma(n + 1); };
+    const g2 = (a, b) => { a = M.abs(M.round(a)); b = M.abs(M.round(b)); while (b) [a, b] = [b, a % b]; return a; };
+    const ncr = (n, k) => { if (k < 0 || k > n) return 0; k = M.min(k, n - k); let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return M.round(r); };
+    const npr = (n, k) => { if (k < 0 || k > n) return 0; let r = 1; for (let i = 0; i < k; i++) r *= n - i; return r; };
+    const one = fn => [1, 1, fn], many = fn => [1, 99, fn], avg = (...a) => a.reduce((x, y) => x + y, 0) / a.length;
+    const FN = {
+      sqrt: one(M.sqrt), cbrt: one(M.cbrt), root: [2, 2, (n, x) => x < 0 && M.abs(n % 2) === 1 ? -M.pow(-x, 1 / n) : M.pow(x, 1 / n)],
+      exp: one(M.exp), ln: one(M.log), log: [1, 2, a => M.log10(a)], log2: one(M.log2), log10: one(M.log10), lg: one(M.log10), lb: one(M.log2),
+      sin: one(M.sin), cos: one(M.cos), tan: one(M.tan), sec: one(x => 1 / M.cos(x)), csc: one(x => 1 / M.sin(x)), cot: one(x => 1 / M.tan(x)),
+      asin: one(M.asin), acos: one(M.acos), atan: one(M.atan), arcsin: one(M.asin), arccos: one(M.acos), arctan: one(M.atan), atan2: [2, 2, M.atan2],
+      sinh: one(M.sinh), cosh: one(M.cosh), tanh: one(M.tanh), asinh: one(M.asinh), acosh: one(M.acosh), atanh: one(M.atanh),
+      abs: one(M.abs), floor: one(M.floor), ceil: one(M.ceil), round: [1, 2, (x, n = 0) => M.round(x * 10 ** n) / 10 ** n], trunc: one(M.trunc), sign: one(M.sign), sgn: one(M.sign),
+      min: many(M.min), max: many(M.max), sum: many((...a) => a.reduce((x, y) => x + y, 0)), mean: many(avg), avg: many(avg),
+      hypot: many(M.hypot), gcd: many((...a) => a.reduce(g2)), lcm: many((...a) => a.reduce((x, y) => M.abs(M.round(x) * M.round(y)) / g2(x, y))),
+      ncr: [2, 2, ncr], choose: [2, 2, ncr], npr: [2, 2, npr], perm: [2, 2, npr], fact: one(fact), factorial: one(fact), gamma: one(gamma),
+      degrees: one(x => x * 180 / M.PI), radians: one(x => x * M.PI / 180), mod: [2, 2, (a, b) => ((a % b) + b) % b],
+    };
+    const PHI = (1 + M.sqrt(5)) / 2;
+    const CONST = { pi: M.PI, 'π': M.PI, tau: 2 * M.PI, 'τ': 2 * M.PI, e: M.E, phi: PHI, 'φ': PHI, inf: Infinity, infinity: Infinity, '∞': Infinity, ans: this.state.menuAns ?? 0 };
+    const NAMES = [...Object.keys(FN), ...Object.keys(CONST).filter(k => /^[a-z]/.test(k)), 'deg'].sort((a, b) => b.length - a.length);
+    const toks = [];
+    for (let i = 0; i < src.length;) {
+      const ch = src[i], rest = src.slice(i);
+      if (/\s/.test(ch)) { i++; continue; }
+      let m = /^0x[0-9a-f]+|^0b[01]+/i.exec(rest);
+      if (m) { const s = m[0].toLowerCase(); toks.push({ t: 'num', v: s[1] === 'b' ? parseInt(s.slice(2), 2) : parseInt(s, 16), s: m[0] }); i += m[0].length; continue; }
+      m = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?/i.exec(rest);
+      if (m) { toks.push({ t: 'num', v: parseFloat(m[0]), s: m[0] }); i += m[0].length; continue; }
+      if ('+-*/^(),!%|_√∛∜°'.includes(ch)) { toks.push({ t: 'op', v: ch }); i++; continue; }
+      if ('πτφ∞'.includes(ch)) { toks.push({ t: 'id', v: ch }); i++; continue; }
+      if (/[a-z]/i.test(ch)) { const lr = rest.toLowerCase(), n = NAMES.find(nm => lr.startsWith(nm)); if (!n) return null; toks.push({ t: 'id', v: n }); i += n.length; continue; }
+      return null;
+    }
+    if (!toks.length) return null;
+    let p = 0, absD = 0, nontriv = false, autoClosed = 0;
+    const isOp = (v, k = p) => !!toks[k] && toks[k].t === 'op' && toks[k].v === v;
+    const isId = (v, k = p) => !!toks[k] && toks[k].t === 'id' && toks[k].v === v;
+    const starts = (k = p) => {
+      const t = toks[k]; if (!t) return false;
+      if (t.t === 'num') return true;
+      if (t.t === 'id') return t.v === 'deg' ? false : t.v === 'mod' ? isOp('(', k + 1) : true;
+      return t.v === '(' || t.v === '√' || t.v === '∛' || t.v === '∜' || (t.v === '|' && absD === 0);
+    };
+    const expect = v => { if (isOp(v)) { p++; return; } if (!toks[p] && v === ')') { autoClosed++; return; } throw 0; };
+    let expr, term, unary, power, postfix, primary;
+    expr = () => {
+      let a = term();
+      while (isOp('+') || isOp('-')) { const op = toks[p++].v; nontriv = true; const b = term(); a = b.t === 'post' && b.op === '%' ? { t: 'bin', op, a, b, pctOf: true } : { t: 'bin', op, a, b }; }
+      return a;
+    };
+    term = () => {
+      let a = unary();
+      for (;;) {
+        if (isOp('*') || isOp('/')) { const op = toks[p++].v; nontriv = true; a = { t: 'bin', op, a, b: unary() }; }
+        else if ((isId('mod') && !isOp('(', p + 1)) || (isOp('%') && starts(p + 1))) { p++; nontriv = true; a = { t: 'bin', op: 'mod', a, b: unary() }; }
+        else if (starts()) { nontriv = true; a = { t: 'bin', op: '*', imp: true, a, b: power() }; }
+        else break;
+      }
+      return a;
+    };
+    unary = () => { if (isOp('-')) { p++; nontriv = true; return { t: 'neg', a: unary() }; } if (isOp('+')) { p++; return unary(); } return power(); };
+    power = () => { const a = postfix(); if (isOp('^')) { p++; nontriv = true; return { t: 'bin', op: '^', a, b: unary() }; } return a; };
+    postfix = () => {
+      let a = primary();
+      for (;;) {
+        if (isOp('!')) { p++; nontriv = true; a = { t: 'post', op: '!', a }; }
+        else if (isOp('%') && !starts(p + 1)) { p++; nontriv = true; a = { t: 'post', op: '%', a }; }
+        else if (isOp('°') || isId('deg')) { p++; nontriv = true; a = { t: 'post', op: '°', a }; }
+        else break;
+      }
+      return a;
+    };
+    primary = () => {
+      const t = toks[p]; if (!t) throw 0;
+      if (t.t === 'num') { p++; return { t: 'num', v: t.v, s: t.s }; }
+      if (t.t === 'op') {
+        if (t.v === '(') { p++; const e = expr(); expect(')'); return { t: 'par', a: e }; }
+        if (t.v === '|' && absD === 0) { p++; absD++; const e = expr(); absD--; if (isOp('|')) p++; else if (toks[p]) throw 0; else autoClosed++; nontriv = true; return { t: 'fn', n: 'abs', args: [e] }; }
+        if (t.v === '√' || t.v === '∛' || t.v === '∜') {
+          p++; nontriv = true; const arg = isOp('-') ? unary() : power();
+          return t.v === '∜' ? { t: 'fn', n: 'root', args: [{ t: 'num', v: 4, s: '4' }, arg] } : { t: 'fn', n: t.v === '√' ? 'sqrt' : 'cbrt', args: [arg] };
+        }
+        throw 0;
+      }
+      p++;
+      if (t.v in CONST) { if (t.v !== 'e' && t.v !== 'ans') nontriv = true; return { t: 'const', n: t.v, v: CONST[t.v] }; }
+      const def = FN[t.v]; if (!def) throw 0;
+      nontriv = true;
+      let base = null, args;
+      if (isOp('_')) { p++; base = primary(); }
+      if (isOp('(')) {
+        p++; args = [];
+        if (!isOp(')')) { args.push(expr()); while (isOp(',')) { p++; args.push(expr()); } }
+        expect(')');
+        if ((t.v === 'log' || t.v === 'root') && args.length === 1 && !base && isOp('(')) { p++; const x = expr(); expect(')'); base = args[0]; args = [x]; }
+      } else if (starts() || isOp('-')) args = [isOp('-') ? unary() : power()];
+      else { const m = /^log(\d+)$/.exec(t.v); if (m && !base) return { t: 'fn', n: 'log', args: [{ t: 'num', v: +m[1], s: m[1] }] }; throw 0; }
+      if (base) {
+        if (t.v === 'log' && args.length === 1) return { t: 'fn', n: 'log', base, args };
+        if (t.v === 'root' && args.length === 1) return { t: 'fn', n: 'root', args: [base, args[0]] };
+        throw 0;
+      }
+      if (args.length < def[0] || args.length > def[1]) throw 0;
+      if (t.v === 'log' && args.length === 2) return { t: 'fn', n: 'log', base: args[0], args: [args[1]] };
+      return { t: 'fn', n: t.v, args };
+    };
+    let ast;
+    try { ast = expr(); if (p < toks.length) return null; } catch (e) { return null; }
+    if (!nontriv) return null;
+    const ev = n => {
+      switch (n.t) {
+        case 'num': case 'const': return n.v;
+        case 'par': return ev(n.a);
+        case 'neg': return -ev(n.a);
+        case 'post': { const a = ev(n.a); return n.op === '!' ? fact(a) : n.op === '%' ? a / 100 : a * M.PI / 180; }
+        case 'fn': return n.base ? M.log(ev(n.args[0])) / M.log(ev(n.base)) : FN[n.n][2](...n.args.map(ev));
+        case 'bin': {
+          const a = ev(n.a);
+          if (n.pctOf) { const pc = ev(n.b.a) / 100; return n.op === '+' ? a * (1 + pc) : a * (1 - pc); }
+          const b = ev(n.b);
+          if (n.op === '+') return a + b; if (n.op === '-') return a - b; if (n.op === '*') return a * b; if (n.op === '/') return a / b;
+          if (n.op === 'mod') return ((a % b) + b) % b;
+          if (a < 0 && !Number.isInteger(b)) { const inv = 1 / b, ri = M.round(inv); if (M.abs(inv - ri) < 1e-9 && M.abs(ri % 2) === 1) return -M.pow(-a, b); }
+          return M.pow(a, b);
+        }
+      }
+      return NaN;
+    };
+    let v;
+    try { v = ev(ast); } catch (e) { return null; }
+    if (typeof v !== 'number') return null;
+    if (isFinite(v)) { const r = M.round(v); if (M.abs(v - r) < 1e-11 * M.max(1, M.abs(v))) v = r; }
+    const SUPD = '⁰¹²³⁴⁵⁶⁷⁸⁹', SUBD = '₀₁₂₃₄₅₆₇₈₉';
+    const sup = s => [...s].map(c => c === '-' ? '⁻' : SUPD[c]).join(''), sub = s => [...s].map(c => SUBD[c]).join('');
+    const intS = n => !!n && n.t === 'num' && /^\d+$/.test(n.s);
+    const SYM = { pi: 'π', tau: 'τ', phi: 'φ', inf: '∞', infinity: '∞' };
+    const OPS = { '+': ' + ', '-': ' − ', '*': ' × ', '/': ' ÷ ', mod: ' mod ' }, PREC = { '+': 1, '-': 1, '*': 2, '/': 2, mod: 2 };
+    const pp = (n, ctx = 0) => {
+      const wrap = (s, pr) => pr < ctx ? '(' + s + ')' : s;
+      switch (n.t) {
+        case 'num': return n.s;
+        case 'const': return SYM[n.n] || n.n;
+        case 'par': return pp(n.a, ctx);
+        case 'neg': return wrap('−' + pp(n.a, 3), 3);
+        case 'post': return pp(n.a, 5) + n.op;
+        case 'bin': {
+          if (n.op === '^') { const bb = n.b.t === 'par' ? n.b.a : n.b; return wrap(intS(bb) ? pp(n.a, 5) + sup(bb.s) : pp(n.a, 5) + '^' + pp(n.b, 4), 4); }
+          if (n.pctOf) return wrap(pp(n.a, 1) + OPS[n.op] + pp(n.b.a, 5) + '%', 1);
+          if (n.imp) { const sa = pp(n.a, 2), sb = pp(n.b, 3); return wrap(sa + (/[\d.]$/.test(sa) && /^[\d.√∛⁰¹²³⁴⁵⁶⁷⁸⁹]/.test(sb) ? '·' : '') + sb, 2); }
+          const pr = PREC[n.op]; return wrap(pp(n.a, pr) + OPS[n.op] + pp(n.b, pr + 1), pr);
+        }
+        case 'fn': {
+          const A = n.args, atom = x => x.t === 'num' || x.t === 'const', arg = x => atom(x) ? pp(x) : '(' + pp(x) + ')';
+          if (n.n === 'sqrt') return '√' + arg(A[0]);
+          if (n.n === 'cbrt') return '∛' + arg(A[0]);
+          if (n.n === 'root') return intS(A[0]) ? sup(A[0].s) + '√' + arg(A[1]) : 'root(' + pp(A[0]) + ', ' + pp(A[1]) + ')';
+          if (n.n === 'abs') return '|' + pp(A[0]) + '|';
+          if (n.n === 'fact' || n.n === 'factorial') return pp(A[0], 5) + '!';
+          if (n.base) return intS(n.base) ? 'log' + sub(n.base.s) + '(' + pp(A[0]) + ')' : 'log_(' + pp(n.base) + ')(' + pp(A[0]) + ')';
+          if (n.n === 'log2' || n.n === 'lb') return 'log₂(' + pp(A[0]) + ')';
+          if (n.n === 'log10' || n.n === 'lg') return 'log₁₀(' + pp(A[0]) + ')';
+          if (n.n === 'ncr' || n.n === 'choose') return 'C(' + A.map(x => pp(x)).join(', ') + ')';
+          if (n.n === 'npr' || n.n === 'perm') return 'P(' + A.map(x => pp(x)).join(', ') + ')';
+          return n.n + '(' + A.map(x => pp(x)).join(', ') + ')';
+        }
+      }
+      return '?';
+    };
+    const pretty = pp(ast);
+    if (Number.isNaN(v)) return { ok: false, display: 'undefined', pretty, raw: '', reason: 'not a real number', autoClosed };
+    const trim = s => s.includes('.') ? s.replace(/\.?0+$/, '') : s;
+    const sciOf = (x, d) => { const parts = x.toExponential(d).split('e'); return trim(parts[0]) + ' × 10' + sup(String(+parts[1])); };
+    const a = M.abs(v);
+    let display, sci = '';
+    if (!isFinite(v)) display = v > 0 ? '∞' : '−∞';
+    else if (v !== 0 && (a >= 1e15 || a < 1e-7)) display = sciOf(v, 10);
+    else {
+      const s = String(+v.toPrecision(12)), parts = s.replace('-', '').split('.');
+      display = (v < 0 ? '−' : '') + (a >= 10000 ? parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') : parts[0]) + (parts[1] ? '.' + parts[1] : '');
+      if (a >= 1e6 || (a < 1e-3 && v !== 0)) sci = sciOf(v, 6);
+    }
+    const raw2 = isFinite(v) ? String(+v.toPrecision(15)) : (v > 0 ? 'inf' : '-inf');
+    const toFrac = (x, maxD) => {
+      if (!isFinite(x) || Number.isInteger(x) || M.abs(x) > 1e6) return null;
+      let h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = x;
+      for (let i = 0; i < 24; i++) {
+        const ai = M.floor(b); [h1, h0] = [ai * h1 + h0, h1]; [k1, k0] = [ai * k1 + k0, k1];
+        if (k1 > maxD) return null;
+        if (M.abs(x - h1 / k1) < 1e-10 * M.max(1, M.abs(x))) return [h1, k1];
+        b = 1 / (b - ai); if (!isFinite(b)) break;
+      }
+      return null;
+    };
+    const neg = s => String(s).replace('-', '−');
+    const fr = toFrac(v, 10000);
+    let piFrac = '';
+    if (!fr && isFinite(v) && v !== 0 && !Number.isInteger(v)) {
+      const q = v / M.PI, qi = M.round(q);
+      if (M.abs(q - qi) < 1e-10 && M.abs(qi) < 1000) piFrac = (qi === 1 ? '' : qi === -1 ? '−' : neg(qi)) + 'π';
+      else { const pf = toFrac(q, 24); if (pf) piFrac = (pf[0] === 1 ? '' : pf[0] === -1 ? '−' : neg(pf[0])) + 'π/' + pf[1]; }
+    }
+    const isInt = Number.isInteger(v) && a < 2 ** 53;
+    return {
+      ok: true, value: v, display, pretty, raw: raw2, sci, autoClosed, piFrac,
+      frac: fr ? neg(fr[0]) + '/' + fr[1] : '',
+      hex: isInt ? (v < 0 ? '−0x' : '0x') + a.toString(16) : '', bin: isInt && a <= 65535 ? (v < 0 ? '−0b' : '0b') + a.toString(2) : '',
+    };
+  }
+  menuList() {
+    const s = this.state, cats = this.menuData(), raw = s.menuQuery.trim(), q = raw.toLowerCase();
+    if (!q) { const c = cats[Math.min(s.menuCat, cats.length - 1)]; return { cats, list: c.items.map(it => ({ ...it, cat: c.label })) }; }
+    let list = [];
+    cats.forEach(c => c.items.forEach(it => {
+      const l = it.label.toLowerCase(), hay = (l + ' ' + (it.sub || '') + ' ' + c.label).toLowerCase();
+      if (!hay.includes(q)) return;
+      const score = l.startsWith(q) ? 3 : l.split(/[\s‑-]+/).some(w => w.startsWith(q)) ? 2 : l.includes(q) ? 1 : 0;
+      list.push({ ...it, cat: c.label, score });
+    }));
+    if (list.length) { let bi = 0; list.forEach((x, i) => { if (x.score > list[bi].score) bi = i; }); list = [{ ...list[bi], top: true }, ...list.filter((_, i) => i !== bi)]; }
+    const c = this.calcEval(raw);
+    if (c) {
+      list = [{
+        label: '= ' + c.display, sub: c.pretty, icon: 'ph ph-calculator', cat: 'calculator', cmd: c.ok ? 'wl-copy ' + c.raw : '', top: true, calc: c,
+        run: c.ok ? () => this.menuCmd('wl-copy ' + c.raw + '  ·  copied', { menuAns: c.value }) : () => this.setState({ menuMsg: c.reason, menuArmed: null }),
+      }, ...list.map(x => ({ ...x, top: false }))];
+    }
+    return { cats, list };
+  }
+  menuKey(e) {
+    const s = this.state, k = e.key, inp = this.menuRef && this.menuRef.current;
+    if (e.target.tagName === 'INPUT' && e.target !== inp) return;
+    const { cats, list } = this.menuList(), q = !!s.menuQuery, i = Math.min(s.menuSel, list.length - 1);
+    if (k === 'Escape') { e.preventDefault(); return s.menuView ? this.setState({ menuView: null }) : q ? this.setState({ menuQuery: '', menuSel: 0 }) : this.setState({ menuOpen: false }); }
+    if (s.menuView) { if (k === 'Backspace' || k === 'ArrowLeft' || k === 'Enter') { e.preventDefault(); this.setState({ menuView: null }); } return; }
+    const down = k === 'ArrowDown' || (e.ctrlKey && k === 'j'), up = k === 'ArrowUp' || (e.ctrlKey && k === 'k');
+    if (down) { e.preventDefault(); return this.setState({ menuSel: Math.min(list.length - 1, i + 1), menuArmed: null, menuMsg: '' }); }
+    if (up) { e.preventDefault(); return this.setState({ menuSel: Math.max(0, i - 1), menuArmed: null, menuMsg: '' }); }
+    if (!q && (k === 'Tab' || k === 'ArrowRight' || k === 'ArrowLeft')) {
+      e.preventDefault();
+      const d = k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey) ? -1 : 1;
+      return this.setState({ menuCat: (s.menuCat + d + cats.length) % cats.length, menuSel: 0, menuArmed: null, menuMsg: '' });
+    }
+    if (k === 'Enter') { e.preventDefault(); return list[i] && list[i].run(); }
+    if (e.target !== inp && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); inp && inp.focus(); this.setState({ menuQuery: s.menuQuery + k, menuSel: 0 }); }
+  }
+  menuToggle() {
+    this.setState(st => ({ menuOpen: !st.menuOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false, pwrOpen: false, menuView: null, menuQuery: '', menuSel: 0, menuMsg: '' }), () => this.state.menuOpen && this.menuRef && this.menuRef.current && setTimeout(() => this.menuRef.current && this.menuRef.current.focus(), 30));
+  }
+  menuVals() {
+    const s = this.state, open = s.menuOpen;
+    if (!this.menuRef) this.menuRef = React.createRef();
+    const { cats, list } = this.menuList(), q = !!s.menuQuery.trim(), ci = Math.min(s.menuCat, cats.length - 1), sel = Math.min(s.menuSel, list.length - 1);
+    const about = s.menuView === 'about';
+    const menuRows = [];
+    let prevCat = null;
+    list.forEach((it, i) => {
+      if (q) {
+        if (it.top) menuRows.push({ isHeader: true, header: 'top hit' });
+        else if (it.cat !== prevCat) { menuRows.push({ isHeader: true, header: it.cat }); prevCat = it.cat; }
+      }
+      const isSel = i === sel, big = q && it.top;
+      menuRows.push({
+        isItem: true, label: it.label, sub: q && !big ? '' : (it.sub || ''), icon: it.icon,
+        cols: big ? '36px minmax(0,1fr) auto' : '24px minmax(0,1fr) auto', pad: big ? '7px 10px' : '4px 10px',
+        box: big ? '36px' : '24px', iconSize: big ? '19px' : '14px', labelSize: big ? '14px' : '12.5px',
+        bg: isSel ? '#353b45' : 'transparent', iconBg: isSel ? '#404754' : big ? '#2f343e' : 'transparent',
+        iconColor: isSel ? (it.danger ? '#ef596f' : '#61afef') : '#7f848e', labelColor: isSel ? '#abb2bf' : '#9da5b4',
+        right: it.right || '', rightColor: it.rightColor || '#5c6370',
+        run: () => { this.setState({ menuSel: i }); it.run(); },
+        hover: () => s.menuSel !== i && this.setState({ menuSel: i, menuMsg: '', menuArmed: null }),
+      });
+    });
+    const cur = list[sel];
+    let mp = {};
+    if (cur) {
+      const r = cur.right || '', isState = r.startsWith('['), isRadio = r.startsWith('('), isKeys = r && !isState && !isRadio && !/pending|confirm|›/.test(r);
+      const rows = [{ k: 'type', v: cur.cat, c: '#abb2bf' }];
+      if (isKeys) rows.push({ k: 'keys', v: r, c: '#e5c07b' });
+      if (isState) rows.push({ k: 'state', v: r === '[on]' ? 'on' : 'off', c: r === '[on]' ? '#89ca78' : '#5c6370' });
+      if (isRadio) rows.push({ k: 'state', v: r === '(•)' ? 'active' : 'inactive', c: r === '(•)' ? '#e5c07b' : '#5c6370' });
+      if (/pending/.test(r)) rows.push({ k: 'status', v: r, c: '#e5c07b' });
+      if (cur.cmd) rows.push({ k: 'runs', v: cur.cmd, c: '#7f848e' });
+      if (cur.calc) {
+        const c = cur.calc;
+        rows.length = 0;
+        rows.push({ k: 'expr', v: c.pretty, c: '#abb2bf' });
+        if (c.frac) rows.push({ k: 'exact', v: c.frac, c: '#e5c07b' });
+        if (c.piFrac) rows.push({ k: 'in π', v: c.piFrac, c: '#e5c07b' });
+        if (c.sci) rows.push({ k: 'sci', v: c.sci, c: '#abb2bf' });
+        if (c.hex) rows.push({ k: 'hex', v: c.hex, c: '#7f848e' });
+        if (c.bin) rows.push({ k: 'bin', v: c.bin, c: '#7f848e' });
+        if (c.autoClosed) rows.push({ k: 'note', v: 'closed ' + c.autoClosed + ' paren' + (c.autoClosed > 1 ? 's' : ''), c: '#5c6370' });
+        if (!c.ok) rows.push({ k: 'error', v: c.reason, c: '#ef596f' });
+        if (c.ok) rows.push({ k: 'copies', v: c.raw, c: '#7f848e' });
+      }
+      const armed = cur.danger && cur.right === 'confirm?';
+      mp = {
+        icon: cur.icon, iconColor: cur.danger ? '#ef596f' : cur.calc ? '#e5c07b' : '#61afef', label: cur.label, sub: cur.calc ? 'calculator' : (cur.sub || ''), rows,
+        action: armed ? 'press again to confirm' : cur.cat === 'panels' ? 'open panel' : cur.cat === 'toggles' ? 'toggle' : cur.cat === 'calculator' ? (cur.calc && cur.calc.ok ? 'copy result · saves as ans' : 'nothing to copy') : cur.cat === 'math' ? 'try it' : /About/.test(cur.label) ? 'view' : cur.danger ? 'run (asks to confirm)' : 'run',
+        actColor: armed ? '#ef596f' : '#abb2bf',
+      };
+    }
+    const sd = s.disks[0], memTotal = 31.3 * 1024;
+    const uh = Math.floor(s.uptime / 3600), um = Math.floor(s.uptime % 3600 / 60);
+    const hints = about ? [{ k: 'esc', l: 'back' }] : q ? [{ k: '↑↓', l: 'move' }, { k: '⏎', l: 'run' }, { k: 'esc', l: 'clear' }] : [{ k: 'tab', l: 'category' }, { k: '↑↓', l: 'move' }, { k: '⏎', l: 'run' }, { k: 'esc', l: 'close' }];
+    return {
+      menuPe: open ? 'auto' : 'none', menuOpacity: open ? 1 : 0, menuTransform: open ? 'translateX(-50%) scale(1)' : 'translateX(-50%) scale(0.97) translateY(-6px)',
+      menuShowChips: !q && !about, mp, mpHas: !!cur,
+      toggleMenu: () => this.menuToggle(),
+      closeMenu: () => this.setState({ menuOpen: false }),
+      menuBtnBg: open ? '#404754' : 'transparent', menuBtnColor: open ? '#61afef' : '#abb2bf',
+      menuCrumb: about ? 'system › about' : q ? `search · ${list.length} result${list.length === 1 ? '' : 's'}` : cats[ci].label,
+      menuRef: this.menuRef, menuQuery: s.menuQuery,
+      menuOnQuery: e => this.setState({ menuQuery: e.target.value, menuSel: 0, menuArmed: null, menuView: null }),
+      menuCountLabel: q ? `${list.length} result${list.length === 1 ? '' : 's'}` : 'ctrl k',
+      menuCols: q || about ? 'minmax(0,1fr)' : '150px minmax(0,1fr)',
+      menuShowCats: !q && !about, menuShowList: !about, menuShowAbout: about,
+      menuCats: cats.map((c, i) => ({
+        label: c.label, icon: c.icon, count: c.items.length,
+        bg: i === ci ? '#2f343e' : 'transparent', color: i === ci ? '#abb2bf' : '#7f848e', iconColor: i === ci ? '#61afef' : '#5c6370',
+        pick: () => { this.setState({ menuCat: i, menuSel: 0, menuArmed: null, menuMsg: '' }); this.menuRef.current && this.menuRef.current.focus(); },
+      })),
+      menuRows, menuEmpty: q && !list.length,
+      aboutRows: [
+        { k: 'os', v: 'Arch Linux x86_64' }, { k: 'host', v: 'ThinkPad T14s Gen 4' }, { k: 'kernel', v: '6.10.9-arch1-1' },
+        { k: 'uptime', v: `${uh}h ${String(um).padStart(2, '0')}m` }, { k: 'wm', v: 'Hyprland 0.43.0' }, { k: 'shell', v: 'quickshell 0.1 · fish 3.7' },
+        { k: 'theme', v: s.theme }, { k: 'cpu', v: `Ryzen 7 7840U (16) @ ${s.freq} GHz` },
+        { k: 'memory', v: `${(s.memUsed / 1024).toFixed(1)}G / ${(memTotal / 1024).toFixed(1)}G` },
+        { k: 'disk /', v: `${sd.used}G / ${sd.total}G` }, { k: 'battery', v: `${Math.round(s.bat)}% · ${s.profile}` },
+      ],
+      aboutSwatches: ['#282c34', '#ef596f', '#89ca78', '#e5c07b', '#61afef', '#d55fde', '#2bbac5', '#abb2bf'],
+      menuMsg: s.menuMsg || (about ? 'system › about' : q ? `${list.length} results` : cats[ci].label),
+      menuMsgColor: s.menuMsg ? (s.menuArmed ? '#ef596f' : '#89ca78') : '#5c6370',
+      menuHasSwatch: !!s.menuSwatch && !!s.menuMsg, menuSwatch: s.menuSwatch || 'transparent',
+      menuHints: hints,
+    };
+  }
   pwrSeed() {
     return {
-      pwrOpen: true, bat: 65.4, ac: false, profile: 'balanced', limit: true, bright: 70, pwrSel: 1, sessArmed: null, sessMsg: '',
+      pwrOpen: false, bat: 65.4, ac: false, profile: 'balanced', limit: true, bright: 70, pwrSel: 1, sessArmed: null, sessMsg: '',
       wHist: Array.from({ length: 60 }, () => -(9 + Math.random() * 4)), wSum: 10.8 * 600, wN: 600,
     };
   }
@@ -955,7 +1472,7 @@ class Component extends DCLogic {
     const energy = s.bat / 100 * cap;
     return {
       pwrClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', pwrPe: open ? 'auto' : 'none',
-      togglePwr: () => this.setState(st => ({ pwrOpen: !st.pwrOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false })),
+      togglePwr: () => this.setState(st => ({ pwrOpen: !st.pwrOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false, menuOpen: false })),
       closePwr: () => this.setState({ pwrOpen: false }), pwrBtnBg: open ? '#404754' : 'transparent',
       battery: pct,
       batIcon: s.ac ? 'ph-fill ph-battery-charging' : pct > 60 ? 'ph-fill ph-battery-high' : pct > 20 ? 'ph-fill ph-battery-medium' : 'ph-fill ph-battery-warning',
@@ -1108,7 +1625,7 @@ class Component extends DCLogic {
     const mrow = (k, v, total, color, label) => ({ k, ...blocks(v / total * 100, 16), color, v: label });
     return {
       sysClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', sysPe: open ? 'auto' : 'none',
-      toggleSys: () => this.setState(st => ({ sysOpen: !st.sysOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, pwrOpen: false })),
+      toggleSys: () => this.setState(st => ({ sysOpen: !st.sysOpen, netOpen: false, btOpen: false, audioOpen: false, calOpen: false, pwrOpen: false, menuOpen: false })),
       closeSys: () => this.setState({ sysOpen: false, sysKillPid: null }),
       sysBtnBg: open ? '#404754' : 'transparent', sysBtnColor: s.cpu >= 80 ? '#ef596f' : '#abb2bf',
       sysUptime: `${uh}h ${String(um).padStart(2, '0')}m`, sysLoad: `${l1.toFixed(2)} ${l5.toFixed(2)} ${l15.toFixed(2)}`,
@@ -1351,7 +1868,7 @@ class Component extends DCLogic {
     const sinkBt = s.cards[sink.card].bus === 'bluetooth';
     return {
       aClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', aPe: open ? 'auto' : 'none',
-      toggleAudio: () => this.setState(st => ({ audioOpen: !st.audioOpen, netOpen: false, btOpen: false, calOpen: false, sysOpen: false, pwrOpen: false })),
+      toggleAudio: () => this.setState(st => ({ audioOpen: !st.audioOpen, netOpen: false, btOpen: false, calOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false })),
       closeAudio: () => this.setState({ audioOpen: false }),
       aWheel: e => this.aSet('out', sink.id, { vol: Math.max(0, Math.min(100, sink.vol + (e.deltaY > 0 ? -5 : 5))) }),
       aBtnBg: open ? '#404754' : 'transparent', aBtnColor: sink.mute ? '#5c6370' : '#abb2bf',
@@ -1519,7 +2036,7 @@ class Component extends DCLogic {
       : [{ k: 'tab', l: 'devices' }, { k: 'j/k', l: 'move' }, { k: '⏎', l: 'pair' }, { k: 's', l: 'scan' }, { k: 'esc', l: 'close' }];
     return {
       btClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', btPe: open ? 'auto' : 'none',
-      toggleBt: () => this.setState(st => ({ btOpen: !st.btOpen, netOpen: false, calOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })), closeBt: () => this.setState({ btOpen: false }),
+      toggleBt: () => this.setState(st => ({ btOpen: !st.btOpen, netOpen: false, calOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false })), closeBt: () => this.setState({ btOpen: false }),
       btBtnBg: open ? '#404754' : 'transparent', btBtnColor: !s.btPower ? '#5c6370' : '#abb2bf',
       btBtnIcon: !s.btPower ? 'ph ph-bluetooth-slash' : connected ? 'ph ph-bluetooth-connected' : 'ph ph-bluetooth',
       btBtnLabel: s.btPower && connected ? String(connected) : '',
@@ -1581,6 +2098,8 @@ class Component extends DCLogic {
   }
   handleKey(e) {
     const s = this.state;
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === ' ')) { e.preventDefault(); return this.menuToggle(); }
+    if (s.menuOpen) return this.menuKey(e);
     if (s.pwrOpen) return this.pwrKey(e);
     if (s.sysOpen) return this.sysKey(e);
     if (s.calOpen) return this.calKey(e);
@@ -1665,7 +2184,7 @@ class Component extends DCLogic {
     const statusColor = hs.on ? '#d19a66' : s.connecting ? '#e5c07b' : s.current ? '#89ca78' : '#5c6370';
     return {
       netClip: open ? 'inset(0 -60px -60px -60px)' : 'inset(0 -60px 100% -60px)', netPe: open ? 'auto' : 'none',
-      toggleNet: () => this.setState(st => ({ netOpen: !st.netOpen, calOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })), closeNet: () => this.setState({ netOpen: false }),
+      toggleNet: () => this.setState(st => ({ netOpen: !st.netOpen, calOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false })), closeNet: () => this.setState({ netOpen: false }),
       wifiBg: open ? '#404754' : 'transparent',
       wifiColor: hs.on ? '#d19a66' : s.current ? '#abb2bf' : '#5c6370',
       wifiIcon: hs.on ? 'ph ph-broadcast' : s.connecting ? 'ph ph-wifi-medium' : s.current ? 'ph-fill ph-wifi-high' : 'ph ph-wifi-slash',
@@ -1717,10 +2236,10 @@ class Component extends DCLogic {
     const fmt = P.clockFormat ?? 'Day @ 12h';
     const clockText = fmt === 'Day @ 24h' ? `${day} @ ${h24}` : fmt === 'Date · 12h' ? `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${h12}` : `${day} @ ${h12}`;
     return {
-      ...this.netVals(), ...this.btVals(), ...this.aVals(), ...this.calVals(), ...this.sysVals(), ...this.pwrVals(),
+      ...this.netVals(), ...this.btVals(), ...this.aVals(), ...this.calVals(), ...this.sysVals(), ...this.pwrVals(), ...this.menuVals(),
       workspaces, onWsWheel, clockText,
       clockBg: s.calOpen ? '#404754' : 'transparent',
-      toggleCal: () => this.setState(st => ({ calOpen: !st.calOpen, netOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false })),
+      toggleCal: () => this.setState(st => ({ calOpen: !st.calOpen, netOpen: false, btOpen: false, audioOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false })),
       calOpen: s.calOpen,
       tray: [{ name: 'Discord', icon: 'ph ph-discord-logo' }, { name: 'Steam', icon: 'ph ph-steam-logo' }, { name: 'Nextcloud', icon: 'ph ph-cloud-check' }],
       volIcon: s.muted ? 'ph-fill ph-speaker-simple-x' : 'ph-fill ph-speaker-simple-high',
