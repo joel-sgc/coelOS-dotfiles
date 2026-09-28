@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/styles.css">
+<script src="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@200;300;400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+body{margin:0;background:#16181d;} a{color:#61afef;} a:hover{color:#abb2bf;} button{font:inherit;}
+input::placeholder{color:#5c6370;}
+@keyframes qsShake0{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+@keyframes qsShake1{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+@keyframes qsPulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:28px;font-family:'JetBrains Mono',monospace;color:#abb2bf;">
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <div style="font-size:20px;color:#d7dae0;">Lockscreen / greeter · turn 1</div>
+    <div style="font-size:13px;color:#7f848e;">Three takes on the big-clock-bottom-left layout. Toggle lock ⁄ login above each. Demo password: <span style="color:#e5c07b;">coel</span></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="border:1px solid #61afef;color:#61afef;border-radius:6px;padding:1px 8px;font-size:13px;">1a</span>
+        <span style="font-size:14px;color:#abb2bf;">Corner — clock left, auth right</span>
+        <div style="display:flex;gap:2px;margin-left:auto;border:1px solid #404754;border-radius:7px;padding:2px;">
+          <sc-for list="{{ a.tabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="border:0;border-radius:5px;padding:2px 10px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};font-size:12px;">{{ t.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div data-screen-label="1a Corner" style="width:1280px;height:800px;position:relative;overflow:hidden;border-radius:10px;border:1px solid #2f343e;background:radial-gradient(120% 95% at 12% 100%, #2c313a 0%, #23272e 45%, #1c1f24 100%);">
+        <div style="position:absolute;top:28px;left:40px;display:flex;align-items:center;gap:14px;font-size:13px;">
+          <div style="display:flex;gap:2px;">
+            <button onClick="{{ m.prev }}" style="border:0;background:transparent;color:#7f848e;cursor:pointer;padding:4px;border-radius:6px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="ph-fill ph-skip-back" style="font-size:14px;"></i></button>
+            <button onClick="{{ m.toggle }}" style="border:0;background:transparent;color:#abb2bf;cursor:pointer;padding:4px;border-radius:6px;" style-hover="color:#61afef;background:#2f343e;"><i class="{{ m.playIcon }}" style="font-size:16px;"></i></button>
+            <button onClick="{{ m.next }}" style="border:0;background:transparent;color:#7f848e;cursor:pointer;padding:4px;border-radius:6px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="ph-fill ph-skip-forward" style="font-size:14px;"></i></button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div><span style="color:#abb2bf;">{{ m.title }}</span><span style="color:#5c6370;"> — {{ m.artist }}</span></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#5c6370;">
+              <div style="width:140px;height:3px;border-radius:2px;background:#2f343e;overflow:hidden;"><div style="height:100%;width:{{ m.pct }};background:#61afef;"></div></div>
+              <span>{{ m.pos }} / {{ m.dur }}</span>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;top:30px;right:40px;display:flex;align-items:center;gap:18px;font-size:13px;color:#7f848e;">
+          <span style="display:flex;align-items:center;gap:6px;"><i class="ph ph-wifi-high" style="font-size:15px;"></i>home-5g</span>
+          <span style="display:flex;align-items:center;gap:6px;"><i class="ph ph-battery-high" style="font-size:16px;"></i>82%</span>
+        </div>
+        <div style="position:absolute;left:56px;bottom:52px;display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:18px;color:#7f848e;padding-left:10px;">{{ dateLong }}</div>
+          <div style="font-size:184px;font-weight:200;line-height:1;letter-spacing:-8px;color:#d7dae0;">{{ time }}</div>
+        </div>
+        <div style="position:absolute;right:56px;bottom:52px;width:332px;display:flex;flex-direction:column;gap:14px;">
+          <sc-if value="{{ a.isLogin }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:10px;">
+              <sc-for list="{{ a.users }}" as="u" hint-placeholder-count="3">
+                <button onClick="{{ u.pick }}" style="border:1px solid {{ u.ring }};background:#23272e;border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;color:{{ u.color }};font-size:12px;" style-hover="background:#2f343e;">
+                  <span style="width:22px;height:22px;border-radius:50%;background:#2f343e;display:grid;place-items:center;font-size:11px;">{{ u.init }}</span>{{ u.name }}
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="width:40px;height:40px;border-radius:50%;background:#2f343e;border:1px solid #404754;display:grid;place-items:center;font-size:16px;color:#61afef;">{{ a.user.init }}</span>
+            <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+              <span style="font-size:15px;color:#d7dae0;">{{ a.user.name }}</span>
+              <sc-if value="{{ a.isLock }}" hint-placeholder-val="{{ true }}">
+                <span style="font-size:12px;color:#5c6370;">locked · {{ lockedAt }}</span>
+              </sc-if>
+              <sc-if value="{{ a.isLogin }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:4px;font-size:12px;color:#7f848e;">
+                  <button onClick="{{ a.sessPrev }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 2px;" style-hover="color:#61afef;"><i class="ph ph-caret-left"></i></button>
+                  <span style="width:64px;text-align:center;">{{ a.sess }}</span>
+                  <button onClick="{{ a.sessNext }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 2px;" style-hover="color:#61afef;"><i class="ph ph-caret-right"></i></button>
+                </div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ a.isLock }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ a.toLogin }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:6px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="ph ph-users"></i>switch</button>
+            </sc-if>
+          </div>
+          <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 6px 0 14px;border:1px solid {{ a.border }};border-radius:8px;background:#1e2127;animation:{{ a.anim }};">
+            <i class="{{ a.lockIcon }}" style="font-size:15px;color:{{ a.lockColor }};"></i>
+            <input ref="{{ a.ref }}" type="{{ a.pwType }}" value="{{ a.pw }}" onChange="{{ a.onPw }}" onKeyDown="{{ a.onKey }}" onKeyUp="{{ a.onKeyUp }}" placeholder="password" spellcheck="false" style="flex:1;min-width:0;background:transparent;border:0;outline:none;color:#d7dae0;font:inherit;font-size:14px;letter-spacing:1px;">
+            <button onClick="{{ a.toggleShow }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:6px;border-radius:6px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="{{ a.eyeIcon }}" style="font-size:15px;"></i></button>
+            <button onClick="{{ a.submit }}" style="border:1px solid #404754;background:transparent;color:#61afef;cursor:pointer;width:32px;height:32px;border-radius:6px;display:grid;place-items:center;" style-hover="border-color:#61afef;background:#2f343e;"><i class="ph ph-arrow-right" style="font-size:15px;"></i></button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;min-height:20px;font-size:12px;">
+            <span style="display:flex;align-items:center;gap:6px;color:{{ a.line.color }};flex:1;min-width:0;"><i class="{{ a.line.icon }}"></i>{{ a.line.text }}</span>
+            <sc-if value="{{ fpOn }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ a.fp }}" title="fingerprint" style="border:0;background:transparent;cursor:pointer;padding:4px;border-radius:6px;color:{{ a.fpColor }};animation:{{ a.fpAnim }};" style-hover="background:#2f343e;"><i class="ph ph-fingerprint" style="font-size:22px;"></i></button>
+            </sc-if>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-top:22px;">
+            <sc-for list="{{ a.power }}" as="p" hint-placeholder-count="3">
+              <button onClick="{{ p.click }}" title="{{ p.name }}" style="border:0;background:transparent;color:{{ p.color }};cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;gap:6px;font-size:12px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="{{ p.icon }}" style="font-size:16px;"></i>{{ p.label }}</button>
+            </sc-for>
+            <div style="margin-left:auto;width:128px;height:28px;background:#61afef;-webkit-mask:url(assets/coelos-logo.png) center/contain no-repeat;mask:url(assets/coelos-logo.png) center/contain no-repeat;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="border:1px solid #61afef;color:#61afef;border-radius:6px;padding:1px 8px;font-size:13px;">1b</span>
+        <span style="font-size:14px;color:#abb2bf;">Column — everything hangs off the clock</span>
+        <div style="display:flex;gap:2px;margin-left:auto;border:1px solid #404754;border-radius:7px;padding:2px;">
+          <sc-for list="{{ b.tabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="border:0;border-radius:5px;padding:2px 10px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};font-size:12px;">{{ t.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div data-screen-label="1b Column" style="width:1280px;height:800px;position:relative;overflow:hidden;border-radius:10px;border:1px solid #2f343e;background:radial-gradient(90% 80% at 0% 100%, #2b3039 0%, #22262c 50%, #1b1d22 100%);">
+        <div style="position:absolute;top:30px;left:56px;display:flex;align-items:center;gap:18px;font-size:13px;color:#7f848e;">
+          <span style="display:flex;align-items:center;gap:6px;"><i class="ph ph-wifi-high" style="font-size:15px;"></i>home-5g</span>
+          <span style="display:flex;align-items:center;gap:6px;"><i class="ph ph-battery-high" style="font-size:16px;"></i>82%</span>
+        </div>
+        <div style="position:absolute;top:26px;right:40px;display:flex;align-items:center;gap:12px;padding:8px 10px 8px 14px;border:1px solid #2f343e;border-radius:10px;background:#1e2127;font-size:12px;">
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <span style="color:#abb2bf;">{{ m.title }}</span>
+            <span style="color:#5c6370;">{{ m.artist }} · {{ m.pos }}</span>
+          </div>
+          <button onClick="{{ m.toggle }}" style="width:30px;height:30px;border-radius:50%;border:1px solid #404754;background:transparent;color:#61afef;cursor:pointer;display:grid;place-items:center;" style-hover="border-color:#61afef;"><i class="{{ m.playIcon }}" style="font-size:13px;"></i></button>
+        </div>
+        <div style="position:absolute;left:56px;bottom:56px;width:560px;display:flex;flex-direction:column;">
+          <div style="font-size:15px;color:#7f848e;padding-left:6px;">{{ dateLong }}</div>
+          <div style="font-size:150px;font-weight:200;line-height:1.02;letter-spacing:-6px;color:#d7dae0;">{{ time }}</div>
+          <div style="width:360px;display:flex;flex-direction:column;gap:12px;margin-top:22px;padding-left:6px;">
+            <sc-if value="{{ b.isLogin }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:4px;">
+                <sc-for list="{{ b.users }}" as="u" hint-placeholder-count="3">
+                  <button onClick="{{ u.pick }}" style="border:0;border-bottom:1px solid {{ u.ring }};background:transparent;padding:4px 10px;cursor:pointer;color:{{ u.color }};font-size:13px;" style-hover="color:#d7dae0;">{{ u.name }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#7f848e;">
+              <span style="color:#d7dae0;">{{ b.user.name }}</span>
+              <span style="color:#404754;">·</span>
+              <sc-if value="{{ b.isLock }}" hint-placeholder-val="{{ true }}">
+                <span>locked {{ lockedAt }}</span>
+                <button onClick="{{ b.toLogin }}" style="margin-left:auto;border:0;background:transparent;color:#5c6370;cursor:pointer;font-size:12px;padding:2px 4px;" style-hover="color:#61afef;">switch user</button>
+              </sc-if>
+              <sc-if value="{{ b.isLogin }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ b.sessNext }}" style="border:0;background:transparent;color:#7f848e;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;" style-hover="color:#61afef;">{{ b.sess }}<i class="ph ph-caret-up-down" style="font-size:12px;"></i></button>
+              </sc-if>
+            </div>
+            <div style="height:42px;display:flex;align-items:center;gap:8px;padding:0 4px 0 12px;border:1px solid {{ b.border }};border-radius:8px;background:#1e2127;animation:{{ b.anim }};">
+              <input ref="{{ b.ref }}" type="{{ b.pwType }}" value="{{ b.pw }}" onChange="{{ b.onPw }}" onKeyDown="{{ b.onKey }}" onKeyUp="{{ b.onKeyUp }}" placeholder="password" spellcheck="false" style="flex:1;min-width:0;background:transparent;border:0;outline:none;color:#d7dae0;font:inherit;font-size:14px;letter-spacing:1px;">
+              <button onClick="{{ b.toggleShow }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:6px;border-radius:6px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="{{ b.eyeIcon }}" style="font-size:15px;"></i></button>
+              <sc-if value="{{ fpOn }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ b.fp }}" title="fingerprint" style="border:0;background:transparent;cursor:pointer;padding:6px;border-radius:6px;color:{{ b.fpColor }};animation:{{ b.fpAnim }};" style-hover="background:#2f343e;"><i class="ph ph-fingerprint" style="font-size:17px;"></i></button>
+              </sc-if>
+            </div>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;min-height:18px;color:{{ b.line.color }};"><i class="{{ b.line.icon }}"></i>{{ b.line.text }}</span>
+          </div>
+        </div>
+        <div style="position:absolute;right:48px;bottom:56px;display:flex;flex-direction:column;align-items:flex-end;gap:18px;">
+          <div style="display:flex;gap:4px;">
+            <sc-for list="{{ b.power }}" as="p" hint-placeholder-count="3">
+              <button onClick="{{ p.click }}" title="{{ p.name }}" style="border:0;background:transparent;color:{{ p.color }};cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;gap:6px;font-size:12px;" style-hover="color:#abb2bf;background:#2f343e;"><i class="{{ p.icon }}" style="font-size:16px;"></i>{{ p.label }}</button>
+            </sc-for>
+          </div>
+          <div style="width:128px;height:28px;background:#61afef;-webkit-mask:url(assets/coelos-logo.png) center/contain no-repeat;mask:url(assets/coelos-logo.png) center/contain no-repeat;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="border:1px solid #61afef;color:#61afef;border-radius:6px;padding:1px 8px;font-size:13px;">1c</span>
+        <span style="font-size:14px;color:#abb2bf;">Prompt — text-first, matches the bar's bracket style</span>
+        <div style="display:flex;gap:2px;margin-left:auto;border:1px solid #404754;border-radius:7px;padding:2px;">
+          <sc-for list="{{ c.tabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="border:0;border-radius:5px;padding:2px 10px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};font-size:12px;">{{ t.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div data-screen-label="1c Prompt" style="width:1280px;height:800px;position:relative;overflow:hidden;border-radius:10px;border:1px solid #2f343e;background:linear-gradient(180deg, #1c1f24 0%, #22262c 60%, #282c34 100%);font-size:14px;">
+        <div style="position:absolute;top:0;left:0;right:0;height:36px;display:flex;align-items:center;gap:18px;padding:0 20px;font-size:13px;color:#7f848e;">
+          <span style="display:flex;align-items:center;gap:6px;color:{{ c.stateColor }};"><i class="{{ c.stateIcon }}"></i>{{ c.stateText }}</span>
+          <span style="margin-left:auto;">wlan0 <span style="color:#abb2bf;">home-5g</span></span>
+          <span style="display:flex;align-items:center;gap:7px;">bat
+            <span style="display:flex;gap:2px;"><span style="width:5px;height:10px;background:#89ca78;"></span><span style="width:5px;height:10px;background:#89ca78;"></span><span style="width:5px;height:10px;background:#89ca78;"></span><span style="width:5px;height:10px;background:#89ca78;"></span><span style="width:5px;height:10px;background:#404754;"></span></span>
+            <span style="color:#abb2bf;">82%</span></span>
+        </div>
+        <div style="position:absolute;left:64px;bottom:60px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:baseline;gap:22px;">
+            <span style="font-size:160px;font-weight:200;line-height:1;letter-spacing:-7px;color:#d7dae0;">{{ time }}</span>
+            <span style="font-size:15px;color:#5c6370;">{{ secs }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;color:#7f848e;padding-left:8px;">
+            <span>{{ dateShort }}</span>
+            <span style="color:#404754;">│</span>
+            <button onClick="{{ m.toggle }}" style="border:0;background:transparent;color:#61afef;cursor:pointer;padding:0;" style-hover="color:#d7dae0;"><i class="{{ m.playIcon }}" style="font-size:12px;"></i></button>
+            <span style="color:#abb2bf;">{{ m.title }}</span><span style="color:#5c6370;">{{ m.artist }}</span>
+            <div style="width:90px;height:2px;background:#404754;"><div style="height:100%;width:{{ m.pct }};background:#61afef;"></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:40px;padding-left:8px;">
+            <sc-if value="{{ c.isLogin }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="width:92px;color:#5c6370;">user</span>
+                <sc-for list="{{ c.users }}" as="u" hint-placeholder-count="3">
+                  <button onClick="{{ u.pick }}" style="border:0;background:transparent;cursor:pointer;padding:0 2px;color:{{ u.color }};font-size:14px;" style-hover="color:#d7dae0;">{{ u.br }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="width:92px;color:#5c6370;">session</span>
+                <button onClick="{{ c.sessPrev }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0;" style-hover="color:#61afef;">‹</button>
+                <span style="color:#abb2bf;width:72px;text-align:center;">{{ c.sessLower }}</span>
+                <button onClick="{{ c.sessNext }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0;" style-hover="color:#61afef;">›</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ c.isLock }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#61afef;">{{ c.user.name }}</span><span style="color:#5c6370;">@coel-os</span>
+                <button onClick="{{ c.toLogin }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 0 0 12px;font-size:13px;" style-hover="color:#abb2bf;">[switch user]</button>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:6px;animation:{{ c.anim }};">
+              <span style="width:92px;color:#e5c07b;">password ›</span>
+              <input ref="{{ c.ref }}" type="{{ c.pwType }}" value="{{ c.pw }}" onChange="{{ c.onPw }}" onKeyDown="{{ c.onKey }}" onKeyUp="{{ c.onKeyUp }}" placeholder="_" spellcheck="false" style="width:220px;background:transparent;border:0;border-bottom:1px solid {{ c.border }};outline:none;color:#d7dae0;font:inherit;font-size:14px;letter-spacing:2px;padding:3px 0;">
+              <button onClick="{{ c.toggleShow }}" style="border:0;background:transparent;color:#5c6370;cursor:pointer;padding:0 0 0 10px;font-size:13px;" style-hover="color:#abb2bf;">{{ c.showText }}</button>
+              <sc-if value="{{ fpOn }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ c.fp }}" style="border:0;background:transparent;cursor:pointer;padding:0 0 0 6px;font-size:13px;color:{{ c.fpColor }};animation:{{ c.fpAnim }};display:flex;align-items:center;gap:5px;" style-hover="color:#abb2bf;"><i class="ph ph-fingerprint" style="font-size:15px;"></i>{{ c.fpLabel }}</button>
+              </sc-if>
+            </div>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;min-height:18px;padding-left:98px;color:{{ c.line.color }};"><i class="{{ c.line.icon }}"></i>{{ c.line.text }}</span>
+          </div>
+        </div>
+        <div style="position:absolute;right:48px;bottom:60px;display:flex;flex-direction:column;align-items:flex-end;gap:18px;">
+          <div style="display:flex;gap:10px;font-size:13px;">
+            <sc-for list="{{ c.power }}" as="p" hint-placeholder-count="3">
+              <button onClick="{{ p.click }}" style="border:0;background:transparent;color:{{ p.color }};cursor:pointer;padding:2px 4px;border-radius:2px;" style-hover="color:#abb2bf;background:#2f343e;">{{ p.text }}</button>
+            </sc-for>
+          </div>
+          <div style="width:128px;height:28px;background:#61afef;-webkit-mask:url(assets/coelos-logo.png) center/contain no-repeat;mask:url(assets/coelos-logo.png) center/contain no-repeat;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;forceCaps&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;fingerprint&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  fresh(keep) { return { mode: 'lock', pw: '', show: false, caps: false, err: 0, shake: 0, st: 'idle', msg: null, user: 0, sess: 0, armed: null, fpTries: 0, ...(keep || {}) }; }
+  state = { now: new Date(), playing: true, pos: 83, track: 0, a: this.fresh(), b: this.fresh(), c: this.fresh() };
+  refs2 = { a: React.createRef(), b: React.createRef(), c: React.createRef() };
+  tm = [];
+  mountedAt = Date.now();
+  users = [{ name: 'coel', init: 'C' }, { name: 'guest', init: 'G' }, { name: 'work', init: 'W' }];
+  sessions = ['Hyprland', 'Niri', 'Sway', 'TTY'];
+  tracks = [{ title: 'Midnight City', artist: 'M83', dur: 243 }, { title: 'Intro', artist: 'The xx', dur: 128 }, { title: 'Teardrop', artist: 'Massive Attack', dur: 331 }];
+  componentDidMount() {
+    this.iv = setInterval(() => this.setState(s => {
+      const d = this.tracks[s.track].dur, pos = s.playing ? s.pos + 1 : s.pos;
+      return pos >= d ? { now: new Date(), pos: 0, track: (s.track + 1) % this.tracks.length } : { now: new Date(), pos };
+    }), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.iv); this.tm.forEach(clearTimeout); }
+  later(fn, ms) { this.tm.push(setTimeout(fn, ms)); }
+  up(id, p) { this.setState(s => ({ [id]: { ...s[id], ...(typeof p === 'function' ? p(s[id]) : p) } })); }
+  succeed(id) {
+    const v = this.state[id], lock = v.mode === 'lock';
+    this.up(id, { st: 'ok', msg: { icon: 'ph ph-check', text: lock ? 'unlocked · welcome back' : 'starting ' + this.sessions[v.sess].toLowerCase() + ' as ' + this.users[v.user].name + '…', color: '#89ca78' } });
+    this.later(() => this.up(id, s => this.fresh({ mode: s.mode, user: s.user, sess: s.sess })), 1800);
+  }
+  submit(id) {
+    const v = this.state[id];
+    if (v.st !== 'idle') return;
+    if (!v.pw) return this.up(id, s => ({ shake: s.shake + 1, msg: { icon: 'ph ph-info', text: 'enter your password', color: '#7f848e' } }));
+    this.up(id, { st: 'check', msg: { icon: 'ph ph-circle-notch', text: 'checking…', color: '#7f848e' } });
+    this.later(() => {
+      if (this.state[id].pw === 'coel') return this.succeed(id);
+      this.up(id, s => {
+        const err = s.err + 1;
+        return { st: 'idle', pw: '', err, shake: s.shake + 1, msg: { icon: 'ph ph-x', text: 'incorrect password' + (err > 1 ? ' · ' + err + ' attempts' : ''), color: '#ef596f' } };
+      });
+      this.refs2[id].current && this.refs2[id].current.focus();
+    }, 550);
+  }
+  fp(id) {
+    if (this.state[id].st !== 'idle') return;
+    this.up(id, { st: 'scan', msg: { icon: 'ph ph-fingerprint', text: 'touch the sensor…', color: '#61afef' } });
+    this.later(() => {
+      if (this.state[id].fpTries === 0) return this.up(id, s => ({ st: 'idle', fpTries: 1, shake: s.shake + 1, msg: { icon: 'ph ph-x', text: 'not recognised · try again', color: '#ef596f' } }));
+      this.succeed(id);
+    }, 1300);
+  }
+  power(id, k) {
+    const v = this.state[id];
+    if (v.armed !== k) {
+      this.up(id, { armed: k });
+      clearTimeout(this['arm' + id]); this['arm' + id] = setTimeout(() => this.up(id, { armed: null }), 3000);
+      return;
+    }
+    const cmd = { suspend: 'systemctl suspend', reboot: 'systemctl reboot', poweroff: 'systemctl poweroff' }[k];
+    this.up(id, { armed: null, msg: { icon: 'ph ph-terminal', text: '→ ' + cmd, color: '#7f848e' } });
+  }
+  mk(id) {
+    const v = this.state[id], forceCaps = !!this.props.forceCaps, caps = v.caps || forceCaps;
+    const user = this.users[v.user], lock = v.mode === 'lock';
+    const setMode = mode => () => this.up(id, s => ({ ...this.fresh({ user: mode === 'lock' ? 0 : s.user, sess: s.sess }), mode }));
+    const capsChk = e => { const c = e.getModifierState && e.getModifierState('CapsLock'); if (c !== v.caps) this.up(id, { caps: !!c }); };
+    const line = v.msg && v.st !== 'idle' ? v.msg
+      : caps ? { icon: 'ph ph-arrow-fat-up', text: 'caps lock is on', color: '#e5c07b' }
+      : v.msg ? v.msg
+      : { icon: '', text: lock ? (this.props.fingerprint === false ? 'enter your password' : 'enter password or touch the sensor') : 'choose a user and session', color: '#5c6370' };
+    const bad = v.msg && v.msg.color === '#ef596f';
+    const sessStep = d => () => this.up(id, s => ({ sess: (s.sess + d + this.sessions.length) % this.sessions.length }));
+    return {
+      ref: this.refs2[id], isLock: lock, isLogin: !lock, user,
+      tabs: ['lock', 'login'].map(m => ({ label: m, pick: setMode(m), bg: v.mode === m ? '#2f343e' : 'transparent', color: v.mode === m ? '#61afef' : '#5c6370' })),
+      users: this.users.map((u, i) => ({ ...u, br: i === v.user ? '[' + u.name + ']' : ' ' + u.name + ' ', ring: i === v.user ? '#61afef' : '#2f343e', color: i === v.user ? '#d7dae0' : '#7f848e', pick: () => this.up(id, { user: i, pw: '', msg: null, err: 0, fpTries: 0 }) })),
+      toLogin: setMode('login'),
+      sess: this.sessions[v.sess], sessLower: this.sessions[v.sess].toLowerCase(), sessPrev: sessStep(-1), sessNext: sessStep(1),
+      pw: v.pw, pwType: v.show ? 'text' : 'password', eyeIcon: v.show ? 'ph ph-eye-slash' : 'ph ph-eye', showText: v.show ? '[hide]' : '[show]',
+      toggleShow: () => this.up(id, s => ({ show: !s.show })),
+      onPw: e => this.up(id, { pw: e.target.value, msg: v.st === 'idle' ? null : v.msg }),
+      onKey: e => { capsChk(e); if (e.key === 'Enter') { e.preventDefault(); this.submit(id); } if (e.key === 'Escape') this.up(id, { pw: '', msg: null }); },
+      onKeyUp: capsChk, submit: () => this.submit(id), fp: () => this.fp(id),
+      anim: v.shake ? 'qsShake' + (v.shake % 2) + ' .42s ease' : 'none',
+      border: v.st === 'ok' ? '#89ca78' : bad ? '#ef596f' : caps ? '#e5c07b' : '#404754',
+      lockIcon: v.st === 'ok' ? 'ph ph-lock-simple-open' : 'ph ph-lock-simple', lockColor: v.st === 'ok' ? '#89ca78' : '#5c6370',
+      fpColor: v.st === 'scan' ? '#61afef' : v.st === 'ok' ? '#89ca78' : '#7f848e', fpAnim: v.st === 'scan' ? 'qsPulse 1s ease-in-out infinite' : 'none',
+      fpLabel: v.st === 'scan' ? '[scanning]' : '[fingerprint]',
+      line,
+      stateIcon: v.st === 'ok' ? 'ph ph-lock-simple-open' : 'ph ph-lock-simple', stateColor: v.st === 'ok' ? '#89ca78' : '#61afef',
+      stateText: v.st === 'ok' ? 'unlocked' : lock ? 'locked' : 'greeter · tty1',
+      power: [['suspend', 'ph ph-moon'], ['reboot', 'ph ph-arrow-clockwise'], ['poweroff', 'ph ph-power']].map(([k, icon]) => ({
+        name: k, icon, click: () => this.power(id, k),
+        color: v.armed === k ? '#ef596f' : '#7f848e', label: v.armed === k ? k + '?' : '', text: v.armed === k ? '[' + k + '?]' : '[' + k + ']',
+      })),
+    };
+  }
+  renderVals() {
+    const s = this.state, n = s.now, p = x => String(x).padStart(2, '0'), t = this.tracks[s.track], mmss = x => Math.floor(x / 60) + ':' + p(x % 60);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], mons = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return {
+      time: p(n.getHours()) + ':' + p(n.getMinutes()), secs: p(n.getSeconds()),
+      dateLong: days[n.getDay()] + ', ' + n.getDate() + ' ' + mons[n.getMonth()],
+      dateShort: days[n.getDay()].slice(0, 3).toLowerCase() + ' ' + p(n.getDate()) + ' ' + mons[n.getMonth()].slice(0, 3).toLowerCase(),
+      lockedAt: (() => { const d = new Date(this.mountedAt - 12 * 60000); return p(d.getHours()) + ':' + p(d.getMinutes()); })(), fpOn: this.props.fingerprint !== false,
+      m: {
+        title: t.title, artist: t.artist, pos: mmss(s.pos), dur: mmss(t.dur), pct: (s.pos / t.dur * 100).toFixed(1) + '%',
+        playIcon: s.playing ? 'ph-fill ph-pause' : 'ph-fill ph-play',
+        toggle: () => this.setState(st => ({ playing: !st.playing })),
+        prev: () => this.setState(st => st.pos > 3 ? { pos: 0 } : { pos: 0, track: (st.track + this.tracks.length - 1) % this.tracks.length }),
+        next: () => this.setState(st => ({ pos: 0, track: (st.track + 1) % this.tracks.length })),
+      },
+      a: this.mk('a'), b: this.mk('b'), c: this.mk('c'),
+    };
+  }
+}
+</script>
+</body>
+</html>

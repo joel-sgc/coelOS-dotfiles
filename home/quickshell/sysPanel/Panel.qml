@@ -78,6 +78,13 @@ Scope {
         // *Open flag) without an O(n^2) tangle of "close everyone else"
         // calls as more dropdowns get wired up across phases 3-6.
         property string openPopup: ""
+        // Which SystemTrayItem (Quickshell.Services.SystemTray) the tray's
+        // shared dropdown below is currently showing -- Tray.qml sets this
+        // right before setting openPopup = "tray", since a single Popup
+        // instance is reused for every tray icon rather than giving each
+        // one its own (there can be any number of them, unlike the fixed
+        // bluetooth/network/audio/system buttons).
+        property var trayMenuItem: null
 
         Connections {
           target: panelScope
@@ -150,6 +157,37 @@ Scope {
             hoverColor: root.hoverColor
             colors: root.colors
             popupOpen: root.openPopup === "calendar"
+            onCloseRequested: root.openPopup = ""
+          }
+        }
+
+        Popup {
+          screen: root.screen
+          barWindow: root
+          open: root.openPopup === "tray"
+          barHeight: root.barHeight
+          // Rough estimate, same caveat as every other rightMargin here:
+          // Tray sits *before* Bluetooth in Buttons.qml with no divider
+          // between them, so this is bluetooth's own 230 plus its icon-only
+          // chip width (~30px, per that comment) plus Buttons.qml's 8px
+          // RowLayout spacing. A single fixed position for the whole tray
+          // group, not one that tracks the specific icon clicked -- with a
+          // variable number of tray icons there's no fixed pixel offset
+          // that could track a specific one anyway.
+          rightMargin: 268
+          // 260 clipped real menu text (Steam's "Steam Linux Runtime 1.0
+          // (scout)" lost its closing paren) -- widened. Popup.qml's
+          // contentWidth is the *whole* frame including its fixed 32px
+          // side padding, so this leaves ~308px for row content, not 340.
+          contentWidth: 340
+          onCloseRequested: root.openPopup = ""
+
+          TrayDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            trayItem: root.trayMenuItem
             onCloseRequested: root.openPopup = ""
           }
         }

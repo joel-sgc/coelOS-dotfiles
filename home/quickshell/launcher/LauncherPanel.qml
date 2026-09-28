@@ -786,7 +786,14 @@ Item {
                 // above for why (keeps the ListView's model stable across
                 // selection changes).
                 readonly property bool isSel: panelRoot.selIndex === modelData.idx
-                readonly property bool big: panelRoot.hasQuery && it.top
+                // !!it.top, not just `it.top`: JS && returns its second
+                // operand as-is when the first is truthy, and most rows
+                // (every one that isn't the top hit) simply never set
+                // `top` at all rather than setting it false -- so this was
+                // evaluating to literal `undefined` for them, not `false`,
+                // which QML can't assign to a `property bool` ("Unable to
+                // assign [undefined] to bool", once per such row rendered).
+                readonly property bool big: panelRoot.hasQuery && !!it.top
                 width: listFlick.width - 12
                 height: big ? 40 : 26
                 radius: 8
@@ -1119,19 +1126,26 @@ Item {
             spacing: 2
             RowLayout {
               spacing: 0
-              Text { text: about.data.user; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+              // `|| ""` on every about.data.* read below: AboutBackend gets
+              // torn down and recreated on each hot-reload, and there's a
+              // brief window mid-recreation where these bindings
+              // re-evaluate against it before its `data` (and the real
+              // Process behind it) has settled -- self-heals within the
+              // same reload either way, this just stops it from logging
+              // "Unable to assign [undefined] to QString" while it does.
+              Text { text: about.data.user || ""; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
               Text { text: "@"; color: panelRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-              Text { text: about.data.host; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+              Text { text: about.data.host || ""; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
             }
             Text { text: "──────────────────"; color: panelRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
             Column {
               spacing: 0
               Repeater {
                 model: [
-                  { k: "os", v: "NixOS (CoelOS)" }, { k: "kernel", v: about.data.kernel },
-                  { k: "uptime", v: about.data.uptime }, { k: "wm", v: about.data.wm },
-                  { k: "shell", v: about.data.shell }, { k: "cpu", v: about.data.cpu },
-                  { k: "memory", v: about.data.memory }, { k: "disk /", v: about.data.disk },
+                  { k: "os", v: "NixOS (CoelOS)" }, { k: "kernel", v: about.data.kernel || "" },
+                  { k: "uptime", v: about.data.uptime || "" }, { k: "wm", v: about.data.wm || "" },
+                  { k: "shell", v: about.data.shell || "" }, { k: "cpu", v: about.data.cpu || "" },
+                  { k: "memory", v: about.data.memory || "" }, { k: "disk /", v: about.data.disk || "" },
                 ]
                 delegate: RowLayout {
                   required property var modelData
