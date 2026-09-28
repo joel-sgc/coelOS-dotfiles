@@ -1,8 +1,14 @@
 # CoelOS Quickshell bar — project status
 
-Handoff doc written right before a `/clear`, so a future session (or you)
-can pick this up with zero conversation history. Everything here reflects
-real, verified state as of **2026-09-27**, not aspiration.
+Handoff doc written for a future session (or you) to pick this up with
+zero conversation history. Everything here reflects real, verified state
+as of **2026-09-28**, not aspiration. Supersedes the previous version of
+this file (2026-09-27) — that one described a batch of uncommitted work;
+**all of it, plus everything below, is now committed** (see `git log`,
+most recent relevant commits: `0344391`, `ec76ac3`, `26871ef`). Nothing in
+this project is currently staged/pending — if you find uncommitted changes
+in this directory, they're new since this doc was written, not leftover
+from anything described here.
 
 ## What this project is
 
@@ -10,479 +16,436 @@ A from-scratch Quickshell (Wayland, Hyprland) top bar + popups + launcher,
 replacing waybar and rofi, built phase-by-phase against a Claude-Design
 HTML mockup at **`Quickshell Example/Quickshell Bar.dc.html`** (repo root).
 That file is the source of truth for visual/behavioral design — when in
-doubt about how something should look or behave, read it before guessing.
-**The user actively edits this mock file themselves** (it currently shows
-as unstaged-modified in git) to add new reference pages/screenshots for
-upcoming work — don't treat unstaged changes there as stray, and don't
+doubt about how something should look or behave, read it before guessing;
+it also has a companion **`Quickshell Example/support.js`** which, despite
+the name, is unrelated templating/DOM-manipulation plumbing for the mock
+page itself, *not* app logic to port (learned this the hard way looking
+for a "conversion system" there that didn't exist — it was in the `.dc.html`
+file's own inline `<script>`, see Convert.js below). **The user actively
+edits the mock file themselves** to add new reference pages/screenshots
+for upcoming work — don't treat unstaged changes there as stray, and don't
 overwrite them.
 
 Established build pattern per feature: **hardcoded/real-content UI first
 (signed off via screenshots)**, **then real logic** (subprocess calls, live
-state) **in a separate pass**. Every change this whole project has gone
-through the same validation pipeline before being called done:
+state) **in a separate pass**. Validation pipeline used throughout:
 1. `qmllint` (paths for the Qt/Quickshell qml dirs are in shell history;
-   filter output to `syntax|non-existent|duplicate|property-override|
-   cannot-specify-anchors|layout-positioning|\[error\]|type not found|is
-   not a member` — everything else, incl. "unqualified access" and
-   `PanelWindow is not creatable`, is expected noise this codebase already
-   has everywhere).
-2. Kill and relaunch the dev instance: `pkill -f "quickshell -c"` (verify
-   stopped via `pgrep`), then `nohup env QML_DISABLE_DISK_CACHE=1
-   quickshell -c ~/.nixos/home/quickshell > /tmp/quickshell-reload.log
-   2>&1 &`, check the log is clean, check the process stays alive a few
-   seconds (`ps -o etimes=`).
-3. `git add -- <specific files>` (never bare `-A`) — **the user commits
-   themselves**, never ask Claude to commit. Current staged-but-uncommitted
-   work is listed below.
-4. `nix eval .#nixosConfigurations.coelos.config.home-manager.users.joelsgc.home.activationPackage.drvPath`
-   then `nix build "<drv>^*" --no-link --print-build-logs`.
+   real syntax errors matter, "unqualified access"/`PanelWindow is not
+   creatable` are expected noise this codebase already has everywhere) —
+   in practice this session, bare `qmllint <file>` without those import
+   paths just spams "Failed to import ..." noise and isn't useful; rely on
+   the live instance's own log instead (next point) unless you've got the
+   real import-path flags to hand.
+2. The user runs a **live, production** quickshell instance (their real
+   Hyprland session, not a throwaway dev copy) that auto-hot-reloads on
+   QML edits. Validate via `quickshell ipc -p ~/.nixos/home/quickshell
+   show` (confirms the instance is alive and responsive) and by tailing
+   `/run/user/1000/quickshell/by-id/*/log.qslog` for `WARN`/`error` lines
+   right after an edit. **Never `pkill`/relaunch this process without
+   asking first** — it's the user's actual live panel, not a disposable
+   dev instance; there's no way to tell them apart by command line alone,
+   and killing it blind has bitten a previous session already.
+3. For Nix-level changes (module/home-manager files, not plain QML), `nix
+   build .#nixosConfigurations.coelos.config.system.build.toplevel
+   --no-link --print-out-paths` verifies the whole config evaluates and
+   builds *without* switching anything live — safe to run freely. Actually
+   switching (`nixos-rebuild switch` or equivalent) is the user's own call,
+   same as committing — they run it themselves; some changes (Nix-level
+   ones, systemd unit/service edits, anything needing a process restart
+   rather than a QML hot-reload) only take effect after they do.
+4. `git add -- <specific files>` (never bare `-A`) if asked to stage —
+   **the user commits themselves**, never commit unasked. In practice this
+   whole project's history shows the user commits in large, infrequent,
+   loosely-described batches (see `git log`) rather than per-feature, so
+   don't expect or wait for a commit to "confirm" a task is accepted.
 
-Popup-content Timers/Processes are gated on a `popupOpen` prop that's
-normally false; to validate real logic that only runs while a dropdown is
-open, temporarily flip the relevant `property bool popupOpen: false` to
-`true // TEMP: forced on for validation, reverting before commit`, cycle
-the dev instance, confirm, then revert and cycle again before staging.
-
-**Screenshot validation caveat**: this session used `nix run nixpkgs#grim`
-(grim isn't installed by default; that's a one-off ephemeral fetch, not a
-system change) to screenshot the live panel/popups for visual review,
-reading the PNG back via the `Read` tool. **One of those screenshots
-accidentally captured the user's actual browser window** (personal
-content, not anything quickshell-related) instead of the panel. That
-content was not examined or retained, but it means blind full-screen
-`grim` captures aren't fully safe on this machine while the user is
-multitasking — **ask before resuming screenshot-based validation**, or
-default to qmllint+log+IPC-introspection-only validation instead.
+Popup-content Timers/Processes are generally gated on a `popupOpen`/
+similar prop that's false while the dropdown is closed — to validate real
+logic that only runs while open, either get the user to actually open it,
+or temporarily force the gate on with a clearly-marked `// TEMP` comment,
+confirm, then revert before considering the change done.
 
 Also see `AGENTS.md` (repo root) for the Nerd-Font-glyph rule: several
-files contain real private-use glyphs invisible to Claude, and must be
-edited with `Edit`+ASCII-only anchors, never `Write`/full retype. The
-`sysPanel/*.qml` files created *this project* don't contain raw glyphs
-(icons go through `Phosphor.js`'s codepoint table), but the rule is
-unconditional for that whole path per `AGENTS.md` — ask before bulk-moving
-or rewriting there regardless.
+files elsewhere in this repo (**not** anything under `home/quickshell/`)
+contain real private-use glyphs invisible to Claude and must be edited
+with `Edit`+ASCII-only anchors, never `Write`/full retype. Everything
+under this directory goes through `Phosphor.js`'s codepoint table instead
+(see below) — real icon codepoints there should be verified against an
+actual source (`/tmp/phosphor_icons.ts`, if still present, has the full
+Phosphor icon-set name→codepoint table; used this session to look up
+`arrows-left-right`'s real codepoint (`0xe0a0`) rather than guess it), not
+invented.
 
 ## Architecture map
 
 ```
 home/quickshell/
-  shell.qml              top-level: owns launcherOpen/launcherScreen state,
-                          instantiates Panel + Border + Launcher
-  Border.qml              screen-edge decorative frame (own PanelWindow,
-                          WlrLayer.Top -- see "known oddities" below)
-  Launcher.qml            NEW this session: full-screen Spotlight overlay
-                          chrome (scrim + centered card), IpcHandler for
-                          the Hyprland keybind, per-screen Variants
-  assets/                 logo.svg, logo.png, Coel.svg
+  shell.qml               top-level: owns launcherOpen/launcherScreen state,
+                           instantiates Panel + Border + Launcher
+  Border.qml               screen-edge decorative frame (own PanelWindow,
+                           WlrLayer.Top)
+  Launcher.qml              full-screen Spotlight overlay chrome (scrim +
+                           centered card), IpcHandler for Hyprland keybinds,
+                           per-screen Variants
+  launcher/
+    LauncherPanel.qml       the big one -- moved here from
+                           sysPanel/dropdowns/ this arc specifically
+                           because it isn't a dropdown (own PanelWindow
+                           chrome via Launcher.qml, not Popup.qml). Owns
+                           category/search construction (buildCategories(),
+                           fuzzyList()), keyboard handling, selection/scroll,
+                           the clipboard live-preview Processes, and the
+                           full visual tree. Instantiates every backend
+                           below as a plain child Item with an `id`.
+    backends/               one Item-per-data-source, each exposing plain
+                           properties/functions LauncherPanel.qml reads --
+                           AppsBackend, SshBackend, ClipboardBackend,
+                           EmojiBackend, TogglesBackend, AboutBackend,
+                           CurrencyBackend (new, live currency rates --
+                           see below)
   scripts/
-    list-apps.py          NEW: real .desktop file parser for app search
+    list-apps.py             real .desktop file parser for app search
+    list-ssh-hosts.py        real ~/.ssh/config parser for the ssh category
+    update-emoji-data.py     fetches/caches current emoji data from
+                           unicode.org
   sysPanel/
-    Panel.qml             the actual bar; owns openPopup (per-screen) and
-                          bubbles launcherToggleRequested/openPanelRequested
-    Popup.qml             shared dropdown chrome (right/center-anchored
-                          under the bar) for the 6 button-triggered popups
-    Phosphor.js           icon name -> codepoint table (verified against
-                          real phosphor-icons/core source, not guessed)
-    dropdowns/            AudioDropdown, BluetoothDropdown, NetworkDropdown,
-                          PowerDropdown, SystemDropdown, CalendarDropdown,
-                          LauncherPanel (NEW)
-    buttons/               bar chips: Battery, Bluetooth, Button, Buttons,
-                          Clock, Cpu, Logo, Network, Tray, Volume, Workspaces
-    components/            shared row/UI bits: BulletDivider, CoreRow,
-                          DeviceRow, DiskRow, FormField, PortRow, ProcessRow,
-                          Section (has leftContent/rightContent/bottomContent/
-                          minHeight slots now, all opt-in), Sparkline
+    Panel.qml               the actual bar; owns openPopup (per-screen,
+                           now includes "tray") and trayMenuItem (which
+                           SystemTrayItem the tray dropdown is showing),
+                           bubbles launcherToggleRequested/openPanelRequested
+    Popup.qml                shared dropdown chrome (right/center-anchored
+                           under the bar) for every button-triggered popup,
+                           tray included now
+    Calc.js                  calculator expression engine (ported from the
+                           mock's calcEval())
+    Convert.js                unit/currency converter (new -- ported from
+                           the mock's convEval(), see below)
+    Phosphor.js               icon name -> codepoint table
+    dropdowns/                AudioDropdown, BluetoothDropdown,
+                           NetworkDropdown, PowerDropdown, SystemDropdown,
+                           CalendarDropdown, TrayDropdown (new, see below)
+    buttons/                  bar chips: Battery, Bluetooth, Button, Buttons,
+                           Clock, Cpu, Logo, Network, Tray, Volume,
+                           Workspaces
+    components/                shared row/UI bits: BulletDivider, CoreRow,
+                           DeviceRow, DiskRow, FormField, PortRow,
+                           ProcessRow, Section, Sparkline
 ```
 
 ## Phase status (the 6 original bar dropdowns + calendar)
 
-All done, real-data-wired, built and screenshot-verified earlier in this
-project: **Network, Audio, Bluetooth, Power, System monitor, Calendar +
-todo**. Calendar's todos persist in real SQLite via `QtQuick.LocalStorage`
-(`~/.local/share/quickshell/QML/OfflineStorage/Databases/*.sqlite`, table
-`todos`) — chosen over flat JSON specifically because a future Google
-Calendar/ICS sync would want real indexed date-range queries and per-source
-sync state; that integration itself is *not* built, just the storage choice
-made with room for it. No seed/demo data — starts genuinely empty.
+All done, real-data-wired, long since built and screenshot-verified:
+**Network, Audio, Bluetooth, Power, System monitor, Calendar + todo**.
+Calendar's todos persist in real SQLite via `QtQuick.LocalStorage`.
 
-## Launcher feature (the current/newest work, this session)
+## Launcher (rofi replacement) — overall status
 
-**Goal**: replace rofi entirely (`coel-main-menu`'s categorized dmenu, plus
-`rofi -show drun` for app launching) with an in-process Quickshell
-"Spotlight" launcher. Long-term plan (stated by the user, not yet started):
-integrate a clipboard manager (real one already exists: `cliphist`, currently
-wired to rofi via `$mainMod, V` in `home/hyprland.nix`) and a from-scratch
-emoji picker (currently `coel-emoji-picker` = `rofi -modi emoji`) into the
-launcher's side/preview panel, which is *why* that panel was deliberately
-built to support showing a real image (`previewImage` field) and not just
-an icon glyph, from the very first pass.
+Fully replaces rofi's categorized dmenu (`coel-main-menu`) and `rofi -show
+drun`. `rofi.nix`'s own scripts were left untouched, only the Hyprland
+keybinds pointing at them changed (`$mainMod space`/`$mainMod shift+space`
+→ `quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle`,
+`$mainMod V` → `... call launcher openClipboard`, `$mainMod .` → `... call
+launcher openEmoji`). Whether to retire `coel-emoji-picker` entirely is
+still an open call, not made unilaterally (unchanged from before).
 
-### Done (this session, phase 1 UI + phase 2 logic)
+Categories as of now, in search-priority order (see "search ordering"
+below for what that means): **launch, ssh, actions** (merged
+toggles+capture, see below), **convert** (new), **clipboard** (real
+`cliphist` category, live-decode preview), **math, system** — plus
+**emoji** (search-only from the main launcher, browsable+recency-tracked
+in `super+.`'s emoji-only mode) which isn't a `categories` entry at all,
+matched separately.
 
-- Full category browser: launch / panels / toggles / capture / style /
-  math / system, chips + fuzzy search across all of them, keyboard nav
-  (arrows/tab/enter, category cycling, Escape layers: about-view -> clear
-  query -> close), preview panel (icon or image + key/value rows + action
-  hint), a real "About this system" page (live hostname/kernel/uptime/
-  Hyprland+zsh version/CPU/mem/disk via one combined `sh -c` Process).
-- **Real command execution**: `command` items call
-  `Quickshell.execDetached(...)` for real and close the launcher after.
-- **Real panel-opening**: `panel` items (Network/Bluetooth/Audio/Power/
-  System monitor/Calendar) really open that dropdown, via a signal chain
-  `LauncherPanel.openPanelRequested(name)` -> `Launcher.openPanelRequested
-  (screen, name)` -> `shell.qml` -> `Panel.openPanelRequested(screen,
-  name)` -> a `Connections{target:panelScope}` block inside each
-  per-screen `PanelWindow` that only reacts if it's *its own* screen.
-- **Real toggles, investigated not assumed**:
-  - Do Not Disturb: `makoctl mode -t dnd`, state read back via `makoctl
-    mode` (never optimistically flipped — same "wait for the next real
-    read" rule `SystemDropdown.qml`'s kill action follows). Needed a real
-    mako config addition to have any effect: `home/mako.nix` now has
-    `"mode=dnd".invisible = 1` — **verified this renders correctly in the
-    built mako config output**, but note **mako itself needs to actually
-    restart** (via the normal `home-manager switch`/reboot path, not
-    anything live-reloadable) to pick it up.
-  - Keep awake: real, a `systemd-inhibit --what=idle:sleep ... sleep
-    infinity` child process we own the lifecycle of directly (start =
-    `running:true`, stop = `running:false` which SIGTERMs it, releasing
-    the inhibitor).
-  - Night light and Charge limit: **deliberately left non-functional**,
-    with an honest message instead of a fake toggle — no compositor
-    night-light tool is installed on this machine (checked: no
-    hyprsunset/gammastep/wlsunset), and `PowerDropdown.qml`'s own header
-    comment already established this hardware has no real charge-limit
-    sysfs knob. Don't silently "finish" these without actually installing/
-    configuring a real backend first.
-  - **Calculator: now real** — ported the mock's `calcEval()` (lines
-    ~1060-1280 of "Quickshell Example/Quickshell Bar.dc.html") to
-    `sysPanel/Calc.js` (`evaluate(raw, ans)`, a pure function -- the mock's
-    version closes over `this.state.menuAns`, ours takes `ans` as a plain
-    argument since there's no component state to read). Near-verbatim port,
-    same recursive-descent parser/evaluator/pretty-printer: sqrt/cbrt/nth
-    root, log/log2/log10/ln with `log_2(x)`/`log2(x)`/`root(3)(27)`
-    subscript-or-double-paren forms, full trig+inverse+hyperbolic,
-    factorial/gamma/ncr/npr/gcd/lcm, hex/binary literals, named constants
-    (pi/tau/e/phi/inf/**ans**), superscript-digit exponents (x²), percent-of
-    (`120 + 15%`), `mod`, degree conversion (`sin(30°)`), and the exact/π-
-    fraction/scientific-notation/hex/bin result breakdown. Verified by
-    running the ported file under Node against all 14 of the mock's own
-    "math" category example expressions (`sqrt16`, `root(3)(27)`, `5!`,
-    `ans / 2`, etc.) plus a couple of malformed inputs — every result
-    matched the mock's expected output byte-for-byte, including `ans`
-    correctly carrying over between evaluations.
-    `LauncherPanel.qml`'s `fuzzyList()` now calls `Calc.evaluate(raw,
-    ansValue)` and, when it returns a result, forces it into the top slot
-    exactly like the mock's `menuList()` does (a valid expression always
-    wins over a fuzzy text match). Enter on a calc result: `ok` ones
-    `Quickshell.execDetached(["wl-copy", c.raw])` (no shell, so no quoting
-    concerns) and store `c.value` in a new `ansValue` property for the next
-    `ans` reference; failed ones (`c.ok === false`) just surface `c.reason`
-    as the footer message. Preview panel now shows the calc-specific
-    breakdown (expr/exact-fraction/π-fraction/sci/hex/bin/error/copies rows)
-    in place of the generic type/keys/runs rows when the selected item is a
-    calc result. The math category's example rows (`fill: true`) are
-    unchanged — clicking one still just fills the search box, which now
-    actually evaluates.
-  - **App search** (the actual rofi-drun replacement): real, via
-    `scripts/list-apps.py` (parses real `.desktop` files across XDG data
-    dirs, XDG precedence for dedup, drops `NoDisplay`/`Hidden`/non-
-    Application entries, strips `Exec` field codes, `shlex`-splits,
-    auto-wraps `Terminal=true` entries in `ghostty -e`). 52 real apps
-    found on this machine at last check. Spotlight-style on purpose: apps
-    only enter the result list while there's a non-empty query — verified
-    in `fuzzyList()`, no "applications" category chip exists to browse
-    them. Icons resolved for real via `Quickshell.iconPath(...)` (a real
-    Quickshell singleton method, not invented) into the preview panel's
-    image slot; list rows themselves just use a generic icon (kept simple
-    on purpose, not a bug).
-  - **Hyprland keybinds repointed**: `$mainMod, space` and `$mainMod
-    SHIFT, space` both now run `quickshell ipc call launcher toggle`
-    (was `rofi -show drun` / `coel-main-menu` respectively) — **both
-    point at the same launcher now since it subsumes both jobs**; flagged
-    to the user as a judgment call in case they'd rather they stayed
-    distinct. **Confirmed working live** (2026-09-27): the user pressed
-    `super+space` for real after a rebuild. A real bug turned up along the
-    way (see the ipc-path-flag fix below) and is now fixed and
-    build-verified.
-  - `rofi.nix`'s own scripts (`coel-main-menu`, `coel-actions-menu`,
-    `coel-settings-menu`, etc.) were **left completely untouched** —
-    only the *keybinds pointing at them* changed. `coel-main-menu` is
-    still referenced by `home/waybar.nix`'s `on-click` if waybar is ever
-    still relevant; not investigated whether waybar is still live.
+### Launcher restructure: LauncherPanel moved out of dropdowns/
 
-### `super+space` real bug + fix (2026-09-27)
+Per explicit request: "The LauncherPanel.qml file shouldn't be under
+dropdowns since it's not a dropdown." Moved to its own `home/quickshell/
+launcher/` directory with a `backends/` subfolder holding one
+Item-per-data-source component each (AppsBackend, SshBackend,
+ClipboardBackend, EmojiBackend, TogglesBackend, AboutBackend). Confirmed
+working post-move via a real cold-launch log the user pasted (was
+genuinely uncertain beforehand whether Quickshell's hot-reload handles a
+full directory move/deletion the same way it handles an in-place edit —
+it does).
 
-`super+space` still launched old rofi even after a rebuild because the
-two ipc-call keybinds in `home/hyprland.nix` had no path/config flag, so
-they targeted quickshell's *default* instance
-(`~/.config/quickshell/shell.qml`) — but the exec-once above launches
-with `-c ~/.nixos/home/quickshell` (intentionally, for hot-reload), a
-different config path/instance entirely. Confirmed via `quickshell ipc
---help`: `-c` there means a named XDG config, not a path; `-p`/`--path`
-is the actual "path to a config" flag. All ipc-call binds (space,
-shift+space, and the new super+V below) now read `quickshell ipc -p
-~/.nixos/home/quickshell call launcher <fn>`, verified against the real
-generated `hyprland.conf` after a build and confirmed live by the user.
+### ssh category (real, `~/.ssh/config`-backed)
 
-### Emoji picker (real, search-only from the main launcher; browsable +
-recency-tracked in emoji-only mode; done/fixed 2026-09-27)
+`scripts/list-ssh-hosts.py` parses the real config (skips pattern/multi-
+alias `Host` lines), outputs name/user/host/port/identityFile as JSON.
+Enter opens `ghostty -e ssh <alias>`; Shift+Enter copies the ssh command.
+Name-based blacklist mechanism exists (`SshBackend.blacklist`, currently
+`["proxy", "testing-vm"]` — **the user edited this list themselves**
+after it initially shipped empty, don't assume it's still empty).
 
-`emojiEntries`, loaded once per launcher lifetime (the `if
-(emojiEntries.length === 0)` gate in `onPanelOpenChanged`), not
-re-fetched every open like DND state. From the *main* launcher, matched
-against name + keywords, scored/sorted and capped at 20 results —
-thousands of entries is too many to ever browse as a static category (no
-chip exists for it, same "Spotlight not rofi" call as app search), so it
-stays search-only there.
+### actions category (merged toggles + capture)
 
-**Emoji-only mode (super+., `searchScope==="emoji"`) is different**: at
-the user's request, it's browsable by default with no query at all --
-safe now that the item list is a real virtualized `ListView` (the same
-fix the clipboard tab needed for the same underlying reason: a plain
-`Column`+`Repeater` would've instantiated every one of ~4000 rows up
-front). Recently *used* emoji (copied via Enter/click, not just scrolled
-past -- tracked in `recordEmojiUsed()`, called from `runItem()`'s
-`it.emojiChar` branch) are pulled into their own "recently used" group at
-the top, capped to the last 5, and not duplicated further down; everything
-else keeps Unicode's own curated group/subgroup order from
-`emoji-test.txt`. The `rows` header-grouping logic (previously only active
-`if (hasQuery)`) was generalized to a `groupLabel || cat` field and now
-also triggers whenever `searchScope !== ""`, so this reuses the exact same
-header rendering path search results already use, just with real category
-names instead of arbitrary matches.
+Per explicit request: "merge toggles and captures into one actions
+category." Single `{ id: "actions", label: "actions", icon: "lightning" }`
+now holds DND/keep-awake/mic-mute/monochrome/eye-candy toggles *and*
+screenshot/screen-record/color-picker. Each item carries a `groupLabel`
+("toggles" or "capture") so browsing the category (no search query) still
+shows the same kind of header "topper" emoji-browse-mode already had —
+see next point.
 
-Recency is tracked in **the same SQLite database `CalendarDropdown.qml`'s
-todos already live in** (`LocalStorage.openDatabaseSync("CoelOSCalendarTodos",
-"1.0", ...)` -- keyed by name+version, not by which QML file opens it, so
-the same name really does mean the same on-disk file), per the user's own
-explicit instruction, rather than a second database for one small table.
-New table: `emoji_recent (char TEXT PRIMARY KEY, used_at INTEGER NOT
-NULL)`, upserted via `INSERT OR REPLACE` keyed on the emoji character
-itself. Verified for real, not just lint-checked: read the live `.sqlite`
-file directly with Python's `sqlite3` module after this hot-reloaded and
-confirmed `emoji_recent` now sits alongside `todos` in the exact same
-file.
+**Category header toppers, generalized**: the `rows` computed property's
+grouping used to only activate `if (hasQuery || searchScope !== "")`. Now
+also activates whenever `list.some(it => it.groupLabel)` — i.e. any
+browsed category whose *items themselves* opted in by setting
+`groupLabel`, not just search results or an active scope restriction. This
+is what makes the actions category show "toggles"/"capture" headers while
+just browsing it with no query, the same mechanism (not a special case)
+as emoji's own "recently used" grouping.
 
-**Data source rebuilt same day it shipped**: originally just vendored
-`pkgs.rofi-emoji`'s bundled `emoji-data.txt` (5042 lines, copied
-byte-for-byte via `cp`, checked into the repo). The user immediately
-noticed it was badly stale — missing all of Unicode Emoji 17.0 and 18.0
-(shaking face, cracking face, pickle, lighthouse, meteor, ...), since
-nothing was ever going to re-copy that snapshot as time passed. Fixed by
-replacing the static `cat scripts/emoji-data.txt` with
-`scripts/update-emoji-data.py`, which fetches Unicode.org's own canonical
-`https://www.unicode.org/Public/emoji/latest/emoji-test.txt` (the file
-the Unicode Consortium itself keeps current — confirmed live E18.0 data
-in it, dated 2026-04-30), caches the parsed result at
-`$XDG_CACHE_HOME/quickshell-emoji-data.txt`, and only re-fetches if that
-cache is more than 7 days old. A failed/timed-out fetch (no network,
-unicode.org unreachable) silently keeps whatever's cached, or falls back
-to the vendored `emoji-data.txt` if there's no cache at all yet — verified
-this fallback path for real (redirected the URL to an unroutable address,
-confirmed it degrades to the vendored 5042-line file without hanging or
-erroring). `emoji-test.txt` has no keywords of its own, only official CLDR
-names grouped by category — the script enriches keywords by exact
-emoji-character lookup against the (now fallback-only) vendored file, so
-existing fuzzy search doesn't regress; brand-new emoji just match on name
-alone until enriched some other way. This is the **first thing in this
-project that makes an outbound network request** — worth knowing if
-anything ever needs to run fully offline/airgapped; everything else here
-is local-only.
-- **Not fully solved, worth knowing**: Nix's own reproducibility model
-  doesn't support "always fetch the newest" at *build* time (a pinned
-  `fetchurl` hash would just re-fetch the same stale content forever) --
-  this refresh happens at *runtime* instead, matching the precedent
-  `list-apps.py` already set for real dynamic data in this launcher. That
-  means the very first launcher use after a long gap still needs one live
-  network fetch (~0.3s observed) before it's current again; after that,
-  cached for up to a week.
+**Toggles**: DND (real, `makoctl mode -t dnd`), keep awake (real,
+`systemd-inhibit` child process), mic mute, monochrome (real, Hyprland
+`decoration:screen_shader` live-toggled against `scripts/monochrome.frag`,
+a luminance-weighted grayscale GLSL shader), eye candy (real, live
+`hyprctl keyword` toggling of animations/blur/rounding/borders). **Night
+light and charge limit were removed entirely** per explicit user decision
+after real hardware testing showed the Framework 13 AMD's charge-limit EC
+override doesn't survive a reboot (BIOS's own value is separate/
+persistent, the runtime override isn't) — don't re-add either without
+being asked; a `framework-laptop-kmod` integration for this was built,
+tested, and then **fully reverted** (module deleted, import removed) for
+the same reason.
 
-Selecting one runs `Quickshell.execDetached(["wl-copy", emojiChar])`
-directly — no shell needed since it's a single argv element, and the text
-comes from our own vendored file rather than anything external/untrusted.
-Preview panel shows the real glyph (via "Noto Color Emoji", already
-installed) instead of a generic Phosphor icon when an emoji result is
-selected — Phosphor is an icon font, has no emoji glyphs of its own. Two
-new Phosphor codepoints added for this (`clipboard`/`clipboard-text`/
-`smiley`), verified against the same cached `phosphor-icons/core` source
-table as every other codepoint in `Phosphor.js`, not guessed.
+### convert category (new: real unit + currency converter)
 
-**User-confirmed working** (2026-09-27) via real search. One follow-up:
-Plasma's own "Emoji Selector" app (`plasma-emojier`, a real installed
-KDE app, correctly surfaced by `list-apps.py`) was showing up alongside
-these for the same query, which was confusing now that emoji search is
-native. Filtered it out specifically in `LauncherPanel.qml`'s app-search
-loop (`app.argv[0] === "plasma-emojier"`), **not** via
-`home/desktop-entries.nix`'s `hiddenDesktopIds` — that writes
-`Hidden=true` to `$XDG_DATA_HOME`, which every spec-compliant consumer
-honors (confirmed against that file's own header comment), including
-Plasma's own Kickoff/KRunner. Since Plasma stays installed as a fully
-independent fallback session with no access to this launcher, hiding it
-there would leave Plasma without a working emoji picker. Discussed with
-the user, this was their call to make and they agreed with the launcher-
-local fix.
+Per explicit request, ported from the mock's `convEval()` (found in the
+`.dc.html` file itself, *not* `support.js` — see the top-of-file note
+about that dead end). `sysPanel/Convert.js`: `evaluate(raw, liveRates,
+ratesUpdated)`, a pure function verified against the mock's own example
+expressions via Node before trusting it live. Handles length, mass, data,
+time, speed, volume, temperature, and currency — parses `"5 km to mi"`,
+`"72 f to c"`, `"$120 to eur"`, `"180 lb"` (bare unit → a sensible default
+target), plural/alias unit names, currency symbols (`$€£¥`).
 
-### Clipboard tab (real category + live preview, done 2026-09-27)
+**Currency rates are live, not static** — the user explicitly rejected a
+first pass that hardcoded rates ("Fetch currencies like the example
+supposedly does. Do it every hour or so"). `launcher/backends/
+CurrencyBackend.qml` fetches `https://open.er-api.com/v6/latest/USD` (free,
+no API key, ~160 currencies — chosen over ECB-based sources like
+frankfurter.app specifically because those don't cover most of Latin
+America, which is what prompted this: the user tested MXN/ARS/COP/CLP/PEN/
+BRL and got no results from the first, hardcoded-table version) on launch
+and every hour via a `Timer`. `Convert.js`'s own hardcoded table (now
+includes those six Latin American currencies too) only serves as a
+fallback for before the first fetch resolves or if a fetch ever fails —
+live rates override it entry-by-entry when available. The preview panel's
+"source" row honestly shows which one was actually used
+(`"live · updated <timestamp>"` vs `"fixed fallback, not live"`).
 
-Originally built search-only like emoji (see git history / earlier
-revisions of this doc), but the user asked for a real dedicated,
-always-browsable tab instead, plus a live preview showing actual decoded
-content — "I think will be the hardest part here" per the user. Also
-asked to **remove the `panels` and `style` categories** entirely (not
-using them) and to make **`super+V`** open straight to this tab.
+Same top-slot-winning precedence as the calculator (a valid conversion
+always wins the top hit), and convert wins over calc if both would somehow
+match, mirroring the mock's own `const c = cv ? null : calcEval()`. Own
+browsable category with example conversions (`fill: true`, same pattern as
+`math`'s examples).
 
-- **Category, not search-only**: `clipboardCategoryItems()` maps every
-  real `cliphist list` entry (no cap — cliphist's own history size is the
-  only limit) into the `clipboard` category. This only works without a
-  massive performance hit because the item list rendering was converted
-  from a plain `Flickable`+`Column`+`Repeater` (which instantiates *every*
-  row up front regardless of scroll position) to a real `ListView` with
-  `reuseItems: true`, which only builds delegates near the visible
-  viewport. Search still works normally across it too — since it's a real
-  category now, the existing generic `categories.forEach` search loop
-  covers it for free, no special-cased search injection needed (unlike
-  emoji, which still needs its own capped block since it isn't a
-  category).
-  - **Real bug the user caught immediately: scrolling didn't work.** The
-    `rows` computed property used to bake `isSel` into each row object,
-    which meant it (and therefore `ListView.model`) got rebuilt into a
-    *brand-new array* on every `selIndex` change -- including plain mouse
-    hover. Reassigning a ListView's `model` to a new array identity resets
-    its scroll position, which fought every scroll attempt (any hover
-    during a scroll gesture as rows slid under the cursor snapped it back
-    to top). This never showed up with the old `Column`+`Repeater` because
-    `Flickable.contentY` there was independent scroll state, untouched by
-    `Repeater.model` reassignment -- a ListView doesn't have that
-    separation. Fixed by making `rows` never depend on `selIndex` at all
-    (only on `list`), and having each delegate read `panelRoot.selIndex`
-    directly for its own highlight state instead. Worth remembering for
-    any *other* ListView added later in this file: never embed selection
-    state in the model data itself.
-- **Live preview, the "hardest part"**: selecting a clipboard entry
-  (arrow keys or hover) decodes its *real* content immediately, not just
-  the mangled/truncated `cliphist list` preview — text keeps its original
-  whitespace/newlines (`textFormat: Text.PlainText`, `wrapMode: Text.Wrap`,
-  no collapsing), images render as real images. Two dedicated `Process`es
-  (`clipTextDecodeProc`/`clipImageDecodeProc`) do this, **deliberately
-  serialized**: a new decode never starts while one's already in flight
-  for a previous selection. Rapid arrow-key movement would otherwise mean
-  two `cliphist decode > <sharedfile>` calls racing to write the *same*
-  temp image file, which could interleave into a corrupted image. Instead,
-  a process that finishes and finds the selection has moved on
-  (`forLine` no longer matches the live selection) just re-checks and
-  kicks off a fresh decode for wherever the selection actually is now —
-  always converges to the true-latest selection without ever needing
-  per-request unique temp files. Image-vs-text is known upfront from
-  `cliphist list`'s own marker (`"[[ binary data %s %s %dx%d ]]"`,
-  confirmed via `strings` on the real `cliphist` binary, not guessed).
-  Copying (Enter/click) still goes through the original
-  `copyClipboardEntry()` → stdin-piped `cliphist decode | wl-copy`, separate
-  from the preview-decode processes.
-- **`super+V` rewired**: was `cliphist list | rofi -dmenu | cliphist
-  decode | wl-copy`; now `quickshell ipc -p ~/.nixos/home/quickshell call
-  launcher openClipboard` — a new IpcHandler function (alongside `toggle`)
-  that resolves the focused screen the same way `toggle` does, then fires
-  a new `openCategoryRequested(screen, "clipboard")` signal. Threaded
-  through `shell.qml` (`launcherRequestedCategory` property,
-  `openLauncherCategory()` function — toggles closed if already open on
-  clipboard, otherwise opens/switches to it) down to `LauncherPanel`'s
-  `requestedCategory` prop, consumed once in `onPanelOpenChanged` to jump
-  `catIndex` to the right category. A plain `toggle()` (space) clears the
-  forced category so it doesn't linger and hijack a later space-press.
-  **Build-verified** (generated `hyprland.conf` has the right bind) but
-  not yet a real keypress test — needs the same rebuild+switch step
-  `super+space` needed, since it's a Hyprland-level bind, not something
-  QML hot-reload covers.
-- **`panels` and `style` categories removed** per explicit request (not
-  used). The underlying `openPanelRequested` signal chain (`LauncherPanel`
-  → `Launcher.qml` → `shell.qml` → `Panel.qml`'s `Connections` block) was
-  **left in place**, just now unreferenced by any category item — flagged
-  to the user rather than unilaterally ripped out across 4 files, since
-  "remove the tab" and "delete the plumbing" are different asks. Revisit
-  if confirmed fully dead.
-- **Not yet done**: real image thumbnails specifically in *search results*
-  for image-type clipboard entries outside the clipboard tab (e.g. if a
-  future search source wants one) — the live preview above covers the
-  actual clipboard tab fully now.
+### Search bangs (`@g`, `@ddg`, `@yt`)
 
-## Current git state (uncommitted, staged by Claude per convention)
+Per explicit request, no dedicated category (there's nothing to browse
+without a query, so a chip would only ever be empty). A `fuzzyList()`
+early-return, same "clearly one thing, not a fuzzy match" pattern as the
+calculator/emoji-scope branches: `@g <query>`/`@ddg <query>`/`@yt <query>`
+becomes a single top-priority result that opens the search directly in Zen
+(`command: ["zen", url]`).
 
-```
- M "Quickshell Example/Quickshell Bar.dc.html"   <- user's own unstaged edit, leave alone
-M  home/hyprland.nix                              <- keybind repoints + ipc -p path fix +
-                                                       super+V rewired to openClipboard
-M  home/mako.nix                                  <- [mode=dnd] rule
-A  home/quickshell/Launcher.qml                   <- new
-A  home/quickshell/STATUS.md                      <- this file
-A  home/quickshell/scripts/emoji-data.LICENSE     <- new, MIT, from pkgs.rofi-emoji
-A  home/quickshell/scripts/emoji-data.txt         <- new, vendored emoji dataset (5042 lines) --
-                                                       now the offline-fallback/keyword-enrichment
-                                                       source only, see update-emoji-data.py
-A  home/quickshell/scripts/update-emoji-data.py   <- new, fetches/caches the real always-current
-                                                       emoji dataset from unicode.org
-A  home/quickshell/scripts/list-apps.py           <- new
-M  home/quickshell/shell.qml                      <- launcher wiring + requestedCategory plumbing
-A  home/quickshell/sysPanel/Calc.js                <- new, calculator engine
-M  home/quickshell/sysPanel/Panel.qml              <- openPanelRequested plumbing (now unreferenced,
-                                                       see clipboard-tab section above)
-M  home/quickshell/sysPanel/Phosphor.js            <- +40 icon codepoints, +3 this session
-                                                       (clipboard/clipboard-text/smiley), all
-                                                       verified against real phosphor-icons/core
-                                                       source, cached at /tmp/phosphor_icons.ts
-                                                       if still there
-M  home/quickshell/sysPanel/buttons/Logo.qml       <- emits clicked() instead of exec'ing directly
-A  home/quickshell/sysPanel/dropdowns/LauncherPanel.qml  <- the big one -- panels/style categories
-                                                       removed, clipboard is a real ListView-backed
-                                                       category with a live-decode preview, emoji
-                                                       search added
-```
+### Search ordering (fixed twice this arc, both times per real complaints)
 
-Also present in the working tree, **unstaged and not from this work**:
-`flake.nix` (whitespace/formatting only) and `flake.lock` (+1 stray
-`nixpkgs_6` locked input) both changed mid-session, ~2026-09-27, most
-likely from the user's own editor/Nix LSP running concurrently (same
-session where the user also hand-edited `shell.qml`'s `Border` binding
-live) rather than anything either of us did deliberately. Not staged,
-not investigated further — mention it if it looks wrong later.
+1. **Clipboard was outranking real matches** — e.g. typing "rebuild"
+   surfaced clipboard history containing that word before the actual
+   "Rebuild" system command, because `categories.forEach` had no
+   cross-category score sort (only a single best-scoring item gets pulled
+   to the top as `top:true`; everything else is pure insertion order).
+   Fixed by moving the `clipboard` category to *last* in
+   `buildCategories()`'s returned array — every other category's matches
+   now sort ahead of it in mixed search results, while it still sorts
+   ahead of emoji (which is unconditionally appended last regardless).
+2. **Apps were outranking real matches too** — e.g. typing "orca"
+   surfaced clipboard history before the installed app "OrcaSlicer".
+   `apps.installed.forEach` used to run *after* `categories.forEach`
+   (including clipboard) in `fuzzyList()`; swapped so apps are matched
+   first. Current overall priority: **apps → other categories → clipboard
+   → emoji**.
 
-All of the above builds clean (`nix build` succeeded, last checked this
-session, including confirming the generated `hyprland.conf` actually
-contains the fixed `ipc -p` keybinds and the new `super+V` bind) and
-`qmllint` is clean on every touched file. The user's **live production**
-quickshell instance (launched via their own Hyprland session, not a
-throwaway dev copy — important distinction learned the hard way this
-session, see below) auto-hot-reloads on QML edits, confirmed via `quickshell
-ipc -p ~/.nixos/home/quickshell show` listing the new `openClipboard`
-target without any relaunch. Nothing here is committed — that's the
-user's call, by design.
+### Tray right-click menus (new, and a real dead-end en route)
 
-**Process note for future sessions**: earlier in this session, `pkill -f
-"quickshell -c"` (the established dev-instance-cycling pattern from
-earlier in the project) was used for routine testing and it killed the
-user's actual live panel, since their real session now runs its own
-production instance at the same `-c ~/.nixos/home/quickshell` invocation
-as any throwaway dev instance — there's no way to tell them apart by
-command line alone. Recovered immediately by relaunching, no data lost,
-but the practice has stopped: validation from here on is qmllint + `nix
-build` + read-only `quickshell ipc ... show` introspection only. Don't
-pkill/relaunch quickshell for testing without asking first.
+Per explicit request: "Make it so that tray items can show their dropdown
+menus on right click." The tray (`sysPanel/buttons/Tray.qml`) previously
+only called `secondaryActivate()` on right-click with no real menu UI.
 
-## Immediate next steps (in the order they're likely to come up)
+**First attempt, abandoned**: `QsMenuAnchor` (Quickshell's binding to the
+native platform `QMenu`), bound directly to `SystemTrayItem.menu`. Worked
+in principle but: (a) `.open()` throws unless quickshell was launched with
+`//@ pragma UseQApplication` in the root QML file *and restarted* (not
+hot-reloadable — this pragma was added then **reverted** once the native
+approach was abandoned), and (b) even once working, it opened flush
+against the very top of the screen blocking everything, with none of this
+panel's own visual styling — a real platform popup, not a themed dropdown.
 
-1. **Live-test `super+V` for real** (an actual keypress) after the next
-   rebuild+switch — same remaining gap as `super+space` had, now closed
-   for that one.
-2. Decide whether to retire/repoint `coel-emoji-picker` (`$mainMod,
-   period`) now that emoji search is native and Plasma's own entry is
-   filtered out of results — same kind of call as the drun/`coel-main-menu`
-   repoint earlier, not made unilaterally.
-3. Decide whether the now-unreferenced `openPanelRequested` signal chain
-   (`LauncherPanel`/`Launcher.qml`/`shell.qml`/`Panel.qml`) should be
-   ripped out, or left in case a future "quick-open a panel" entry point
-   wants it again.
-4. Screenshot-based mock review is **done for now** per the user
-   (2026-09-27) — no more mock pages incoming for the launcher work
-   already built. Don't proactively ask for more.
-5. `Border.qml`'s `bgColor`-as-`borderColor` binding in `shell.qml`: not a
-   bug — user confirmed live that the opaque border is intentional. Don't
-   "fix" this again.
+**What's actually built**: `sysPanel/dropdowns/TrayDropdown.qml`, a normal
+`Popup.qml`-chrome dropdown like every other bar button, styled to match
+(same row height/radius/hover treatment as e.g. Bluetooth's device rows).
+Uses `QsMenuOpener` (bound to `trayItem.menu`) to resolve the real DBusMenu
+into plain data (`.children`: text/icon/enabled/checkState/hasChildren per
+entry) with **no native popup involved at all**. One level of submenu
+expand/collapse supported inline (indented, same list, via a second
+`QsMenuOpener` bound to the expanded entry itself — a `QsMenuEntry` is
+itself a `QsMenuHandle`, which is what makes that work) — real tray menus
+rarely nest deeper than that; not handled if they do.
+
+`Panel.qml` gained `trayMenuItem` (which `SystemTrayItem` the dropdown is
+currently showing) alongside the existing `openPopup` string, with a
+*single* shared `Popup` instance reused across every tray icon (not one
+each — icon count is unbounded/variable, unlike the fixed bar buttons).
+Right-clicking a different icon while another's menu is open switches
+straight to it rather than closing (had to guard against `openPopup ===
+"tray"` alone, which doesn't distinguish "same icon again" from "different
+icon"). `rightMargin: 268` for this popup is a rough estimate (same
+"guess then refine" approach as every other dropdown's own rightMargin
+here, per their existing comments) — not one that tracks the specific
+icon clicked; a single fixed position for the whole tray group, since
+there's no fixed pixel offset that could track a variable-count icon list
+anyway.
+
+**Two real bugs found and fixed against Steam's actual tray menu (live
+user testing, not guessed)**:
+- `entry.sendTriggered()` (listed as a real `Method` in Quickshell's own
+  `.qmltypes` metadata) is **not actually QML-invokable** — threw
+  `TypeError: ... is not a function` live. Fixed by calling
+  `entry.triggered()` instead (`QsMenuEntry`'s own signal, not
+  `DBusMenuItem`'s method) — Quickshell's DBusMenu backend listens for
+  that internally and is what actually sends the real D-Bus Event call.
+  Worth remembering generally: a `.qmltypes` `Method` entry isn't a
+  guarantee of real invokability; trust a live `TypeError` over the
+  metadata when they disagree.
+- Fixed width (260px) clipped real menu text ("Steam Linux Runtime 1.0
+  (scout)" lost its closing paren, confirmed via a real screenshot).
+  Widened to 340px (Panel.qml's `contentWidth`, which is the *whole* popup
+  frame including its fixed 32px side padding, not just the content area).
+
+**Not yet confirmed live**: whether `sendTriggered`→`triggered` actually
+makes a real Steam menu item (e.g. "Exit Steam") do the real thing when
+clicked, and whether the widened popup is now wide enough for every real
+entry — both fixes are reasoned-through and reload-clean (no QML errors),
+but the user hadn't reported back on a live click-through test as of this
+doc.
+
+### Two real (if low-stakes) QML warning bugs fixed
+
+Both found via the user pasting real `WARN scene:` log lines, not
+speculative cleanup:
+- `readonly property bool big: panelRoot.hasQuery && it.top` — JS `&&`
+  returns its second operand as-is when the first is truthy, and most rows
+  (everything that isn't the current top hit) simply never set `top` at
+  all rather than setting it `false`. That evaluated to literal
+  `undefined` for every such row, which QML can't assign to a
+  `property bool` ("Unable to assign [undefined] to bool", once per row
+  rendered). Fixed with `!!it.top`.
+- The "about" page's `about.data.*` bindings occasionally logged "Unable
+  to assign [undefined] to QString" specifically during a hot-reload
+  cycle — `AboutBackend.qml` gets torn down/recreated on reload, and
+  there's a brief window mid-recreation where sibling bindings
+  re-evaluate against it before its `data` property (and the real
+  system-info `Process` behind it) has settled back in. Self-heals within
+  the same reload either way; added `|| ""` fallbacks on the consuming
+  side (`LauncherPanel.qml`, not `AboutBackend.qml` — its own defaults
+  were already complete) purely to stop the log noise.
+
+## GlobalProtect / LUC VPN — long debugging arc, partially resolved
+
+Separate from the launcher work above. Full history also lives in
+persistent memory (`project_globalprotect_luc.md` in the memory system) —
+this is the condensed version for anyone reading just this repo.
+
+**Background**: `home/globalprotect.nix` (user agent, `coel-vpn-connect`/
+`coel-vpn-status`/`coel-vpn-disconnect` wrapper scripts) and
+`modules/globalprotect.nix` (system daemon) both run the vendored
+GlobalProtect client inside a `pkgs.buildFHSEnv` bubblewrap sandbox
+(`lib/globalprotect-fhs.nix`, shared by both). `home/globalprotect/
+gp-connect.exp` drives the actual login (expect script, LUC auth is plain
+portal username+password + a gateway MFA code, not SAML).
+
+**The reported symptom**: connecting reliably failed via both the
+Quickshell panel *and* direct CLI use with a generic, unhelpful
+`auth-failed`/`unexpected-exit` status and no way to tell why.
+
+**Root-caused, in order**:
+1. `gp-connect.exp` had three genuinely different failure paths (password
+   rejected 3×, MFA rejected 5×, and a catch-all `eof` branch for *any*
+   unrecognized client exit) all emitting the identical `GP_STATUS:
+   auth-failed` string — indistinguishable from the outside. Split into
+   `password-rejected`/`mfa-failed`/`auth-failed`/`unexpected-exit`, the
+   last of which now also logs what `globalprotect show --status` said to
+   stderr. This is what actually let the real cause surface next.
+2. With that in place, the real failure showed up as `unexpected-exit`
+   with the vendor CLI's own message: *"Unable to establish a new
+   GlobalProtect connection as a GlobalProtect connection is already
+   established..."* — even though nothing was actually connected. Ruled
+   out (each verified live, not guessed): a stale/persistent `gpd0` tun
+   interface (found one with `persist on`, deleted it — didn't fix it),
+   restarting both the user agent and system daemon (didn't fix it
+   either).
+3. **Actual root cause, found via `PanGPS.log`**: authentication was
+   genuinely succeeding (SSL handshake, gateway accepted credentials) —
+   the failure was immediately after, in `SetupNetwork()`/
+   `InstallClientConfig()`, with `ioctl() failed on SIOCGIFFLAGS ...
+   error=No such device`. Cross-checked `/proc/<PanGPS pid>/status`:
+   `CapEff: 0000000000000000` — **zero effective capabilities** despite
+   running as root with a full bounding set. Bubblewrap unconditionally
+   sets `no_new_privs` before exec'ing the sandboxed program, which,
+   combined with an empty inheritable capability set (the ordinary
+   default) and no file capabilities on the vendor binaries, zeroes out
+   the effective/permitted sets at exec time even for a root-run process —
+   `PanGPS` genuinely had no privilege to create/configure its own tunnel
+   interface. **Fix**: `--cap-add CAP_NET_ADMIN --cap-add CAP_NET_RAW` in
+   `lib/globalprotect-fhs.nix`'s `extraBwrapArgs` (bwrap's own
+   `--cap-add` only has any effect for a *privileged* caller, so this is a
+   no-op for the per-user agent's own unprivileged sandbox — it's
+   specifically for the root-run system daemon). Build-verified.
+4. Separately, `globalprotect-agent` (the user systemd service, PanGPA)
+   was found **dead** after a `nixos-rebuild switch` — it had exited
+   cleanly (status 0) during the switch's own service restart and never
+   came back, since `Restart = "on-failure"` doesn't cover a clean exit.
+   Changed to `Restart = "always"` in `home/globalprotect.nix`.
+   Build-verified.
+
+**Not yet confirmed**: whether the capability fix actually resolves real
+connect attempts end-to-end (the "already established" symptom was last
+seen *before* this fix was live — the user hadn't reported back on a real
+post-rebuild connect attempt with both fixes in place as of this doc).
+Also still outstanding, asked twice, never answered: whether the user's
+own uncommitted-at-the-time (now presumably committed, not re-checked)
+removal of the `"OnDemand"` status case from `coel-vpn-status`'s parsing
+was intentional — flagged as a possible regression (would read "unknown"
+instead of "connected" if GP ever reports that mode). And a separate,
+never-revisited thread: connecting to LUC's GlobalProtect was reported to
+break this Claude Code session's own network connectivity — hypothesized
+as full-tunnel-by-design (distinct from an already-fixed, genuine local-
+subnet route-hijack bug), never actually diagnosed since it can't be
+tested from inside the session it breaks.
+
+## Immediate next steps
+
+**The user's own stated next focus** (from the most recent commit
+message): **a new lockscreen and login screen** — not more launcher/tray
+work. Treat that as the priority unless told otherwise.
+
+Genuinely open threads from the work above, in rough likely-relevance
+order:
+1. Live-test the tray dropdown end-to-end against a real menu click (does
+   `entry.triggered()` actually perform the real action?) and confirm the
+   340px width is enough for whatever else shows up in real tray menus
+   beyond Steam's.
+2. Live-test a real GlobalProtect connect attempt now that both the
+   capability fix and `Restart = "always"` are in place — the underlying
+   cause of the "already established"/interface-setup failure was
+   root-caused and fixed, but never confirmed working end-to-end
+   afterward.
+3. Decide (asked twice already) whether to revert the `"OnDemand"` status
+   case removal in `coel-vpn-status`.
+4. Decide whether to retire/repoint `coel-emoji-picker` now that emoji
+   search is native to the launcher (unchanged open question from before).
+5. The `Border.qml` `bgColor`-as-`borderColor` binding in `shell.qml` is
+   *not* a bug — user confirmed live the opaque border is intentional,
+   already settled, don't revisit.
