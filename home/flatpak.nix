@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}:
+{ ... }:
 
 {
   services.flatpak = {
@@ -16,6 +11,7 @@
       "org.vinegarhq.Sober"
       "com.bambulab.BambuStudio"
       "com.orcaslicer.OrcaSlicer"
+      "com.modrinth.ModrinthApp"
     ];
   };
 }

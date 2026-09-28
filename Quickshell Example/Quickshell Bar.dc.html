@@ -820,7 +820,10 @@
 
           <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#61afef" stroke-width="2.4" stroke-linecap="round" style="flex:none;"><path d="M19 7.5A8 8 0 1 0 20 12h-8"></path><path d="M16 12a4 4 0 1 1-4-4"></path></svg>
-            <input ref="{{ menuRef }}" value="{{ menuQuery }}" onChange="{{ menuOnQuery }}" placeholder="search, or calculate — sqrt16, log(2)(8), 5!" spellcheck="false" style="flex:1;min-width:0;background:transparent;border:0;color:#abb2bf;font:inherit;font-size:18px;padding:0;outline:none;caret-color:#61afef;"></input>
+            <sc-if value="{{ menuHasMode }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;align-items:center;gap:5px;flex:none;border:1px solid #404754;border-radius:6px;padding:1px 8px;color:#61afef;background:#2f343e;"><i class="{{ menuMode.icon }}" style="font-size:13px;"></i>{{ menuMode.label }}</span>
+            </sc-if>
+            <input ref="{{ menuRef }}" value="{{ menuQuery }}" onChange="{{ menuOnQuery }}" placeholder="search, calculate, convert — 5 km to mi" spellcheck="false" style="flex:1;min-width:0;background:transparent;border:0;color:#abb2bf;font:inherit;font-size:18px;padding:0;outline:none;caret-color:#61afef;"></input>
             <span style="color:#5c6370;white-space:nowrap;">{{ menuCountLabel }}</span>
           </div>
 
@@ -828,7 +831,7 @@
             <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 10px;">
               <sc-for list="{{ menuCats }}" as="c" hint-placeholder-count="6">
                 <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:6px;border:0;border-radius:6px;background:{{ c.bg }};color:{{ c.color }};cursor:pointer;padding:2px 10px;" style-hover="background:#353b45;color:#abb2bf;">
-                  <i class="{{ c.icon }}" style="font-size:13px;color:{{ c.iconColor }};"></i>{{ c.label }}
+                  <i class="{{ c.icon }}" style="font-size:13px;color:{{ c.iconColor }};"></i>{{ c.label }}<span style="color:#5c6370;">{{ c.prefix }}</span>
                 </button>
               </sc-for>
             </div>
@@ -856,9 +859,9 @@
                 </sc-if>
               </div>
 
-              <div style="border-left:1px solid #404754;padding:18px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;background:#262a31;">
+              <div style="border-left:1px solid #404754;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;overflow-y:auto;scrollbar-width:none;background:#262a31;">
                 <sc-if value="{{ mpHas }}" hint-placeholder-val="{{ true }}">
-                  <span style="width:52px;height:52px;display:grid;place-items:center;border-radius:12px;background:#2f343e;border:1px solid #404754;"><i class="{{ mp.icon }}" style="font-size:26px;color:{{ mp.iconColor }};"></i></span>
+                  <span style="width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:10px;background:#2f343e;border:1px solid #404754;"><i class="{{ mp.icon }}" style="font-size:21px;color:{{ mp.iconColor }};"></i></span>
                   <div style="min-width:0;">
                     <div style="color:#abb2bf;font-size:15px;font-weight:500;overflow-wrap:anywhere;">{{ mp.label }}</div>
                     <div style="color:#5c6370;overflow-wrap:anywhere;">{{ mp.sub }}</div>
@@ -866,11 +869,16 @@
                   <div style="height:1px;background:#404754;"></div>
                   <div style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:3px 10px;">
                     <sc-for list="{{ mp.rows }}" as="kv" hint-placeholder-count="3">
-                      <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:{{ kv.c }};overflow-wrap:anywhere;">{{ kv.v }}</span>
+                      <span style="color:#5c6370;">{{ kv.k }}</span><span style="color:{{ kv.c }};overflow-wrap:anywhere;white-space:pre-wrap;">{{ kv.v }}</span>
                     </sc-for>
                   </div>
                   <div style="flex:1;"></div>
-                  <div style="display:flex;align-items:center;gap:8px;"><span style="border:1px solid #404754;border-radius:4px;padding:0 6px;color:#e5c07b;">⏎</span><span style="color:{{ mp.actColor }};">{{ mp.action }}</span></div>
+                  <div style="display:flex;flex-direction:column;gap:5px;">
+                    <div style="display:flex;align-items:center;gap:8px;"><span style="border:1px solid #404754;border-radius:4px;padding:0 6px;color:#e5c07b;">⏎</span><span style="color:{{ mp.actColor }};">{{ mp.action }}</span></div>
+                    <sc-for list="{{ mp.alts }}" as="a" hint-placeholder-count="0">
+                      <div style="display:flex;align-items:center;gap:8px;"><span style="border:1px solid #404754;border-radius:4px;padding:0 6px;color:#e5c07b;">{{ a.k }}</span><span style="color:#7f848e;">{{ a.l }}</span></div>
+                    </sc-for>
+                  </div>
                 </sc-if>
               </div>
             </div>
@@ -917,7 +925,7 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;clockFormat&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Day @ 12h&quot;,&quot;Day @ 24h&quot;,&quot;Date · 12h&quot;],&quot;default&quot;:&quot;Day @ 12h&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;numbers&quot;,&quot;dots&quot;],&quot;default&quot;:&quot;numbers&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;workspaceCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:3,&quot;max&quot;:9,&quot;default&quot;:5,&quot;tsType&quot;:&quot;number&quot;},&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:24,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:8,&quot;tsType&quot;:&quot;number&quot;},&quot;cornerRadius&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:32,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;activeUnderline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
 class Component extends DCLogic {
   state = {
-    active: 2, occupied: [1, 2, 3, 4, 5], now: new Date(), cpu: 1, muted: false, ...this.sysSeed(), ...this.pwrSeed(), menuOpen: true, menuQuery: '', menuCat: 0, menuSel: 0, menuView: null, menuArmed: null, menuMsg: '', menuSwatch: null, menuAns: 0, theme: 'one dark', mt: { dnd: false, night: true, awake: false }, calOpen: false, calY: new Date().getFullYear(), calM: new Date().getMonth(), calSel: this.dkey(new Date()), calFocus: 'cal', tdSel: 0, tdDraft: '', todos: this.seedTodos(),
+    active: 2, occupied: [1, 2, 3, 4, 5], now: new Date(), cpu: 1, muted: false, ...this.sysSeed(), ...this.pwrSeed(), menuOpen: true, menuQuery: '', menuCat: 0, menuSel: 0, menuView: null, menuArmed: null, menuMsg: '', menuSwatch: null, menuAns: 0, snipInline: true, vaultLocked: false, clipClear: null, theme: 'one dark', mt: { dnd: false, night: true, awake: false }, calOpen: false, calY: new Date().getFullYear(), calM: new Date().getMonth(), calSel: this.dkey(new Date()), calFocus: 'cal', tdSel: 0, tdDraft: '', todos: this.seedTodos(),
     audioOpen: false, aView: 'devices', aFocus: 'out', aOutSel: 0, aInSel: 0, aCardSel: 0, level: 0.3, defSink: 57, defSource: 64,
     sinks: [
       { id: 48, name: 'Built-in Speakers', node: 'alsa_output.pci-0000_00_1f.3.analog-stereo', card: 0, vol: 62, mute: false, req: null },
@@ -988,7 +996,141 @@ class Component extends DCLogic {
     const all = { netOpen: false, btOpen: false, audioOpen: false, calOpen: false, sysOpen: false, pwrOpen: false, menuOpen: false };
     this.setState({ ...all, [key]: true, menuQuery: '', menuView: null });
   }
-  menuCmd(cmd, extra) { this.setState({ menuMsg: `→ ${cmd}`, menuArmed: null, menuSwatch: null, ...(extra || {}) }); }
+  menuCmd(cmd, extra) { this.setState({ menuMsg: '→ ' + cmd, menuArmed: null, menuSwatch: null, clipClear: null, ...(extra || {}) }); }
+  menuFill(str) { this.setState({ menuQuery: str, menuSel: 0, menuMsg: '', menuArmed: null }); setTimeout(() => this.menuRef && this.menuRef.current && this.menuRef.current.focus(), 0); }
+  clipSeed() {
+    return [
+      { id: 118, t: 'code', v: 'paru -S quickshell-git', ago: 'now' },
+      { id: 117, t: 'url', v: 'https://quickshell.outfoxxed.me/docs/types/', ago: '4m' },
+      { id: 116, t: 'color', v: '#d19a66', ago: '12m' },
+      { id: 115, t: 'image', v: 'screenshot 1280×720.png', ago: '25m', size: '184 KB' },
+      { id: 114, t: 'code', v: 'hyprctl dispatch workspace 3', ago: '1h' },
+      { id: 113, t: 'text', v: 'Standup moved to Thursday 10:30, same room.', ago: '2h' },
+      { id: 112, t: 'code', v: 'export QS_CONFIG=~/.config/quickshell', ago: '3h' },
+    ];
+  }
+  snipSeed() {
+    const n = this.state.now, p = x => String(x).padStart(2, '0'), d = n.getFullYear() + '-' + p(n.getMonth() + 1) + '-' + p(n.getDate());
+    return [
+      { k: 'sig', name: 'Email signature', body: '—\nCoel\ncoel.dev · @coel' },
+      { k: 'email', name: 'Email address', body: 'hello@coel.dev' },
+      { k: 'date', name: 'Today', body: d },
+      { k: 'now', name: 'Timestamp', body: d + ' ' + p(n.getHours()) + ':' + p(n.getMinutes()) },
+      { k: 'meet', name: 'Meeting link', body: 'https://meet.coel.dev/standup' },
+      { k: 'lgtm', name: 'Review approve', body: 'Looks good to me, approving.' },
+      { k: 'shrug', name: 'Shrug', body: '¯\\_(ツ)_/¯' },
+    ];
+  }
+  vaultSeed() {
+    return [
+      { name: 'GitHub', user: 'coel-dev', url: 'github.com', otp: true, icon: 'ph ph-github-logo' },
+      { name: 'Proton Mail', user: 'hello@coel.dev', url: 'account.proton.me', otp: true, icon: 'ph ph-envelope-simple' },
+      { name: 'AUR', user: 'coel', url: 'aur.archlinux.org', otp: false, icon: 'ph ph-package' },
+      { name: 'Hetzner Cloud', user: 'coel@coel.dev', url: 'console.hetzner.cloud', otp: true, icon: 'ph ph-cloud' },
+      { name: 'Tailscale', user: 'coel-dev (github sso)', url: 'login.tailscale.com', otp: false, icon: 'ph ph-network' },
+      { name: 'Discord', user: 'coel', url: 'discord.com', otp: true, icon: 'ph ph-discord-logo' },
+      { name: 'Router admin', user: 'admin', url: '192.168.1.1', otp: false, icon: 'ph ph-router' },
+    ];
+  }
+  otp(name) {
+    const t = this.state.now.getTime(), step = Math.floor(t / 30000);
+    let h = 2166136261; for (const ch of name + step) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const n = String(Math.abs(h) % 1000000).padStart(6, '0');
+    return { code: n.slice(0, 3) + ' ' + n.slice(3), left: 30 - Math.floor(t / 1000) % 30 };
+  }
+  sshSeed() {
+    return [
+      { alias: 'homelab', host: '192.168.1.20', user: 'coel', port: 22, key: 'id_ed25519' },
+      { alias: 'nas', host: 'nas.lan', user: 'admin', port: 2222, key: 'id_ed25519' },
+      { alias: 'vps', host: 'vps.coel.dev', user: 'root', port: 22, key: 'id_hetzner' },
+      { alias: 'build', host: '10.0.4.12', user: 'ci', port: 22, key: 'id_ci', via: 'vps' },
+      { alias: 'pi', host: 'raspberrypi.local', user: 'pi', port: 22, key: 'id_ed25519' },
+      { alias: 'aur', host: 'aur.archlinux.org', user: 'aur', port: 22, key: 'id_aur' },
+    ];
+  }
+  bangs() {
+    return [
+      { k: 'g', name: 'Google', url: 'https://www.google.com/search?q=', icon: 'ph ph-google-logo' },
+      { k: 'ddg', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=', icon: 'ph ph-magnifying-glass' },
+      { k: 'yt', name: 'YouTube', url: 'https://www.youtube.com/results?search_query=', icon: 'ph ph-youtube-logo' },
+    ];
+  }
+  bangItem(b) {
+    return {
+      label: b.name, sub: '!' + b.k + ' <query>', icon: b.icon, right: '!' + b.k, rightColor: '#e5c07b',
+      rows: [{ k: 'bang', v: '!' + b.k + ' <query>', c: '#e5c07b' }, { k: 'opens', v: b.url + '…', c: '#7f848e' }],
+      action: 'start a ' + b.name + ' search', run: () => this.menuFill('!' + b.k + ' '),
+    };
+  }
+  webList(rest, cat) {
+    const B = this.bangs(), m = rest.match(/^(\S*)\s*(.*)$/), key = (m[1] || '').toLowerCase(), term = (m[2] || '').trim();
+    const mk = (x, t) => {
+      const u = x.url + encodeURIComponent(t), cmd = 'xdg-open "' + u + '"';
+      return {
+        label: t, sub: 'search ' + x.name, icon: x.icon, right: '!' + x.k, rightColor: '#7f848e', cat: cat || 'web', cmd,
+        rows: [{ k: 'engine', v: x.name, c: '#abb2bf' }, { k: 'query', v: t, c: '#abb2bf' }, { k: 'runs', v: cmd, c: '#7f848e' }],
+        action: 'open in browser', run: () => this.menuCmd(cmd),
+      };
+    };
+    const b = B.find(x => x.k === key);
+    if (b && term) return [mk(b, term), ...B.filter(x => x !== b).map(x => mk(x, term))];
+    const hits = B.filter(x => !key || x.k.startsWith(key) || x.name.toLowerCase().startsWith(key)).map(x => ({ ...this.bangItem(x), cat: 'web' }));
+    return hits.length || !rest ? hits : B.map(x => mk(x, rest));
+  }
+  convEval(raw) {
+    if (!raw || raw.length > 60) return null;
+    const U = {
+      length: { mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344, nmi: 1852 },
+      mass: { mg: 1e-6, g: 0.001, kg: 1, t: 1000, oz: 0.028349523125, lb: 0.45359237, st: 6.35029318 },
+      data: { b: 1, kb: 1e3, mb: 1e6, gb: 1e9, tb: 1e12, kib: 1024, mib: 1048576, gib: 1073741824, tib: 1099511627776 },
+      time: { ms: 0.001, s: 1, min: 60, h: 3600, d: 86400, wk: 604800, yr: 31557600 },
+      speed: { 'm/s': 1, kmh: 1 / 3.6, mph: 0.44704, kn: 0.514444 },
+      volume: { ml: 0.001, l: 1, tsp: 0.00492892, tbsp: 0.0147868, floz: 0.0295735, cup: 0.24, pt: 0.473176, gal: 3.78541 },
+      currency: { usd: 1, eur: 1 / 0.92, gbp: 1 / 0.78, jpy: 1 / 147.2, cad: 1 / 1.36, aud: 1 / 1.51, chf: 1 / 0.88, sek: 1 / 10.6, dkk: 1 / 6.86, inr: 1 / 83.4 },
+      temp: { c: 1, f: 1, k: 1 },
+    };
+    const A = { kilometer: 'km', kilometers: 'km', kilometre: 'km', kilometres: 'km', meter: 'm', meters: 'm', metre: 'm', metres: 'm', centimeter: 'cm', centimeters: 'cm', millimeter: 'mm', millimeters: 'mm', inch: 'in', inches: 'in', '"': 'in', foot: 'ft', feet: 'ft', "'": 'ft', yard: 'yd', yards: 'yd', mile: 'mi', miles: 'mi',
+      gram: 'g', grams: 'g', kilo: 'kg', kilos: 'kg', kilogram: 'kg', kilograms: 'kg', pound: 'lb', pounds: 'lb', lbs: 'lb', ounce: 'oz', ounces: 'oz', stone: 'st', tonne: 't', tonnes: 't',
+      celsius: 'c', '°c': 'c', fahrenheit: 'f', '°f': 'f', kelvin: 'k', byte: 'b', bytes: 'b',
+      sec: 's', secs: 's', second: 's', seconds: 's', mins: 'min', minute: 'min', minutes: 'min', hr: 'h', hrs: 'h', hour: 'h', hours: 'h', day: 'd', days: 'd', week: 'wk', weeks: 'wk', year: 'yr', years: 'yr',
+      mps: 'm/s', 'km/h': 'kmh', kph: 'kmh', knot: 'kn', knots: 'kn', liter: 'l', liters: 'l', litre: 'l', litres: 'l', cups: 'cup', gallon: 'gal', gallons: 'gal', dollar: 'usd', dollars: 'usd', euro: 'eur', euros: 'eur', yen: 'jpy' };
+    const DEF = { km: 'mi', mi: 'km', m: 'ft', ft: 'm', cm: 'in', in: 'cm', mm: 'in', yd: 'm', kg: 'lb', lb: 'kg', g: 'oz', oz: 'g', st: 'kg', c: 'f', f: 'c', k: 'c', gb: 'gib', gib: 'gb', mb: 'mib', mib: 'mb', tb: 'tib', tib: 'tb', l: 'gal', gal: 'l', ml: 'floz', floz: 'ml', cup: 'ml', kmh: 'mph', mph: 'kmh', 'm/s': 'kmh', kn: 'kmh', h: 'min', min: 's', d: 'h', wk: 'd', yr: 'd', s: 'ms', usd: 'eur', eur: 'usd' };
+    const canon = u => { u = A[u] || u; for (const d in U) if (u in U[d]) return { u, d }; return null; };
+    let s = raw.toLowerCase().replace(/[$€£¥]/g, m => ' ' + { '$': 'usd', '€': 'eur', '£': 'gbp', '¥': 'jpy' }[m] + ' ').replace(/,/g, '').replace(/\s+/g, ' ').trim();
+    let m = s.match(/^([a-z]+) (-?\d*\.?\d+(?:e-?\d+)?)(.*)$/);
+    if (m && canon(m[1]) && canon(m[1]).d === 'currency') s = m[2] + ' ' + m[1] + m[3];
+    m = s.match(/^(-?\d*\.?\d+(?:e-?\d+)?) ?([a-z°"'\/]+)(?: (?:to|in|as|->|→) ?([a-z°"'\/]+)?)?$/);
+    if (!m) return null;
+    const n = parseFloat(m[1]), from = canon(m[2]);
+    if (!from || !isFinite(n)) return null;
+    let to = m[3] ? canon(m[3]) : null;
+    if (m[3] && (!to || to.d !== from.d)) return null;
+    if (!to) { const du = DEF[from.u] || (from.d === 'currency' ? 'usd' : Object.keys(U[from.d]).find(x => x !== from.u)); to = { u: du, d: from.d }; }
+    const T = { c: [v => v, v => v], f: [v => (v - 32) * 5 / 9, v => v * 9 / 5 + 32], k: [v => v - 273.15, v => v + 273.15] };
+    const cv = (v, a, b) => from.d === 'temp' ? T[b][1](T[a][0](v)) : v * U[from.d][a] / U[from.d][b];
+    const name = u => ({ c: '°C', f: '°F', k: 'K', kmh: 'km/h', floz: 'fl oz' })[u] || (from.d === 'currency' ? u.toUpperCase() : u);
+    const fmt = (v, u) => {
+      const a = Math.abs(v);
+      if (from.d === 'currency') return v.toLocaleString('en-US', { minimumFractionDigits: u === 'jpy' ? 0 : 2, maximumFractionDigits: u === 'jpy' ? 0 : 2 });
+      if (a !== 0 && (a < 1e-4 || a >= 1e12)) return v.toExponential(3);
+      return (+v.toPrecision(6)).toLocaleString('en-US', { maximumFractionDigits: a < 1 ? 6 : 4 });
+    };
+    const out = cv(n, from.u, to.u), outS = fmt(out, to.u) + ' ' + name(to.u), rawOut = String(+out.toPrecision(10));
+    const rows = [{ k: 'from', v: fmt(n, from.u) + ' ' + name(from.u), c: '#abb2bf' }, { k: 'to', v: outS, c: '#e5c07b' }];
+    if (from.d === 'currency') rows.push({ k: 'rate', v: '1 ' + name(from.u) + ' = ' + (U.currency[from.u] / U.currency[to.u]).toFixed(4) + ' ' + name(to.u), c: '#7f848e' }, { k: 'source', v: 'ECB · today 09:00', c: '#5c6370' });
+    else if (from.d === 'temp') rows.push({ k: 'also', v: Object.keys(U.temp).filter(x => x !== from.u && x !== to.u).map(x => fmt(cv(n, from.u, x), x) + ' ' + name(x)).join(' · '), c: '#7f848e' });
+    else Object.keys(U[from.d]).filter(x => x !== from.u && x !== to.u).slice(0, 3).forEach((x, i) => rows.push({ k: i ? '' : 'also', v: fmt(cv(n, from.u, x), x) + ' ' + name(x), c: '#7f848e' }));
+    rows.push({ k: 'copies', v: rawOut, c: '#7f848e' });
+    return {
+      label: '= ' + outS, sub: fmt(n, from.u) + ' ' + name(from.u) + ' → ' + name(to.u), icon: 'ph ph-arrows-left-right', iconColor: null, cat: 'convert · ' + from.d, top: true, conv: true,
+      rows, action: 'copy result', cmd: 'wl-copy ' + rawOut, run: () => this.menuCmd('wl-copy ' + rawOut + '  ·  copied'),
+    };
+  }
+  menuPrefix(raw) {
+    for (const [p, id] of [[';', 'snippets'], ['*', 'vault'], ['@', 'ssh'], ['!', 'web'], [':', 'clipboard']]) if (raw.startsWith(p)) return { id, rest: raw.slice(p.length).trim() };
+    const m = raw.match(/^ssh\s+(.*)$/i);
+    return m ? { id: 'ssh', rest: m[1].trim() } : null;
+  }
   menuData() {
     const s = this.state, on = v => v ? { right: '[on]', rightColor: '#89ca78' } : { right: '[off]', rightColor: '#5c6370' };
     const mt = k => this.setState(st => ({ mt: { ...st.mt, [k]: !st.mt[k] } }));
@@ -1010,14 +1152,6 @@ class Component extends DCLogic {
         { label: 'Music', sub: 'spotify-player', icon: 'ph ph-music-notes', right: 'super+m', cmd: 'kitty -e spotify_player', run: () => this.menuCmd('kitty -e spotify_player') },
         { label: 'App launcher', sub: 'all applications', icon: 'ph ph-squares-four', right: 'super+space', cmd: 'fuzzel', run: () => this.menuCmd('fuzzel') },
       ] },
-      { id: 'panels', label: 'panels', icon: 'ph ph-sidebar-simple', items: [
-        { label: 'Network', sub: s.hs.on ? 'hotspot' : s.current || 'offline', icon: 'ph ph-wifi-high', right: 'super+w', run: () => this.menuOpenPanel('netOpen') },
-        { label: 'Bluetooth', sub: s.btPower ? `${btConn} connected` : 'off', icon: 'ph ph-bluetooth', right: 'super+shift+b', run: () => this.menuOpenPanel('btOpen') },
-        { label: 'Audio', sub: sink.mute ? 'muted' : `${sink.name} · ${sink.vol}%`, icon: 'ph ph-speaker-simple-high', right: 'super+a', run: () => this.menuOpenPanel('audioOpen') },
-        { label: 'Power', sub: `${Math.round(s.bat)}% · ${s.profile}`, icon: 'ph ph-battery-high', right: 'super+p', run: () => this.menuOpenPanel('pwrOpen') },
-        { label: 'System monitor', sub: `cpu ${s.cpu}%`, icon: 'ph ph-cpu', right: 'ctrl+shift+esc', run: () => this.menuOpenPanel('sysOpen') },
-        { label: 'Calendar & todo', sub: todayOpen ? `${todayOpen} open today` : 'all done', icon: 'ph ph-calendar-blank', right: 'super+c', run: () => this.menuOpenPanel('calOpen') },
-      ] },
       { id: 'toggles', label: 'toggles', icon: 'ph ph-toggle-right', items: [
         { label: 'Wi‑Fi', sub: s.current || '', icon: 'ph ph-wifi-high', ...on(!!s.current), run: () => this.setState(st => ({ current: st.current ? null : 'LUC' })) },
         { label: 'Bluetooth', sub: '', icon: 'ph ph-bluetooth', ...on(s.btPower), run: () => this.setState(st => ({ btPower: !st.btPower })) },
@@ -1035,16 +1169,77 @@ class Component extends DCLogic {
         { label: 'Color picker', sub: 'hex → clipboard', icon: 'ph ph-eyedropper', right: 'super+shift+c', cmd: 'hyprpicker -a', run: () => this.menuCmd('hyprpicker -a  ·  copied #d19a66', { menuSwatch: '#d19a66' }) },
         { label: 'Text from region', sub: 'ocr → clipboard', icon: 'ph ph-text-aa', right: '', cmd: 'grim -g "$(slurp)" - | tesseract - - | wl-copy', run: () => this.menuCmd('grim -g "$(slurp)" - | tesseract - - | wl-copy') },
       ] },
-      { id: 'style', label: 'style', icon: 'ph ph-palette', items: [
-        ...themes.map(t => ({ label: t, sub: t === 'one dark' ? 'current bar palette' : '', icon: 'ph ph-swatches', right: s.theme === t ? '(•)' : '( )', rightColor: s.theme === t ? '#e5c07b' : '#5c6370', cmd: `coel-theme set "${t}"`, run: () => this.menuCmd(`coel-theme set "${t}"`, { theme: t }) })),
-        { label: 'Next wallpaper', sub: 'swww', icon: 'ph ph-image', right: 'super+shift+space', cmd: 'swww img "$(coel-wall next)" --transition-type grow', run: () => this.menuCmd('swww img "$(coel-wall next)" --transition-type grow') },
-        { label: 'Edit bar config', sub: '~/.config/quickshell', icon: 'ph ph-sliders-horizontal', right: '', cmd: 'kitty -e nvim ~/.config/quickshell/shell.qml', run: () => this.menuCmd('kitty -e nvim ~/.config/quickshell/shell.qml') },
+      { id: 'clipboard', label: 'clipboard', prefix: ':', icon: 'ph ph-clipboard-text', items: [
+        ...this.clipSeed().map(c => {
+          const icon = { text: 'ph ph-text-align-left', url: 'ph ph-link', color: 'ph ph-palette', image: 'ph ph-image', code: 'ph ph-code' }[c.t];
+          const cmd = 'cliphist decode ' + c.id + ' | wl-copy';
+          return {
+            label: c.v, sub: c.t, icon, iconColor: c.t === 'color' ? c.v : null, right: c.ago, rightColor: '#5c6370', cmd,
+            rows: [{ k: 'type', v: c.t, c: '#abb2bf' }, { k: 'copied', v: c.ago === 'now' ? 'just now' : c.ago + ' ago', c: '#abb2bf' }, { k: 'size', v: c.size || c.v.length + ' chars', c: '#7f848e' }, { k: 'runs', v: cmd, c: '#7f848e' }],
+            action: 'copy to clipboard', alts: [{ k: '⇧⏎', l: 'paste into window' }],
+            run: () => this.menuCmd(cmd, c.t === 'color' ? { menuSwatch: c.v } : {}),
+            runShift: () => this.menuCmd(cmd + ' && wtype -M ctrl v -m ctrl'),
+          };
+        }),
+        sess('clipwipe', 'Clear history', 'ph ph-trash', 'cliphist wipe'),
+      ] },
+      { id: 'snippets', label: 'snippets', prefix: ';', icon: 'ph ph-text-t', items: [
+        ...this.snipSeed().map(sn => {
+          const cmd = 'espanso match exec -t ;' + sn.k;
+          return {
+            key: sn.k, label: sn.name, sub: sn.body.replace(/\n/g, ' ⏎ '), icon: 'ph ph-text-t', right: ';' + sn.k, rightColor: '#e5c07b', cmd,
+            rows: [{ k: 'text', v: sn.body, c: '#abb2bf' }, { k: 'inline', v: s.snipInline ? 'type ;' + sn.k + ' anywhere' : 'off', c: s.snipInline ? '#89ca78' : '#5c6370' }, { k: 'runs', v: cmd, c: '#7f848e' }],
+            action: 'paste into window', alts: [{ k: '⇧⏎', l: 'copy only' }],
+            run: () => this.menuCmd(cmd + '  ·  pasted'),
+            runShift: () => this.menuCmd('wl-copy  ·  copied ;' + sn.k),
+          };
+        }),
+        { label: 'Inline expansion', sub: 'expand ;trigger in any app', icon: 'ph ph-lightning', ...on(s.snipInline), cmd: s.snipInline ? 'espanso stop' : 'espanso start', run: () => this.setState(st => ({ snipInline: !st.snipInline, menuMsg: '→ ' + (st.snipInline ? 'espanso stop' : 'espanso start') })) },
+        { label: 'Edit snippets', sub: 'espanso match file', icon: 'ph ph-pencil-simple', right: '', cmd: 'kitty -e nvim ~/.config/espanso/match/base.yml', run: () => this.menuCmd('kitty -e nvim ~/.config/espanso/match/base.yml') },
+      ] },
+      { id: 'vault', label: 'vault', prefix: '*', icon: 'ph ph-password', items: s.vaultLocked ? [
+        { label: 'Unlock vault', sub: 'rbw · bitwarden', icon: 'ph ph-lock-key-open', right: 'locked', rightColor: '#e5c07b', cmd: 'rbw unlock', action: 'unlock (pinentry)', run: () => this.setState({ vaultLocked: false, menuMsg: '→ rbw unlock  ·  vault unlocked', menuArmed: null }) },
+      ] : [
+        ...this.vaultSeed().map(v => {
+          const o = v.otp ? this.otp(v.name) : null, ttl = { at: Date.now() + 45000 };
+          const rows = [{ k: 'user', v: v.user, c: '#abb2bf' }, { k: 'pass', v: '•••••••••••• · 45s clear', c: '#7f848e' }, { k: 'url', v: v.url, c: '#7f848e' }];
+          if (o) rows.push({ k: 'otp', v: o.code + '  ·  ' + o.left + 's', c: o.left <= 5 ? '#ef596f' : '#e5c07b' });
+          return {
+            label: v.name, sub: v.user, icon: v.icon, right: v.otp ? 'otp' : '', rightColor: '#5c6370', cmd: 'rbw get "' + v.name + '" | wl-copy',
+            rows, action: 'copy password', alts: [{ k: '⇧⏎', l: 'copy username' }, ...(o ? [{ k: 'ctrl⏎', l: 'copy otp code' }] : [])],
+            run: () => this.menuCmd('rbw get "' + v.name + '" | wl-copy', { clipClear: { ...ttl, what: 'password copied · ' + v.name } }),
+            runShift: () => this.menuCmd('rbw get --field username "' + v.name + '"  ·  copied ' + v.user),
+            runCtrl: () => o ? this.menuCmd('rbw code "' + v.name + '" | wl-copy', { clipClear: { ...ttl, what: 'otp ' + o.code + ' copied · ' + v.name } }) : this.setState({ menuMsg: 'no otp stored for ' + v.name }),
+          };
+        }),
+        { label: 'Sync vault', sub: 'rbw sync', icon: 'ph ph-arrows-clockwise', right: 'synced 3m ago', rightColor: '#5c6370', cmd: 'rbw sync', run: () => this.menuCmd('rbw sync  ·  up to date') },
+        { label: 'Lock vault', sub: 'rbw lock', icon: 'ph ph-lock', right: '', cmd: 'rbw lock', run: () => this.setState({ vaultLocked: true, menuSel: 0, clipClear: null, menuMsg: '→ rbw lock  ·  vault locked' }) },
+      ] },
+      { id: 'ssh', label: 'ssh', prefix: '@', icon: 'ph ph-terminal', items: [
+        ...this.sshSeed().map(x => {
+          const cmd = 'kitty +kitten ssh ' + x.alias;
+          const rows = [{ k: 'host', v: x.host, c: '#abb2bf' }, { k: 'user', v: x.user, c: '#abb2bf' }, { k: 'port', v: String(x.port), c: '#7f848e' }, { k: 'key', v: '~/.ssh/' + x.key, c: '#7f848e' }];
+          if (x.via) rows.push({ k: 'via', v: x.via, c: '#e5c07b' });
+          rows.push({ k: 'runs', v: cmd, c: '#7f848e' });
+          return {
+            key: x.alias, label: x.alias, sub: x.user + '@' + x.host, icon: 'ph ph-hard-drives', right: x.via ? 'via ' + x.via : ':' + x.port, rightColor: '#5c6370', cmd, rows,
+            action: 'connect in kitty', alts: [{ k: '⇧⏎', l: 'copy ssh command' }],
+            run: () => this.menuCmd(cmd), runShift: () => this.menuCmd('wl-copy "ssh ' + x.alias + '"  ·  copied'),
+          };
+        }),
+        { label: 'Edit ssh config', sub: '~/.ssh/config', icon: 'ph ph-pencil-simple', right: '', cmd: 'kitty -e nvim ~/.ssh/config', run: () => this.menuCmd('kitty -e nvim ~/.ssh/config') },
+      ] },
+      { id: 'web', label: 'web', prefix: '!', icon: 'ph ph-globe-simple', items: this.bangs().map(b => this.bangItem(b)) },
+      { id: 'convert', label: 'convert', icon: 'ph ph-arrows-left-right', items: [
+        ...[['5 km to mi', 'length'], ['72 f to c', 'temperature'], ['$120 to eur', 'currency'], ['2.5 gib in mb', 'data'], ['90 min to h', 'time'], ['100 kmh to mph', 'speed'], ['3 cups to ml', 'volume'], ['180 lb', 'bare unit → default']]
+          .map(([ex, d]) => ({ label: ex, sub: d, icon: 'ph ph-arrows-left-right', right: '', action: 'try it', run: () => this.menuFill(ex) })),
+        { label: 'Currency rates', sub: 'ECB reference', icon: 'ph ph-currency-circle-dollar', right: 'updated 09:00', rightColor: '#5c6370', cmd: 'curl -s ecb.europa.eu/…/eurofxref.xml', run: () => this.menuCmd('rates refreshed  ·  10 currencies') },
       ] },
       { id: 'math', label: 'math', icon: 'ph ph-function', items: [
         ...[['sqrt16', 'square root'], ['root(3)(27)', 'nth root'], ['log(2)(1024)', 'log base 2'], ['log_3 81', 'log with _base'], ['ln(e^2)', 'natural log'],
           ['5!', 'factorial'], ['ncr(10, 3)', 'combinations'], ['sin(30°)', 'trig in degrees'], ['2^10 + 3²', 'powers'], ['17 mod 5', 'modulo'],
           ['120 + 15%', 'percent of'], ['gcd(48, 18)', 'gcd / lcm'], ['|-4.5| * 2pi', 'abs, implicit ×'], ['ans / 2', 'last result']]
-          .map(([ex, d]) => ({ label: ex, sub: d, icon: 'ph ph-function', right: '', run: () => { this.setState({ menuQuery: ex, menuSel: 0, menuMsg: '' }); this.menuRef && this.menuRef.current && this.menuRef.current.focus(); } })),
+          .map(([ex, d]) => ({ label: ex, sub: d, icon: 'ph ph-function', right: '', run: () => this.menuFill(ex) })),
       ] },
       { id: 'system', label: 'system', icon: 'ph ph-gear-six', items: [
         { label: 'About this system', sub: '', icon: 'ph ph-info', right: '›', rightColor: '#5c6370', run: () => this.setState({ menuView: 'about', menuMsg: '' }) },
@@ -1280,6 +1475,19 @@ class Component extends DCLogic {
   menuList() {
     const s = this.state, cats = this.menuData(), raw = s.menuQuery.trim(), q = raw.toLowerCase();
     if (!q) { const c = cats[Math.min(s.menuCat, cats.length - 1)]; return { cats, list: c.items.map(it => ({ ...it, cat: c.label })) }; }
+    const pf = this.menuPrefix(raw);
+    if (pf) {
+      const c = cats.find(x => x.id === pf.id), r = pf.rest.toLowerCase();
+      let pl;
+      if (pf.id === 'web') pl = this.webList(pf.rest);
+      else {
+        pl = c.items.filter(it => !r || (it.label + ' ' + (it.sub || '') + ' ' + (it.key || '')).toLowerCase().includes(r)).map(it => ({ ...it, cat: c.label }));
+        const ex = pl.findIndex(it => it.key && it.key === r);
+        if (ex > 0) pl.unshift(pl.splice(ex, 1)[0]);
+      }
+      if (pl.length && r) pl[0] = { ...pl[0], top: true };
+      return { cats, list: pl, mode: c };
+    }
     let list = [];
     cats.forEach(c => c.items.forEach(it => {
       const l = it.label.toLowerCase(), hay = (l + ' ' + (it.sub || '') + ' ' + c.label).toLowerCase();
@@ -1288,13 +1496,16 @@ class Component extends DCLogic {
       list.push({ ...it, cat: c.label, score });
     }));
     if (list.length) { let bi = 0; list.forEach((x, i) => { if (x.score > list[bi].score) bi = i; }); list = [{ ...list[bi], top: true }, ...list.filter((_, i) => i !== bi)]; }
-    const c = this.calcEval(raw);
+    const cv = this.convEval(raw);
+    const c = cv ? null : this.calcEval(raw);
+    if (cv) list = [cv, ...list.map(x => ({ ...x, top: false }))];
     if (c) {
       list = [{
         label: '= ' + c.display, sub: c.pretty, icon: 'ph ph-calculator', cat: 'calculator', cmd: c.ok ? 'wl-copy ' + c.raw : '', top: true, calc: c,
         run: c.ok ? () => this.menuCmd('wl-copy ' + c.raw + '  ·  copied', { menuAns: c.value }) : () => this.setState({ menuMsg: c.reason, menuArmed: null }),
       }, ...list.map(x => ({ ...x, top: false }))];
     }
+    if (raw.length > 1 && !cv && !c) list.push({ ...this.webList('ddg ' + raw)[0], cat: 'web', top: !list.length });
     return { cats, list };
   }
   menuKey(e) {
@@ -1311,7 +1522,7 @@ class Component extends DCLogic {
       const d = k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey) ? -1 : 1;
       return this.setState({ menuCat: (s.menuCat + d + cats.length) % cats.length, menuSel: 0, menuArmed: null, menuMsg: '' });
     }
-    if (k === 'Enter') { e.preventDefault(); return list[i] && list[i].run(); }
+    if (k === 'Enter') { e.preventDefault(); const it = list[i]; if (!it) return; if (e.shiftKey && it.runShift) return it.runShift(); if ((e.ctrlKey || e.altKey) && it.runCtrl) return it.runCtrl(); return it.run(); }
     if (e.target !== inp && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); inp && inp.focus(); this.setState({ menuQuery: s.menuQuery + k, menuSel: 0 }); }
   }
   menuToggle() {
@@ -1320,22 +1531,22 @@ class Component extends DCLogic {
   menuVals() {
     const s = this.state, open = s.menuOpen;
     if (!this.menuRef) this.menuRef = React.createRef();
-    const { cats, list } = this.menuList(), q = !!s.menuQuery.trim(), ci = Math.min(s.menuCat, cats.length - 1), sel = Math.min(s.menuSel, list.length - 1);
+    const { cats, list, mode } = this.menuList(), q = !!s.menuQuery.trim(), ci = Math.min(s.menuCat, cats.length - 1), sel = Math.min(s.menuSel, list.length - 1);
     const about = s.menuView === 'about';
     const menuRows = [];
     let prevCat = null;
     list.forEach((it, i) => {
-      if (q) {
+      if (q && !mode) {
         if (it.top) menuRows.push({ isHeader: true, header: 'top hit' });
         else if (it.cat !== prevCat) { menuRows.push({ isHeader: true, header: it.cat }); prevCat = it.cat; }
       }
       const isSel = i === sel, big = q && it.top;
       menuRows.push({
-        isItem: true, label: it.label, sub: q && !big ? '' : (it.sub || ''), icon: it.icon,
+        isItem: true, label: it.label, sub: q && !big && !mode ? '' : (it.sub || ''), icon: it.icon,
         cols: big ? '36px minmax(0,1fr) auto' : '24px minmax(0,1fr) auto', pad: big ? '7px 10px' : '4px 10px',
         box: big ? '36px' : '24px', iconSize: big ? '19px' : '14px', labelSize: big ? '14px' : '12.5px',
         bg: isSel ? '#353b45' : 'transparent', iconBg: isSel ? '#404754' : big ? '#2f343e' : 'transparent',
-        iconColor: isSel ? (it.danger ? '#ef596f' : '#61afef') : '#7f848e', labelColor: isSel ? '#abb2bf' : '#9da5b4',
+        iconColor: it.iconColor || (isSel ? (it.danger ? '#ef596f' : '#61afef') : '#7f848e'), labelColor: isSel ? '#abb2bf' : '#9da5b4',
         right: it.right || '', rightColor: it.rightColor || '#5c6370',
         run: () => { this.setState({ menuSel: i }); it.run(); },
         hover: () => s.menuSel !== i && this.setState({ menuSel: i, menuMsg: '', menuArmed: null }),
@@ -1364,10 +1575,11 @@ class Component extends DCLogic {
         if (!c.ok) rows.push({ k: 'error', v: c.reason, c: '#ef596f' });
         if (c.ok) rows.push({ k: 'copies', v: c.raw, c: '#7f848e' });
       }
+      if (cur.rows) { rows.length = 0; rows.push(...cur.rows); }
       const armed = cur.danger && cur.right === 'confirm?';
       mp = {
-        icon: cur.icon, iconColor: cur.danger ? '#ef596f' : cur.calc ? '#e5c07b' : '#61afef', label: cur.label, sub: cur.calc ? 'calculator' : (cur.sub || ''), rows,
-        action: armed ? 'press again to confirm' : cur.cat === 'panels' ? 'open panel' : cur.cat === 'toggles' ? 'toggle' : cur.cat === 'calculator' ? (cur.calc && cur.calc.ok ? 'copy result · saves as ans' : 'nothing to copy') : cur.cat === 'math' ? 'try it' : /About/.test(cur.label) ? 'view' : cur.danger ? 'run (asks to confirm)' : 'run',
+        alts: armed ? [] : (cur.alts || []), icon: cur.icon, iconColor: cur.iconColor ? cur.iconColor : cur.danger ? '#ef596f' : cur.calc ? '#e5c07b' : '#61afef', label: cur.label, sub: cur.calc ? 'calculator' : (cur.sub || ''), rows,
+        action: armed ? 'press again to confirm' : cur.action ? cur.action : cur.cat === 'panels' ? 'open panel' : cur.cat === 'toggles' ? 'toggle' : cur.cat === 'calculator' ? (cur.calc && cur.calc.ok ? 'copy result · saves as ans' : 'nothing to copy') : cur.cat === 'math' ? 'try it' : /About/.test(cur.label) ? 'view' : cur.danger ? 'run (asks to confirm)' : 'run',
         actColor: armed ? '#ef596f' : '#abb2bf',
       };
     }
@@ -1380,14 +1592,15 @@ class Component extends DCLogic {
       toggleMenu: () => this.menuToggle(),
       closeMenu: () => this.setState({ menuOpen: false }),
       menuBtnBg: open ? '#404754' : 'transparent', menuBtnColor: open ? '#61afef' : '#abb2bf',
-      menuCrumb: about ? 'system › about' : q ? `search · ${list.length} result${list.length === 1 ? '' : 's'}` : cats[ci].label,
+      menuCrumb: about ? 'system › about' : mode ? mode.label : q ? `search · ${list.length} result${list.length === 1 ? '' : 's'}` : cats[ci].label,
       menuRef: this.menuRef, menuQuery: s.menuQuery,
       menuOnQuery: e => this.setState({ menuQuery: e.target.value, menuSel: 0, menuArmed: null, menuView: null }),
-      menuCountLabel: q ? `${list.length} result${list.length === 1 ? '' : 's'}` : 'ctrl k',
+      menuMode: mode ? { label: mode.label, icon: mode.icon } : { label: '', icon: '' }, menuHasMode: !!mode,
+      menuCountLabel: mode ? `${list.length} in ${mode.label}` : q ? `${list.length} result${list.length === 1 ? '' : 's'}` : 'ctrl k',
       menuCols: q || about ? 'minmax(0,1fr)' : '150px minmax(0,1fr)',
       menuShowCats: !q && !about, menuShowList: !about, menuShowAbout: about,
       menuCats: cats.map((c, i) => ({
-        label: c.label, icon: c.icon, count: c.items.length,
+        label: c.label, icon: c.icon, count: c.items.length, prefix: c.prefix || '',
         bg: i === ci ? '#2f343e' : 'transparent', color: i === ci ? '#abb2bf' : '#7f848e', iconColor: i === ci ? '#61afef' : '#5c6370',
         pick: () => { this.setState({ menuCat: i, menuSel: 0, menuArmed: null, menuMsg: '' }); this.menuRef.current && this.menuRef.current.focus(); },
       })),
@@ -1400,8 +1613,8 @@ class Component extends DCLogic {
         { k: 'disk /', v: `${sd.used}G / ${sd.total}G` }, { k: 'battery', v: `${Math.round(s.bat)}% · ${s.profile}` },
       ],
       aboutSwatches: ['#282c34', '#ef596f', '#89ca78', '#e5c07b', '#61afef', '#d55fde', '#2bbac5', '#abb2bf'],
-      menuMsg: s.menuMsg || (about ? 'system › about' : q ? `${list.length} results` : cats[ci].label),
-      menuMsgColor: s.menuMsg ? (s.menuArmed ? '#ef596f' : '#89ca78') : '#5c6370',
+      menuMsg: (() => { const cc = s.clipClear; if (!cc) return null; const left = Math.ceil((cc.at - s.now.getTime()) / 1000); return left > 0 ? cc.what + '  ·  clears in ' + left + 's' : 'clipboard cleared  ·  ' + cc.what.split(' · ').pop(); })() || s.menuMsg || (about ? 'system › about' : q ? `${list.length} results` : cats[ci].label),
+      menuMsgColor: s.clipClear ? (Math.ceil((s.clipClear.at - s.now.getTime()) / 1000) > 0 ? '#e5c07b' : '#5c6370') : s.menuMsg ? (s.menuArmed ? '#ef596f' : '#89ca78') : '#5c6370',
       menuHasSwatch: !!s.menuSwatch && !!s.menuMsg, menuSwatch: s.menuSwatch || 'transparent',
       menuHints: hints,
     };

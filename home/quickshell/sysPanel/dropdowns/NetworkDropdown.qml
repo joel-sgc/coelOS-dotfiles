@@ -493,6 +493,29 @@ Item {
   property bool gpBusy: false
   property string gpMfaPrompt: ""
   property string gpMfaInput: ""
+  // gp-connect.exp's own header comment: "raw client chatter goes to
+  // stderr" -- there was no stderr handler here at all, so every real
+  // diagnostic (which prompt actually failed, what the vendor CLI actually
+  // said) was silently discarded, leaving nothing to go on but a bare
+  // "auth-failed" with no way to tell *why*. Logged, not just stored,
+  // since debugging a failed connect attempt from the launcher's own log
+  // is more useful than nothing showing up in the UI until this gets a
+  // real display spot.
+  property string gpLastError: ""
+  // mfaInput's own `focus: true` (below, in the visual tree) only ever
+  // fires once, when that TextInput is first constructed -- it does not
+  // re-grab active focus every time its parent's `visible` flips true
+  // later, and dropdownRoot's own forceActiveFocus() calls elsewhere
+  // (popupOpen, Key_1/Key_2) win the focus scope in the meantime. Net
+  // effect without this: the prompt renders, but keystrokes -- including
+  // digits and Enter -- go to dropdownRoot's general Keys.onPressed
+  // instead of the input, so nothing you type ever reaches it. Deferred
+  // one tick via Qt.callLater so the RowLayout's own `visible` binding
+  // (also driven by gpMfaPrompt) has definitely settled first.
+  onGpMfaPromptChanged: Qt.callLater(function () {
+    if (dropdownRoot.gpMfaPrompt.length > 0) mfaInput.forceActiveFocus();
+    else dropdownRoot.forceActiveFocus();
+  })
   Process {
     id: gpStatusProc
     command: ["coel-vpn-status"]
@@ -517,19 +540,50 @@ Item {
         const state = line.slice("GP_STATUS:".length).trim();
         if (state === "mfa-required") {
           dropdownRoot.gpMfaPrompt = "enter MFA code";
+        } else if (state === "mfa-rejected") {
+          // gp-connect.exp falls straight back into its own mfa-required
+          // wait right after printing this (same expect loop) -- kept as
+          // its own prompt state, not cleared, so the prompt/input/focus
+          // don't flicker closed-then-immediately-reopen for what's really
+          // one continuous "still waiting on a code" wait from the user's
+          // side, just with feedback that the last one didn't work.
+          dropdownRoot.gpMfaPrompt = "code rejected, try again";
+          dropdownRoot.gpMfaInput = "";
         } else {
           dropdownRoot.gpMfaPrompt = "";
           dropdownRoot.gpStatus = state;
         }
       }
     }
+    stderr: StdioCollector {
+      onStreamFinished: {
+        dropdownRoot.gpLastError = text.trim();
+        if (dropdownRoot.gpLastError.length > 0) {
+          console.warn("coel-vpn-connect stderr:\n" + dropdownRoot.gpLastError);
+        }
+      }
+    }
     onExited: {
       dropdownRoot.gpBusy = false;
       dropdownRoot.gpMfaPrompt = "";
-      gpStatusProc.running = true;
+      gpStatusSettleTimer.restart();
     }
   }
+  // Real VPN connect/disconnect isn't instant even after the driving
+  // process exits (interface teardown/route changes take a moment) --
+  // confirmed directly: a manual `coel-vpn-disconnect` followed
+  // immediately by `coel-vpn-status` needed a real `sleep 1` in between to
+  // reliably report "disconnected" rather than stale "connected". Polling
+  // status in the very same tick `onExited` fires (the old behavior) could
+  // catch GP mid-teardown and report the pre-disconnect state, making a
+  // disconnect that actually worked look like it "did nothing" in the UI.
+  Timer {
+    id: gpStatusSettleTimer
+    interval: 1000
+    onTriggered: gpStatusProc.running = true
+  }
   function gpToggle() {
+    console.warn("gpToggle called: gpBusy=" + gpBusy + " gpStatus=" + gpStatus);
     if (gpBusy) return;
     if (gpStatus === "connected" || gpStatus === "connected-internal") {
       gpBusy = true;
@@ -541,10 +595,23 @@ Item {
       gpConnectProc.running = true;
     }
   }
+  // Escape while the MFA prompt is up cancels the in-flight connect
+  // attempt outright (Process.running = false sends SIGTERM, same
+  // "release by killing the child" pattern TogglesBackend's keep-awake
+  // inhibitor uses) rather than falling through to the dropdown's normal
+  // Escape handling, which would just close the popup -- gp-connect.exp
+  // would be left blocked on stdin for up to its own 300s mfa-timeout with
+  // nothing telling the user that's what's happening. onExited above
+  // still fires for a killed process, so gpBusy/gpMfaPrompt/status-refresh
+  // all clean up the same way a normal exit would.
+  function gpCancelMfa() {
+    if (gpMfaPrompt.length === 0) return;
+    gpConnectProc.running = false;
+  }
   Process {
     id: gpDisconnectProc
     command: ["coel-vpn-disconnect"]
-    onExited: { dropdownRoot.gpBusy = false; gpStatusProc.running = true; }
+    onExited: { dropdownRoot.gpBusy = false; gpStatusSettleTimer.restart(); }
   }
   function gpSubmitMfa() {
     if (!gpMfaPrompt) return;
@@ -780,6 +847,7 @@ Item {
   focus: true
   Keys.onPressed: (event) => {
     if (event.key === Qt.Key_Escape) {
+      if (gpMfaPrompt.length > 0) { gpCancelMfa(); event.accepted = true; return; }
       if (view !== "main") { backMain(); event.accepted = true; }
       else event.accepted = false;
       return;
@@ -1238,30 +1306,6 @@ Item {
             }
           }
           MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.gpToggle() }
-        }
-        RowLayout {
-          visible: dropdownRoot.gpMfaPrompt.length > 0
-          width: parent.width
-          spacing: 8
-          Text { text: dropdownRoot.gpMfaPrompt + ":"; color: dropdownRoot.colors[2]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-          Rectangle {
-            Layout.preferredWidth: 100
-            implicitHeight: 20
-            color: "#1e2127"
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: mfaInput.activeFocus ? dropdownRoot.colors[2] : dropdownRoot.hoverColor }
-            TextInput {
-              id: mfaInput
-              anchors.fill: parent
-              anchors.margins: 4
-              color: dropdownRoot.fgColor
-              font.family: "JetBrains Mono"
-              font.pixelSize: 13
-              focus: true
-              text: dropdownRoot.gpMfaInput
-              onTextEdited: dropdownRoot.gpMfaInput = text
-              onAccepted: dropdownRoot.gpSubmitMfa()
-            }
-          }
         }
 
         Rectangle {
@@ -1746,6 +1790,122 @@ Item {
           spacing: 4
           Text { text: modelData.k; color: dropdownRoot.colors[2]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
           Text { text: modelData.l; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+        }
+      }
+    }
+  }
+
+  // ----- GlobalProtect MFA modal -----
+  // Same "scrim + centered card with a floating label" pattern as the
+  // Bluetooth pairing modal above -- consistent modal look across this
+  // dropdown rather than the code entry sitting inline in the VPN list.
+  // Unlike Bluetooth's pairing modal (a live status with no real input,
+  // since BlueZ's own pairing agent can't be satisfied that way), this one
+  // needs actual typed input, so it keeps its own focus-management
+  // (onGpMfaPromptChanged above) rather than routing through the general
+  // Keys.onPressed the way Bluetooth's Escape-only modal does.
+  Item {
+    visible: dropdownRoot.gpMfaPrompt.length > 0
+    anchors.fill: parent
+
+    Rectangle {
+      anchors.fill: parent
+      color: "#1e2127"
+      opacity: 0.82
+    }
+
+    Rectangle {
+      anchors.centerIn: parent
+      width: Math.min(320, parent.width - 32)
+      height: mfaModalCol.implicitHeight + 28
+      color: "#282c34"
+      radius: 2
+      border.width: 1
+      border.color: dropdownRoot.colors[2]
+
+      Text {
+        x: 8
+        y: -9
+        leftPadding: 6
+        rightPadding: 6
+        text: "globalprotect"
+        color: dropdownRoot.colors[2]
+        font.family: "JetBrains Mono"
+        font.pixelSize: 13
+        Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
+      }
+
+      Column {
+        id: mfaModalCol
+        x: 16
+        y: 14
+        width: parent.width - 32
+        spacing: 10
+
+        RowLayout {
+          spacing: 8
+          Text {
+            text: Phosphor.icon("lock")
+            color: dropdownRoot.fgColor
+            font.family: "Phosphor"
+            font.pixelSize: 15
+          }
+          Text {
+            text: "LUC (GlobalProtect)"
+            color: dropdownRoot.fgColor
+            font.family: "JetBrains Mono"
+            font.weight: Font.DemiBold
+            font.pixelSize: 13
+          }
+        }
+
+        Text {
+          width: parent.width
+          wrapMode: Text.WordWrap
+          text: dropdownRoot.gpMfaPrompt
+          color: dropdownRoot.gpMfaPrompt.indexOf("rejected") >= 0 ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
+          font.family: "JetBrains Mono"
+          font.pixelSize: 13
+        }
+
+        Rectangle {
+          width: parent.width
+          implicitHeight: 26
+          color: "#1e2127"
+          radius: 2
+          border.width: 1
+          border.color: mfaInput.activeFocus ? dropdownRoot.colors[2] : dropdownRoot.hoverColor
+          TextInput {
+            id: mfaInput
+            anchors.fill: parent
+            anchors.margins: 6
+            color: dropdownRoot.fgColor
+            font.family: "JetBrains Mono"
+            font.pixelSize: 13
+            text: dropdownRoot.gpMfaInput
+            onTextEdited: dropdownRoot.gpMfaInput = text
+            onAccepted: dropdownRoot.gpSubmitMfa()
+          }
+        }
+
+        RowLayout {
+          width: parent.width
+          Item { Layout.fillWidth: true }
+          Rectangle {
+            implicitWidth: mfaCancelLabel.implicitWidth + 20
+            implicitHeight: 22
+            radius: 2
+            color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
+            Text {
+              id: mfaCancelLabel
+              anchors.centerIn: parent
+              text: "< esc cancel >"
+              color: dropdownRoot.colors[1]
+              font.family: "JetBrains Mono"
+              font.pixelSize: 13
+            }
+            MouseArea { id: mfaCancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.gpCancelMfa() }
+          }
         }
       }
     }

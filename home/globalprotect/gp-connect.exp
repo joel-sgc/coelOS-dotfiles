@@ -31,9 +31,17 @@
 #   GP_MFA_CODE   optional  -- MFA code (same as passing argv[0])
 #
 # GP_STATUS values: connecting | mfa-required | mfa-rejected | connected
-#                   | auth-failed | no-password | mfa-timeout
+#                   | password-rejected | mfa-failed | auth-failed
+#                   | unexpected-exit | no-password | mfa-timeout
 #                   | needs-attention | timeout
-# Exit codes: 0 connected | 2 auth-failed | 3 no-password
+#   password-rejected: portal re-asked for the password 3x running
+#   mfa-failed:         gateway re-asked for the MFA code 5x running
+#   auth-failed:        vendor CLI printed an explicit failure message
+#   unexpected-exit:    client exited without matching any known prompt
+#                       or failure text (not necessarily a bad credential --
+#                       see stderr for what `show --status` said)
+# Exit codes: 0 connected | 2 auth-failed/password-rejected/mfa-failed/
+#             unexpected-exit | 3 no-password
 #             | 4 timeout/needs-attention | 5 mfa not supplied
 
 proc status {s} { puts "GP_STATUS: $s"; flush stdout }
@@ -69,7 +77,7 @@ expect {
     }
     -re {Password:\s*$} {
         incr pw_sent
-        if {$pw_sent > 2} { status "auth-failed"; exit 2 }
+        if {$pw_sent > 2} { status "password-rejected"; exit 2 }
         send -- "$password\r"
         exp_continue
     }
@@ -89,7 +97,7 @@ expect {
         }
         if {$mfa eq ""} { status "mfa-timeout"; exit 5 }
         incr mfa_sent
-        if {$mfa_sent > 4} { status "auth-failed"; exit 2 }
+        if {$mfa_sent > 4} { status "mfa-failed"; exit 2 }
         send -- "$mfa\r"
         exp_continue
     }
@@ -102,11 +110,19 @@ expect {
     timeout { status "timeout"; exit 4 }
     eof {
         # The vendor CLI usually just exits on success with no clear banner,
-        # so confirm against an explicit status query.
+        # so confirm against an explicit status query. Landing here at all
+        # means the client exited without matching any of the patterns
+        # above -- distinct from "password-rejected"/"mfa-failed"/the
+        # explicit "authentication failed" match, all of which mean the
+        # gateway actually rejected a credential. This is "something else
+        # ended the process" (crash, killed, unexpected banner) and used to
+        # get mislabeled as the same "auth-failed", which made every one of
+        # those causes look identical from the caller's side.
         catch {
             exec $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status"
         } out
         if {[regexp {(?i)\mconnected\M} $out]} { status "connected"; exit 0 }
-        status "auth-failed"; exit 2
+        puts stderr "coel-vpn-connect: unexpected client exit; show --status said: $out"
+        status "unexpected-exit"; exit 2
     }
 }

@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   gpFHS = (import ../lib/globalprotect-fhs.nix { inherit pkgs; }) "globalprotect-agent-fhs";
@@ -26,12 +31,19 @@ let
   #   - MFA code comes from argv[0], $GP_MFA_CODE, or one line of stdin
   #     printed after the "GP_STATUS: mfa-required" marker
   #   - progress is emitted as "GP_STATUS: <state>" lines on stdout;
-  #     raw client chatter goes to stderr
+  #     raw client chatter goes to stderr. auth-failed-adjacent states are
+  #     split out (password-rejected / mfa-failed / unexpected-exit) so a
+  #     caller isn't stuck with one indistinguishable "auth-failed" for
+  #     three different causes -- see gp-connect.exp's own header.
   #   - exit: 0 connected | 2 auth-failed | 3 no-password
   #           | 4 timeout/needs-attention | 5 mfa not supplied
   vpnConnect = pkgs.writeShellApplication {
     name = "coel-vpn-connect";
-    runtimeInputs = [ gpFHS pkgs.expect pkgs.libsecret ];
+    runtimeInputs = [
+      gpFHS
+      pkgs.expect
+      pkgs.libsecret
+    ];
     text = ''
       if [ "''${1:-}" = "-h" ] || [ "''${1:-}" = "--help" ]; then
         cat >&2 <<'EOF'
@@ -48,7 +60,11 @@ let
         Override: $GP_PASSWORD (skip the keyring lookup)
 
         stdout: "GP_STATUS: <state>" lines   stderr: raw client output
-        exit:   0 connected | 2 auth-failed | 3 no-password
+        states: connecting mfa-required mfa-rejected connected
+                password-rejected mfa-failed auth-failed unexpected-exit
+                no-password mfa-timeout needs-attention timeout
+        exit:   0 connected | 2 auth-failed/password-rejected/mfa-failed/
+                unexpected-exit | 3 no-password
                 4 timeout/needs-attention | 5 mfa not supplied
       EOF
         exit 0
@@ -109,7 +125,6 @@ let
       out=$(globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status' 2>/dev/null || true)
       case "$out" in
         *"Connected - Internal"*) echo connected-internal; exit 0 ;;
-        *"OnDemand"*)             echo connected;          exit 0 ;;
         *"Connected"*)            echo connected;          exit 0 ;;
         *"Disconnected"*)         echo disconnected;       exit 1 ;;
         *)                        echo unknown;            exit 1 ;;
@@ -178,7 +193,15 @@ in
     Service = {
       Type = "simple";
       ExecStart = "${gpFHS}/bin/globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./PanGPA start'";
-      Restart = "on-failure";
+      # "on-failure" only restarts on a nonzero exit/signal -- confirmed
+      # live that a home-manager switch's restart of this unit can leave
+      # PanGPA exiting clean (status 0) almost immediately afterward
+      # instead of running as the long-lived background service it's
+      # supposed to be, silently requiring a manual `systemctl --user
+      # restart globalprotect-agent` before VPN connect attempts (CLI or
+      # panel) would stop hitting a confusing "already established"-style
+      # refusal. "always" restarts on any exit, clean or not.
+      Restart = "always";
       RestartSec = 1;
     };
   };

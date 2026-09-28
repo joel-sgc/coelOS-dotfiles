@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import QtQuick.LocalStorage
 
-import "../Phosphor.js" as Phosphor
-import "../Calc.js" as Calc
+import "../sysPanel/Phosphor.js" as Phosphor
+import "../sysPanel/Calc.js" as Calc
+import "backends"
 
 // ===== LAUNCHER PANEL =====
 // Content for Launcher.qml's Spotlight overlay -- ported from the "Spotlight"
@@ -14,30 +14,28 @@ import "../Calc.js" as Calc
 // that mock's generic Arch placeholders (see home/rofi.nix for what this is
 // actually replacing).
 //
-// Phase 2 (this pass): items with a real effect now have one --
-// Quickshell.execDetached for `command`, openPanelRequested() for `panel`,
-// and real makoctl/systemd-inhibit backends for the two toggles that have
-// one (see toggleDnd/toggleAwake below). Night light and charge limit stay
-// message-only on purpose: no compositor night-light tool is installed
-// (checked: no hyprsunset/gammastep/wlsunset), and PowerDropdown.qml's own
-// header comment already found this hardware has no real charge-limit
-// sysfs knob -- showing a fake toggle for either would be worse than an
-// honest "not available" message.
-//
-// Also new this pass: application search, replacing rofi's `-show drun`
-// (see the "launch" category, which no longer has its own "Programs" item
-// pointing at rofi). Spotlight-style, not rofi-style -- installedApps only
-// ever enters `list` while hasQuery is true, so nothing app-related shows
-// until you actually type, same as the rest of this file's search-only
-// entries. list-apps.py parses real .desktop files (NoDisplay/Hidden
-// filtered, Exec field codes stripped) rather than shelling back out to
-// rofi/xdg tooling.
+// Moved out of sysPanel/dropdowns/ into its own top-level launcher/ folder
+// (2026-09-27, at the user's request) -- this was never a dropdown (those
+// anchor under a bar button; this is a full-screen modal owned by
+// Launcher.qml), and by the time it grew clipboard/emoji/ssh/calculator/
+// toggle support it had become a single ~1500-line file mixing six
+// largely-independent backends with the actual search/selection/UI logic.
+// Non-visual backends (apps/ssh/clipboard-list/emoji/toggles/about) now
+// live in launcher/backends/ as their own small Item-based components,
+// instantiated below by id (apps/ssh/clipboard/emoji/toggles/about) --
+// this file keeps only the state and logic that's genuinely about being
+// *the launcher screen*: category/search construction, fuzzy matching,
+// selection, keyboard handling, and the visual tree itself. The one
+// exception is the clipboard *live preview* mechanism (real decoded
+// content shown as you move selection) -- it stays here rather than in
+// ClipboardBackend.qml because it's tightly coupled to this file's own
+// `list`/`selIndex` state and drives preview-panel UI directly; splitting
+// it out would trade a small win for a lot of forwarding-property
+// indirection with nothing real to show for it.
 //
 // The preview panel takes either an icon glyph or an image (`previewImage`
 // on each row) -- app search results are the first real use of that (via
-// Quickshell.iconPath resolving each entry's real Icon= value), and it's
-// also what the clipboard/emoji picker planned for this launcher will use
-// later for real thumbnails.
+// Quickshell.iconPath resolving each entry's real Icon= value).
 Item {
   id: panelRoot
 
@@ -63,6 +61,14 @@ Item {
   signal closeRequested()
   signal openPanelRequested(string name)
 
+  // ----- backends -----
+  AppsBackend { id: apps }
+  SshBackend { id: ssh }
+  ClipboardBackend { id: clipboard }
+  EmojiBackend { id: emoji }
+  TogglesBackend { id: toggles }
+  AboutBackend { id: about }
+
   onPanelOpenChanged: if (panelOpen) {
     query = "";
     view = "";
@@ -75,19 +81,20 @@ Item {
       if (idx >= 0) catIndex = idx;
     }
     searchInput.forceActiveFocus();
-    refreshDnd();
-    refreshApps();
-    refreshClipboard();
-    if (emojiEntries.length === 0) refreshEmoji();
+    toggles.refreshDnd();
+    toggles.refreshMonochrome();
+    apps.refresh();
+    ssh.refresh();
+    clipboard.refresh();
+    if (emoji.entries.length === 0) emoji.refresh();
   }
 
   // ----- category/item data -----
   // Real commands/scripts from home/rofi.nix (coel-main-menu and its
   // sub-menus) and PowerDropdown.qml's session actions, not the mock's
-  // Arch/fuzzel/kitty placeholders -- see the header comment on why none
-  // of these actually run yet regardless.
+  // Arch/fuzzel/kitty placeholders.
   // A function, not a static literal -- the toggles category's "right"
-  // badges reflect real state (dndOn/awakeOn), so this has to re-run
+  // badges reflect real state (toggles.dndOn etc.), so this has to re-run
   // whenever that changes. Calling it from a property binding (below)
   // still gives normal reactive tracking: QML follows property reads
   // that happen *inside* a called function just as it would inline.
@@ -99,24 +106,19 @@ Item {
         { label: "Editor", sub: "$EDITOR", icon: "code", right: "", command: ["ghostty", "-e", "fresh"] },
         { label: "Files", sub: "dolphin", icon: "folder", right: "", command: ["dolphin"] },
       ] },
+      { id: "ssh", label: "ssh", icon: "hard-drives", items: ssh.categoryItems() },
       { id: "toggles", label: "toggles", icon: "toggle-right", items: [
-        { id: "dnd", label: "Do not disturb", sub: "silence notifications", icon: "bell-slash", right: dndOn ? "[on]" : "[off]", rightColor: dndOn ? colors[3] : mutedColor },
-        { id: "nightlight", label: "Night light", sub: "no compositor tool installed", icon: "moon-stars", right: "n/a", rightColor: mutedColor },
-        { id: "awake", label: "Keep awake", sub: "inhibit idle & sleep", icon: "coffee", right: awakeOn ? "[on]" : "[off]", rightColor: awakeOn ? colors[3] : mutedColor },
-        { id: "chargelimit", label: "Charge limit", sub: "no charge-limit control on this hardware", icon: "battery-plus", right: "n/a", rightColor: mutedColor },
+        { id: "dnd", label: "Do not disturb", sub: "silence notifications", icon: "bell-slash", right: toggles.dndOn ? "[on]" : "[off]", rightColor: toggles.dndOn ? colors[3] : mutedColor },
+        { id: "awake", label: "Keep awake", sub: "inhibit idle & sleep", icon: "coffee", right: toggles.awakeOn ? "[on]" : "[off]", rightColor: toggles.awakeOn ? colors[3] : mutedColor },
+        { id: "micmute", label: "Mute microphone", sub: "global input mute", icon: toggles.micMuted ? "microphone-slash" : "microphone", right: toggles.micMuted ? "[on]" : "[off]", rightColor: toggles.micMuted ? colors[3] : mutedColor },
+        { id: "monochrome", label: "Monochrome", sub: "grayscale screen shader", icon: "circle-half", right: toggles.monochromeOn ? "[on]" : "[off]", rightColor: toggles.monochromeOn ? colors[3] : mutedColor },
+        { id: "eyecandy", label: "Eye candy", sub: "animations, blur, rounding, fancy borders", icon: "sparkle", right: toggles.eyeCandyOff ? "[off]" : "[on]", rightColor: toggles.eyeCandyOff ? mutedColor : colors[3] },
       ] },
       { id: "capture", label: "capture", icon: "camera", items: [
         { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"] },
         { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"] },
         { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"] },
       ] },
-      // Real browsable category (not search-only like emoji/apps) --
-      // clipboardCategoryItems() maps every real cliphist entry, capped
-      // only by cliphist's own history size, not by us. The list below
-      // is a virtualized ListView specifically so this doesn't mean
-      // instantiating hundreds of QML rows at once when this chip is
-      // selected with no search query.
-      { id: "clipboard", label: "clipboard", icon: "clipboard-text", items: clipboardCategoryItems() },
       { id: "math", label: "math", icon: "function", items: [
         ["sqrt16", "square root"], ["root(3)(27)", "nth root"], ["log(2)(1024)", "log base 2"],
         ["5!", "factorial"], ["ncr(10, 3)", "combinations"], ["120 + 15%", "percent of"],
@@ -130,6 +132,25 @@ Item {
         { id: "reboot", label: "Reboot", sub: "", icon: "arrow-clockwise", right: "", danger: true, command: ["systemctl", "reboot"] },
         { id: "poweroff", label: "Shut down", sub: "", icon: "power", right: "", danger: true, command: ["systemctl", "poweroff"] },
       ] },
+      // Deliberately last: fuzzyList() builds search results by walking
+      // `categories` in array order with no score-based sort across
+      // categories (only the single best-scoring hit gets pulled to the
+      // top as `top: true`), so a category's position here is also its
+      // priority in mixed search results. Clipboard history is often long
+      // and full of incidental substring hits (a copied line containing
+      // "rebuild" was outranking the actual "Rebuild" system command) --
+      // last among real categories means every other category's matches
+      // sort ahead of it, while still landing before the emoji matches
+      // fuzzyList() appends after this loop (so the overall order is:
+      // other categories, then clipboard, then emoji).
+      //
+      // Real browsable category (not search-only like emoji/apps) --
+      // clipboard.categoryItems() maps every real cliphist entry, capped
+      // only by cliphist's own history size, not by us. The list below
+      // is a virtualized ListView specifically so this doesn't mean
+      // instantiating hundreds of QML rows at once when this chip is
+      // selected with no search query.
+      { id: "clipboard", label: "clipboard", icon: "clipboard-text", items: clipboard.categoryItems() },
     ];
   }
   readonly property var categories: buildCategories()
@@ -156,119 +177,6 @@ Item {
   // expression -- Calc.js takes it as a plain argument (no `this.state` to
   // close over the way the mock's calcEval() does it).
   property real ansValue: 0
-
-  // ----- real toggle backends -----
-  // dndOn is re-read from mako itself after every toggle (never assumed)
-  // -- same "don't optimistically update, wait for the next real read"
-  // rule SystemDropdown.qml's kill action follows. awakeOn doesn't need
-  // that: it's not external state anything else can change, just whether
-  // *our own* systemd-inhibit child process is currently alive, which we
-  // fully control.
-  property bool dndOn: false
-  property bool awakeOn: false
-
-  function refreshDnd() { dndProc.running = true; }
-  Process {
-    id: dndProc
-    command: ["makoctl", "mode"]
-    stdout: StdioCollector {
-      onStreamFinished: panelRoot.dndOn = text.split("\n").some(l => l.trim() === "dnd")
-    }
-  }
-  Process {
-    id: dndToggleProc
-    command: ["makoctl", "mode", "-t", "dnd"]
-    onExited: panelRoot.refreshDnd()
-  }
-  function toggleDnd() {
-    dndToggleProc.running = true;
-    msg = "toggling do not disturb…";
-  }
-
-  // Held open the whole time awakeOn is true; `running: false` sends it
-  // SIGTERM, which releases the inhibitor immediately (systemd-inhibit's
-  // own lock lasts exactly as long as the process holding it does).
-  Process {
-    id: awakeProc
-    command: ["systemd-inhibit", "--what=idle:sleep", "--who=CoelOS launcher", "--why=keep awake toggled from launcher", "sleep", "infinity"]
-  }
-  function toggleAwake() {
-    awakeOn = !awakeOn;
-    awakeProc.running = awakeOn;
-    msg = "keep awake " + (awakeOn ? "on" : "off");
-  }
-
-  // ----- app search (rofi -show drun replacement) -----
-  property var installedApps: []
-  readonly property string appsScriptPath: Qt.resolvedUrl("../../scripts/list-apps.py").toString().replace("file://", "")
-  function refreshApps() { appsProc.running = true; }
-  Process {
-    id: appsProc
-    command: ["python3", panelRoot.appsScriptPath]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        try { panelRoot.installedApps = JSON.parse(text); } catch (e) { panelRoot.installedApps = []; }
-      }
-    }
-  }
-
-  // ----- clipboard history (cliphist, replacing rofi's super+V picker) -----
-  // A real, always-browsable category now (not search-only like apps/emoji
-  // below) -- opened directly via super+V. Every real cliphist entry, no
-  // cap, since the list rendering (see the ListView further down) is
-  // properly virtualized rather than a plain Column+Repeater.
-  property var clipboardEntries: []
-  function refreshClipboard() { clipboardProc.running = true; }
-  Process {
-    id: clipboardProc
-    command: ["cliphist", "list"]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        panelRoot.clipboardEntries = text.split("\n").filter(l => l.length > 0).map(line => {
-          const tab = line.indexOf("\t");
-          const preview = tab >= 0 ? line.slice(tab + 1) : line;
-          // cliphist's own literal marker for image entries -- confirmed
-          // against the real format string in the cliphist binary itself
-          // ("[[ binary data %s %s %dx%d ]]"), not guessed.
-          return { line, preview, isImage: preview.startsWith("[[ binary data") };
-        });
-      }
-    }
-  }
-  function clipboardCategoryItems() {
-    return clipboardEntries.map(entry => ({
-      label: entry.isImage ? entry.preview : (entry.preview.length > 60 ? entry.preview.slice(0, 60) + "…" : entry.preview),
-      sub: entry.isImage ? "image" : "text", icon: entry.isImage ? "image" : "clipboard", right: "",
-      clipboardLine: entry.line, isImage: entry.isImage,
-    }));
-  }
-  // cliphist list only shows a preview (truncated, and for images just the
-  // marker above) -- the real content has to come back through `cliphist
-  // decode`, which (like rofi's own dmenu pipeline) reads the exact list
-  // line off stdin and looks the full value up by the id prefixed to it.
-  // Used two ways: copyClipboardEntry() (piped straight to wl-copy, real
-  // content never touches a shell string) for Enter/click, and the two
-  // preview-decode Processes below for showing real content live as you
-  // move selection, before you've actually chosen anything.
-  property string pendingClipboardLine: ""
-  function copyClipboardEntry(line) {
-    pendingClipboardLine = line;
-    // stdinEnabled gets set false below once the line's written, to signal
-    // EOF -- since that's an imperative assignment it permanently
-    // overrides the declarative `stdinEnabled: true` below (QML doesn't
-    // revert to the original binding on its own), so it has to be put back
-    // to true here before every run or the *second* copy in a launcher
-    // session would start with no stdin pipe at all and silently write
-    // nothing.
-    clipboardCopyProc.stdinEnabled = true;
-    clipboardCopyProc.running = true;
-  }
-  Process {
-    id: clipboardCopyProc
-    command: ["sh", "-c", "cliphist decode | wl-copy"]
-    stdinEnabled: true
-    onStarted: { write(panelRoot.pendingClipboardLine + "\n"); stdinEnabled = false; }
-  }
 
   // ----- clipboard live preview (real decoded content, not the mangled/
   // truncated list preview -- respects the original text's whitespace and
@@ -307,7 +215,7 @@ Item {
     if (cur.isImage) {
       if (clipImageDecodeProc.running) return;
       clipImageDecodeProc.forLine = cur.clipboardLine;
-      // Same reset-before-run requirement as copyClipboardEntry() above --
+      // Same reset-before-run requirement as ClipboardBackend.copyEntry() --
       // this is exactly the bug that made the preview only ever work for
       // the *first* selection: stdinEnabled was left false from the
       // previous run's onStarted, so every run after the first wrote to a
@@ -354,99 +262,6 @@ Item {
     }
   }
 
-  // ----- emoji picker (replacing rofi-emoji / coel-emoji-picker) -----
-  // Was a one-time vendor of pkgs.rofi-emoji's bundled data -- discovered
-  // (2026-09-27) to be two full Unicode Emoji versions stale (missing all
-  // of 17.0/18.0: shaking face, cracking face, pickle, lighthouse,
-  // meteor, ...), since nothing was ever re-copying it as nixpkgs/upstream
-  // moved on. Now runs update-emoji-data.py, which fetches Unicode.org's
-  // own always-current emoji-test.txt (re-checked at most once a week,
-  // cached at $XDG_CACHE_HOME/quickshell-emoji-data.txt, falling back to
-  // the vendored emoji-data.txt on any network failure) -- see that
-  // script's own header for the full design. Loaded once per launcher
-  // lifetime (the `if (emojiEntries.length === 0)` gate below), not every
-  // panel open like the app list -- even with the weekly refetch check,
-  // no reason to re-run this every time the launcher opens.
-  // Still search-only when reached from the *main* launcher (no chip --
-  // matches/emojiMatches() below stays capped at 20 for the same
-  // render-count reason as clipboard/apps). The dedicated emoji-only
-  // scope (super+., searchScope==="emoji") is different: browsable by
-  // default with no query at all, see fuzzyList()'s searchScope branch --
-  // safe now that the ListView is properly virtualized (the same fix the
-  // clipboard tab needed for the same reason).
-  property var emojiEntries: []
-  readonly property string emojiUpdateScriptPath: Qt.resolvedUrl("../../scripts/update-emoji-data.py").toString().replace("file://", "")
-  function refreshEmoji() { emojiProc.running = true; }
-  Process {
-    id: emojiProc
-    command: ["python3", panelRoot.emojiUpdateScriptPath]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        panelRoot.emojiEntries = text.split("\n").filter(l => l.length > 0).map(line => {
-          const parts = line.split("\t");
-          return { char: parts[0], category: parts[1] || "", name: parts[3] || "", keywords: parts[4] || "" };
-        });
-      }
-    }
-  }
-
-  // ----- recently used emoji -----
-  // Same physical SQLite database CalendarDropdown.qml's todos live in
-  // (LocalStorage.openDatabaseSync is keyed by name+version, not by which
-  // QML file opens it -- same name/version here really does mean the
-  // same on-disk file) -- just a new table in it, per the user's own
-  // instruction, rather than a second database file for one small table.
-  property var emojiDb: null
-  property var recentEmojiChars: [] // most-recent-first, capped to 5
-  function openEmojiDb() {
-    return LocalStorage.openDatabaseSync(
-      "CoelOSCalendarTodos", "1.0",
-      "Shared CoelOS quickshell local storage (calendar todos, emoji recency)", 1000000);
-  }
-  function emojiDbEnsureSchema() {
-    emojiDb.transaction(function (tx) {
-      tx.executeSql("CREATE TABLE IF NOT EXISTS emoji_recent (char TEXT PRIMARY KEY, used_at INTEGER NOT NULL)");
-    });
-  }
-  function loadRecentEmoji() {
-    const out = [];
-    emojiDb.transaction(function (tx) {
-      const rs = tx.executeSql("SELECT char FROM emoji_recent ORDER BY used_at DESC LIMIT 5");
-      for (let i = 0; i < rs.rows.length; i++) out.push(rs.rows.item(i).char);
-    });
-    recentEmojiChars = out;
-  }
-  // Called from runItem() the moment an emoji is actually used (copied),
-  // not on mere selection -- "recently used" should mean used, not just
-  // scrolled past.
-  function recordEmojiUsed(char) {
-    emojiDb.transaction(function (tx) {
-      tx.executeSql("INSERT OR REPLACE INTO emoji_recent (char, used_at) VALUES (?, ?)", [char, Date.now()]);
-    });
-    loadRecentEmoji();
-  }
-
-  // Shared by fuzzyList()'s normal path and the emoji-only searchScope
-  // below -- scored/sorted, not capped here (callers cap as needed).
-  function emojiMatches(q) {
-    let matches = [];
-    emojiEntries.forEach(e => {
-      const nl = e.name.toLowerCase();
-      const hay = nl + " " + e.keywords.toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = nl.startsWith(q) ? 3 : nl.split(/\s+/).some(w => w.startsWith(q)) ? 2 : e.keywords.toLowerCase().split(" | ").includes(q) ? 2 : 1;
-      matches.push({ label: e.char + "  " + e.name, sub: e.category, icon: "smiley", cat: "emoji", score, emojiChar: e.char });
-    });
-    matches.sort((a, b) => b.score - a.score);
-    return matches;
-  }
-  // Plain (unscored) item shape for browsing rather than searching --
-  // groupLabel drives the rows() header grouping below, distinct from the
-  // score-based "top hit" convention emojiMatches()/the calculator use.
-  function emojiBrowseItem(e, groupLabel) {
-    return { label: e.char + "  " + e.name, sub: e.category, icon: "smiley", groupLabel, emojiChar: e.char };
-  }
-
   function fuzzyList() {
     const raw = query.trim(), q = raw.toLowerCase();
     // super+. (openEmoji) restricts the whole launcher to emoji-only
@@ -457,22 +272,22 @@ Item {
         // Browsable by default here (unlike emoji reached from the main
         // launcher, which stays search-only) -- safe now that the list is
         // a real virtualized ListView, same as the clipboard tab. Recently
-        // *used* (copied, not just scrolled past -- see recordEmojiUsed())
+        // *used* (copied, not just scrolled past -- see emoji.recordUsed())
         // emoji are pulled to their own group up top and not duplicated
         // further down; everything else keeps Unicode's own curated
         // group/subgroup order from emoji-test.txt.
-        if (emojiEntries.length === 0) return [];
-        const recentSet = new Set(recentEmojiChars);
-        const recentItems = recentEmojiChars
-          .map(ch => emojiEntries.find(e => e.char === ch))
+        if (emoji.entries.length === 0) return [];
+        const recentSet = new Set(emoji.recentChars);
+        const recentItems = emoji.recentChars
+          .map(ch => emoji.entries.find(e => e.char === ch))
           .filter(e => !!e)
-          .map(e => emojiBrowseItem(e, "recently used"));
-        const restItems = emojiEntries
+          .map(e => emoji.browseItem(e, "recently used"));
+        const restItems = emoji.entries
           .filter(e => !recentSet.has(e.char))
-          .map(e => emojiBrowseItem(e, e.category));
+          .map(e => emoji.browseItem(e, e.category));
         return recentItems.concat(restItems);
       }
-      let matches = emojiMatches(q).slice(0, 50);
+      let matches = emoji.matches(q).slice(0, 50);
       if (matches.length > 0) {
         let bi = 0;
         matches.forEach((x, i) => { if (x.score > matches[bi].score) bi = i; });
@@ -496,7 +311,7 @@ Item {
     // here, inside a real search -- there's no "applications" chip to
     // browse, matching "no results until typed" rather than dumping
     // every installed app by default.
-    installedApps.forEach(app => {
+    apps.installed.forEach(app => {
       // Plasma's own "Emoji Selector" (plasma-emojier) is a real installed
       // app -- list-apps.py is right to surface it -- but it's redundant
       // now that emoji search below is native to the launcher, and having
@@ -517,10 +332,11 @@ Item {
     });
     // Clipboard search is handled above for free -- it's a real category
     // now (categories.forEach already covers it), unlike emoji below,
-    // which stays a separate, capped, search-only source (5042 entries is
-    // too many to ever browse as a static category list; clipboard's own
-    // up-to-hundreds is fine now that the list rendering is virtualized).
-    const emojiMatchList = emojiMatches(q);
+    // which stays a separate, capped, search-only source (thousands of
+    // entries is too many to ever browse as a static category list;
+    // clipboard's own up-to-hundreds is fine now that the list rendering
+    // is virtualized).
+    const emojiMatchList = emoji.matches(q);
     list = list.concat(emojiMatchList.slice(0, 20));
     if (list.length > 0) {
       let bi = 0;
@@ -631,17 +447,28 @@ Item {
     searchInput.forceActiveFocus();
     scrollSelectedIntoView();
   }
-  function runItem(it) {
+  function runItem(it, shiftHeld) {
     if (!it) return;
+    if (it.sshHost !== undefined) {
+      if (shiftHeld) {
+        Quickshell.execDetached(["wl-copy", "ssh " + it.sshHost]);
+        msg = "→ copied “ssh " + it.sshHost + "”";
+      } else {
+        Quickshell.execDetached(["ghostty", "-e", "ssh", it.sshHost]);
+        msg = "→ ssh " + it.sshHost;
+      }
+      closeRequested();
+      return;
+    }
     if (it.clipboardLine !== undefined) {
-      copyClipboardEntry(it.clipboardLine);
+      clipboard.copyEntry(it.clipboardLine);
       msg = "→ copied from clipboard history";
       closeRequested();
       return;
     }
     if (it.emojiChar) {
       Quickshell.execDetached(["wl-copy", it.emojiChar]);
-      recordEmojiUsed(it.emojiChar);
+      emoji.recordUsed(it.emojiChar);
       msg = "→ copied " + it.emojiChar;
       closeRequested();
       return;
@@ -669,10 +496,11 @@ Item {
       msg = "";
       return;
     }
-    if (it.id === "dnd") { toggleDnd(); return; }
-    if (it.id === "awake") { toggleAwake(); return; }
-    if (it.id === "nightlight") { msg = "no compositor night-light tool installed (hyprsunset/gammastep/wlsunset)"; return; }
-    if (it.id === "chargelimit") { msg = "no charge-limit control on this hardware (checked: no sysfs threshold, no ec tool)"; return; }
+    if (it.id === "dnd") { toggles.toggleDnd(); msg = "toggling do not disturb…"; return; }
+    if (it.id === "awake") { toggles.toggleAwake(); msg = "keep awake " + (toggles.awakeOn ? "on" : "off"); return; }
+    if (it.id === "micmute") { toggles.toggleMicMute(); msg = "microphone " + (toggles.micMuted ? "muted" : "unmuted"); return; }
+    if (it.id === "monochrome") { toggles.toggleMonochrome(); msg = "toggling monochrome…"; return; }
+    if (it.id === "eyecandy") { toggles.toggleEyeCandy(); msg = "eye candy " + (toggles.eyeCandyOff ? "off" : "on"); return; }
     if (it.danger) {
       const id = it.id || it.label;
       if (armedId !== id) {
@@ -733,7 +561,7 @@ Item {
       case Qt.Key_Return:
       case Qt.Key_Enter:
         event.accepted = true;
-        runItem(currentItem());
+        runItem(currentItem(), (event.modifiers & Qt.ShiftModifier) !== 0);
         break;
     }
   }
@@ -1162,6 +990,13 @@ Item {
                     if (c.ok) out.push({ k: "copies", v: c.raw, c: "#7f848e" });
                     return out;
                   }
+                  if (cur.sshHost !== undefined) {
+                    const out = [{ k: "host", v: cur.sshHostName }];
+                    if (cur.sshUser) out.push({ k: "user", v: cur.sshUser });
+                    out.push({ k: "port", v: String(cur.sshPort) });
+                    if (cur.sshKey) out.push({ k: "key", v: cur.sshKey, c: "#7f848e" });
+                    return out;
+                  }
                   const out = [{ k: "type", v: cur.cat }];
                   if (cur.right && /\+/.test(cur.right)) out.push({ k: "keys", v: cur.right, c: panelRoot.colors[2] });
                   if (cur.danger && panelRoot.armedId === (cur.id || cur.label)) out.push({ k: "status", v: "confirm?", c: panelRoot.colors[1] });
@@ -1195,6 +1030,7 @@ Item {
                   if (cur.calc) return cur.calc.ok ? "copy result · saves as ans" : "nothing to copy";
                   if (cur.clipboardLine !== undefined) return "copy to clipboard";
                   if (cur.emojiChar) return "copy emoji";
+                  if (cur.sshHost !== undefined) return "enter: ssh in ghostty · shift+enter: copy command";
                   if (cur.danger && panelRoot.armedId === (cur.id || cur.label)) return "press again to confirm";
                   if (cur.view) return "view";
                   if (cur.panel) return "open panel";
@@ -1235,19 +1071,19 @@ Item {
             spacing: 2
             RowLayout {
               spacing: 0
-              Text { text: aboutData.user; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+              Text { text: about.data.user; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
               Text { text: "@"; color: panelRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-              Text { text: aboutData.host; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+              Text { text: about.data.host; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
             }
             Text { text: "──────────────────"; color: panelRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
             Column {
               spacing: 0
               Repeater {
                 model: [
-                  { k: "os", v: "NixOS (CoelOS)" }, { k: "kernel", v: aboutData.kernel },
-                  { k: "uptime", v: aboutData.uptime }, { k: "wm", v: aboutData.wm },
-                  { k: "shell", v: aboutData.shell }, { k: "cpu", v: aboutData.cpu },
-                  { k: "memory", v: aboutData.memory }, { k: "disk /", v: aboutData.disk },
+                  { k: "os", v: "NixOS (CoelOS)" }, { k: "kernel", v: about.data.kernel },
+                  { k: "uptime", v: about.data.uptime }, { k: "wm", v: about.data.wm },
+                  { k: "shell", v: about.data.shell }, { k: "cpu", v: about.data.cpu },
+                  { k: "memory", v: about.data.memory }, { k: "disk /", v: about.data.disk },
                 ]
                 delegate: RowLayout {
                   required property var modelData
@@ -1307,48 +1143,5 @@ Item {
         }
       }
     }
-  }
-
-  // ----- about page real data -----
-  property var aboutData: ({ user: "joelsgc", host: "", kernel: "", uptime: "", wm: "Hyprland", shell: "", cpu: "", memory: "", disk: "" })
-  Process {
-    id: aboutProc
-    command: ["sh", "-c", "hostname; uname -r; cat /proc/uptime; grep -m1 'model name' /proc/cpuinfo; nproc; grep -E '^MemTotal:|^MemAvailable:' /proc/meminfo; df -B1 --output=used,size / | tail -1; zsh --version; hyprctl version | head -1"]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        const lines = text.split("\n");
-        const host = lines[0] || "";
-        const kernel = lines[1] || "";
-        const uptimeSec = parseFloat((lines[2] || "0").split(" ")[0]) || 0;
-        const cpuModel = (lines[3] || "").split(":")[1];
-        const cores = lines[4] || "";
-        const memTotalKb = parseInt((lines[5] || "0").replace(/\D/g, "")) || 0;
-        const memAvailKb = parseInt((lines[6] || "0").replace(/\D/g, "")) || 0;
-        const diskParts = (lines[7] || "").trim().split(/\s+/);
-        const diskUsed = parseInt(diskParts[0]) || 0, diskTotal = parseInt(diskParts[1]) || 1;
-        const zshVer = (lines[8] || "").split(" ")[1] || "";
-        const hyprVer = (lines[9] || "").replace(/^Hyprland\s*/, "").split(" ")[0] || "";
-
-        const uh = Math.floor(uptimeSec / 3600), um = Math.floor((uptimeSec % 3600) / 60);
-        const gb = b => (b / 1073741824).toFixed(1) + "G";
-
-        panelRoot.aboutData = {
-          user: "joelsgc", host: host.trim(),
-          kernel: kernel.trim(),
-          uptime: uh + "h " + String(um).padStart(2, "0") + "m",
-          wm: "Hyprland " + hyprVer,
-          shell: "zsh " + zshVer,
-          cpu: (cpuModel ? cpuModel.trim() : "unknown") + " (" + cores.trim() + ")",
-          memory: gb((memTotalKb - memAvailKb) * 1024) + " / " + gb(memTotalKb * 1024),
-          disk: gb(diskUsed) + " / " + gb(diskTotal),
-        };
-      }
-    }
-  }
-  Component.onCompleted: {
-    aboutProc.running = true;
-    panelRoot.emojiDb = panelRoot.openEmojiDb();
-    panelRoot.emojiDbEnsureSchema();
-    panelRoot.loadRecentEmoji();
   }
 }

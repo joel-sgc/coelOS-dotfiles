@@ -4,7 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
 
-import "./sysPanel/dropdowns"
+import "./launcher"
 
 // ===== LAUNCHER =====
 // Full-screen "Spotlight" overlay -- the rofi replacement for coel-main-menu.

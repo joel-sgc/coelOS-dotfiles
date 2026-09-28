@@ -36,6 +36,29 @@ pkgs.buildFHSEnv {
     "--bind"
     "/var/lib/globalprotect"
     "/opt/paloaltonetworks/globalprotect"
+
+    # bwrap unconditionally sets no_new_privs before exec'ing the sandboxed
+    # program. Combined with an empty inheritable capability set (the
+    # ordinary default) and no file capabilities on the vendor binaries,
+    # that zeroes out the *effective*/*permitted* capability sets at exec
+    # time even for the root-run daemon (confirmed live: CapBnd was a full
+    # set, CapEff/CapPrm were both 0) -- root in name only, with none of
+    # root's actual privileges surviving into the sandbox. PanGPS needs
+    # CAP_NET_ADMIN to create/configure its own tunnel interface; without
+    # it, login/auth to the gateway succeeds (plain network I/O, no
+    # privilege needed) but interface setup fails right after with
+    # "ioctl() failed on SIOCGIFFLAGS ... No such device", which is
+    # PanGPS's own log for "I have no privilege to bring up gpd0". Added
+    # CAP_NET_RAW too since VPN clients commonly need it for the same class
+    # of low-level network operations (this FHS env already ships `ping`
+    # for GP's own internal network checks, which needs it too). Only has
+    # any effect for a bwrap invocation running as a privileged (root)
+    # caller -- see `bwrap --help` -- so this is a no-op for the per-user
+    # agent's own (unprivileged) sandbox.
+    "--cap-add"
+    "CAP_NET_ADMIN"
+    "--cap-add"
+    "CAP_NET_RAW"
   ];
   extraInstallCommands = "mkdir -p $out/opt/paloaltonetworks/globalprotect";
   runScript = "/bin/sh";
