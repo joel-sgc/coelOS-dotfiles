@@ -5,6 +5,7 @@ import Quickshell.Io
 
 import "../sysPanel/Phosphor.js" as Phosphor
 import "../sysPanel/Calc.js" as Calc
+import "../sysPanel/Convert.js" as Convert
 import "backends"
 
 // ===== LAUNCHER PANEL =====
@@ -68,6 +69,7 @@ Item {
   EmojiBackend { id: emoji }
   TogglesBackend { id: toggles }
   AboutBackend { id: about }
+  CurrencyBackend { id: currency }
 
   onPanelOpenChanged: if (panelOpen) {
     query = "";
@@ -107,18 +109,21 @@ Item {
         { label: "Files", sub: "dolphin", icon: "folder", right: "", command: ["dolphin"] },
       ] },
       { id: "ssh", label: "ssh", icon: "hard-drives", items: ssh.categoryItems() },
-      { id: "toggles", label: "toggles", icon: "toggle-right", items: [
-        { id: "dnd", label: "Do not disturb", sub: "silence notifications", icon: "bell-slash", right: toggles.dndOn ? "[on]" : "[off]", rightColor: toggles.dndOn ? colors[3] : mutedColor },
-        { id: "awake", label: "Keep awake", sub: "inhibit idle & sleep", icon: "coffee", right: toggles.awakeOn ? "[on]" : "[off]", rightColor: toggles.awakeOn ? colors[3] : mutedColor },
-        { id: "micmute", label: "Mute microphone", sub: "global input mute", icon: toggles.micMuted ? "microphone-slash" : "microphone", right: toggles.micMuted ? "[on]" : "[off]", rightColor: toggles.micMuted ? colors[3] : mutedColor },
-        { id: "monochrome", label: "Monochrome", sub: "grayscale screen shader", icon: "circle-half", right: toggles.monochromeOn ? "[on]" : "[off]", rightColor: toggles.monochromeOn ? colors[3] : mutedColor },
-        { id: "eyecandy", label: "Eye candy", sub: "animations, blur, rounding, fancy borders", icon: "sparkle", right: toggles.eyeCandyOff ? "[off]" : "[on]", rightColor: toggles.eyeCandyOff ? mutedColor : colors[3] },
+      { id: "actions", label: "actions", icon: "lightning", items: [
+        { id: "dnd", label: "Do not disturb", sub: "silence notifications", icon: "bell-slash", right: toggles.dndOn ? "[on]" : "[off]", rightColor: toggles.dndOn ? colors[3] : mutedColor, groupLabel: "toggles" },
+        { id: "awake", label: "Keep awake", sub: "inhibit idle & sleep", icon: "coffee", right: toggles.awakeOn ? "[on]" : "[off]", rightColor: toggles.awakeOn ? colors[3] : mutedColor, groupLabel: "toggles" },
+        { id: "micmute", label: "Mute microphone", sub: "global input mute", icon: toggles.micMuted ? "microphone-slash" : "microphone", right: toggles.micMuted ? "[on]" : "[off]", rightColor: toggles.micMuted ? colors[3] : mutedColor, groupLabel: "toggles" },
+        { id: "monochrome", label: "Monochrome", sub: "grayscale screen shader", icon: "circle-half", right: toggles.monochromeOn ? "[on]" : "[off]", rightColor: toggles.monochromeOn ? colors[3] : mutedColor, groupLabel: "toggles" },
+        { id: "eyecandy", label: "Eye candy", sub: "animations, blur, rounding, fancy borders", icon: "sparkle", right: toggles.eyeCandyOff ? "[off]" : "[on]", rightColor: toggles.eyeCandyOff ? mutedColor : colors[3], groupLabel: "toggles" },
+        { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"], groupLabel: "capture" },
+        { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"], groupLabel: "capture" },
+        { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"], groupLabel: "capture" },
       ] },
-      { id: "capture", label: "capture", icon: "camera", items: [
-        { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"] },
-        { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"] },
-        { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"] },
-      ] },
+      { id: "convert", label: "convert", icon: "arrows-left-right", items: [
+        ["5 km to mi", "length"], ["72 f to c", "temperature"], ["$120 to eur", "currency"],
+        ["2.5 gib in mb", "data"], ["90 min to h", "time"], ["100 kmh to mph", "speed"],
+        ["3 cups to ml", "volume"], ["180 lb", "bare unit → default"],
+      ].map(([ex, d]) => ({ label: ex, sub: d, icon: "arrows-left-right", right: "", fill: true })) },
       { id: "math", label: "math", icon: "function", items: [
         ["sqrt16", "square root"], ["root(3)(27)", "nth root"], ["log(2)(1024)", "log base 2"],
         ["5!", "factorial"], ["ncr(10, 3)", "combinations"], ["120 + 15%", "percent of"],
@@ -299,18 +304,35 @@ Item {
       const c = categories[Math.min(catIndex, categories.length - 1)];
       return c.items.map(it => Object.assign({}, it, { cat: c.label }));
     }
+    // Search bangs -- "@g"/"@ddg"/"@yt" + a query jump straight to a web
+    // search in Zen, same "clearly one thing, not a fuzzy match" early
+    // return as the emoji-scope/no-query branches above, and deliberately
+    // not a real category (buildCategories()/categories): there's nothing
+    // to browse without a query, so a chip for it would only ever be empty.
+    const bangMatch = raw.match(/^(@g|@ddg|@yt)\s+(\S.*)$/i);
+    if (bangMatch) {
+      const engines = {
+        "@g": { label: "Google", url: "https://www.google.com/search?q=" },
+        "@ddg": { label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
+        "@y": { label: "YouTube", url: "https://www.youtube.com/results?search_query=" },
+      };
+      const bang = bangMatch[1].toLowerCase();
+      const term = bangMatch[2].trim();
+      const engine = engines[bang];
+      return [{
+        label: "Search " + engine.label + " for “" + term + "”",
+        sub: bang + " → zen", icon: "magnifying-glass", cat: "search", top: true,
+        command: ["zen", engine.url + encodeURIComponent(term)],
+      }];
+    }
     let list = [];
-    categories.forEach(c => c.items.forEach(it => {
-      const l = it.label.toLowerCase();
-      const hay = (l + " " + (it.sub || "") + " " + c.label).toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = l.startsWith(q) ? 3 : l.split(/[\s-]+/).some(w => w.startsWith(q)) ? 2 : l.includes(q) ? 1 : 0;
-      list.push(Object.assign({}, it, { cat: c.label, score }));
-    }));
     // Spotlight-style, not rofi-style: installed apps only ever show up
     // here, inside a real search -- there's no "applications" chip to
-    // browse, matching "no results until typed" rather than dumping
-    // every installed app by default.
+    // browse, matching "no results until typed" rather than dumping every
+    // installed app by default. Matched before categories/clipboard below
+    // (insertion order is priority order here -- see the note above the
+    // `rows` property) so an app match like "OrcaSlicer" outranks clipboard
+    // history containing the same substring, e.g. searching "orca".
     apps.installed.forEach(app => {
       // Plasma's own "Emoji Selector" (plasma-emojier) is a real installed
       // app -- list-apps.py is right to surface it -- but it's redundant
@@ -330,12 +352,20 @@ Item {
         command: app.terminal ? ["ghostty", "-e"].concat(app.argv) : app.argv,
       });
     });
-    // Clipboard search is handled above for free -- it's a real category
-    // now (categories.forEach already covers it), unlike emoji below,
-    // which stays a separate, capped, search-only source (thousands of
-    // entries is too many to ever browse as a static category list;
-    // clipboard's own up-to-hundreds is fine now that the list rendering
-    // is virtualized).
+    // Every other category, clipboard included -- clipboard search is
+    // handled here for free, it's a real category now (see buildCategories()
+    // -- deliberately last among categories there, so it sorts after every
+    // other category's own matches too), unlike emoji below, which stays a
+    // separate, capped, search-only source (thousands of entries is too many
+    // to ever browse as a static category list; clipboard's own
+    // up-to-hundreds is fine now that the list rendering is virtualized).
+    categories.forEach(c => c.items.forEach(it => {
+      const l = it.label.toLowerCase();
+      const hay = (l + " " + (it.sub || "") + " " + c.label).toLowerCase();
+      if (!hay.includes(q)) return;
+      const score = l.startsWith(q) ? 3 : l.split(/[\s-]+/).some(w => w.startsWith(q)) ? 2 : l.includes(q) ? 1 : 0;
+      list.push(Object.assign({}, it, { cat: c.label, score }));
+    }));
     const emojiMatchList = emoji.matches(q);
     list = list.concat(emojiMatchList.slice(0, 20));
     if (list.length > 0) {
@@ -343,10 +373,18 @@ Item {
       list.forEach((x, i) => { if (x.score > list[bi].score) bi = i; });
       list = [Object.assign({}, list[bi], { top: true })].concat(list.filter((_, i) => i !== bi));
     }
-    // A valid calculator expression always wins the top slot, same as the
-    // mock's menuList() -- e.g. typing "5!" shouldn't have to compete with
-    // a fuzzy-matched "System" entry for the top-hit spot.
-    const c = Calc.evaluate(raw, ansValue);
+    // A valid unit/currency conversion or calculator expression always wins
+    // the top slot, same as the mock's menuList() -- e.g. typing "5!" or
+    // "5 km to mi" shouldn't have to compete with a fuzzy-matched "System"
+    // entry for the top-hit spot. Convert wins over calc when both would
+    // somehow match (mirrors the mock: `const c = cv ? null : calcEval()`).
+    const cv = Convert.evaluate(raw, currency.rates, currency.lastUpdated);
+    const c = cv ? null : Calc.evaluate(raw, ansValue);
+    if (cv) {
+      list = [{
+        label: cv.label, sub: cv.sub, icon: "arrows-left-right", cat: "convert · " + cv.domain, conv: cv, top: true,
+      }].concat(list.map(x => Object.assign({}, x, { top: false })));
+    }
     if (c) {
       list = [{
         label: "= " + c.display, sub: c.pretty, icon: "calculator", cat: "calculator", calc: c, top: true,
@@ -370,14 +408,17 @@ Item {
   // `list` itself does (new search, category switch, refreshed data).
   // Grouped/headered whenever there's a query, OR a scope restriction is
   // active (e.g. emoji-only's browse-all-by-default view, which has no
-  // query but still wants "recently used" / per-category headers) --
+  // query but still wants "recently used" / per-category headers), OR the
+  // browsed category's own items opted into it by setting `groupLabel`
+  // (e.g. actions' toggles/capture split) -- same "topper" mechanism as
+  // emoji, just triggered by the category's items instead of searchScope.
   // groupLabel lets a caller override the header text away from the
   // plain `cat` field (used for "recently used" vs. real category names)
   // without disturbing the "top hit" convention search results still use.
   readonly property var rows: {
     const out = [];
     let prevGroup = null;
-    const grouped = hasQuery || panelRoot.searchScope !== "";
+    const grouped = hasQuery || panelRoot.searchScope !== "" || list.some(it => it.groupLabel);
     list.forEach((it, i) => {
       if (grouped) {
         if (it.top) { out.push({ isHeader: true, header: "top hit" }); }
@@ -483,6 +524,11 @@ Item {
         msg = c.reason;
       }
       armedId = "";
+      return;
+    }
+    if (it.conv) {
+      Quickshell.execDetached(["wl-copy", it.conv.rawOut]);
+      msg = "copied " + it.conv.label.replace(/^= /, "");
       return;
     }
     if (it.fill) {
@@ -978,6 +1024,7 @@ Item {
                 model: {
                   const cur = previewCol.cur;
                   if (!cur) return [];
+                  if (cur.conv) return cur.conv.rows;
                   if (cur.calc) {
                     const c = cur.calc, out = [{ k: "expr", v: c.pretty }];
                     if (c.frac) out.push({ k: "exact", v: c.frac, c: panelRoot.colors[2] });
@@ -1027,6 +1074,7 @@ Item {
                 text: {
                   const cur = previewCol.cur;
                   if (!cur) return "";
+                  if (cur.conv) return "copy result";
                   if (cur.calc) return cur.calc.ok ? "copy result · saves as ans" : "nothing to copy";
                   if (cur.clipboardLine !== undefined) return "copy to clipboard";
                   if (cur.emojiChar) return "copy emoji";

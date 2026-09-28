@@ -109,6 +109,7 @@ const codepoints = {
   "circle-half": 0xe18c, // ph-circle-half (monochrome toggle)
   sparkle: 0xe6a2, // ph-sparkle (eye candy toggle)
   "hard-drives": 0xe2a0, // ph-hard-drives (ssh category, tagged "servers")
+  "arrows-left-right": 0xe0a0, // ph-arrows-left-right (convert category/results)
 };
 
 function icon(name) {
