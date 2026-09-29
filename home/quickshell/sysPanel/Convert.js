@@ -19,7 +19,21 @@
 // It's a fixed, roughly-current snapshot (not live), and only covers a
 // handful of currencies -- ars in particular has had extreme, fast-moving
 // inflation and is rough even by this table's own non-live standard.
+//
+// `evaluate()` itself just tries unitEval, then baseEval, then
+// textHexEval in order and returns whichever matches first -- all three
+// return the same {ok, domain, label, sub, rawOut, rows} shape so the
+// caller (LauncherPanel.qml) doesn't need to know which one actually
+// fired. Arithmetic on hex/binary values ("0xFF + 0x0A") is deliberately
+// *not* handled here -- Calc.js already parses hex/binary literals and
+// shows a hex/bin breakdown of any result, so that's a calculator
+// expression, not a conversion; this file only covers pure base
+// conversion (no arithmetic) and text<->hex encoding.
 function evaluate(raw, liveRates, ratesUpdated) {
+  return unitEval(raw, liveRates, ratesUpdated) || baseEval(raw) || textHexEval(raw);
+}
+
+function unitEval(raw, liveRates, ratesUpdated) {
   if (!raw || raw.length > 60) return null;
   const U = {
     length: { mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344, nmi: 1852 },
@@ -99,4 +113,109 @@ function evaluate(raw, liveRates, ratesUpdated) {
     rawOut,
     rows,
   };
+}
+
+// Number base conversion -- deliberately strict, no guessing: a source
+// needs an explicit 0x/0b prefix to be read as hex/binary; a bare digit
+// string (no prefix) is always decimal, never guessed as binary just
+// because it happens to contain only 0s and 1s. This is what makes
+// "1010 to hex" mean "convert decimal 1010", not "treat 1010 as already
+// binary" -- there'd be no way to tell those apart otherwise. Deliberately
+// separate from unitEval's U/DEF tables above: this isn't a linear-factor
+// unit conversion (km -> mi is "multiply by a ratio"), it's re-rendering
+// the same integer in a different radix, a different kind of operation
+// entirely.
+function baseEval(raw) {
+  if (!raw || raw.length > 40) return null;
+  const m = raw.trim().match(/^(0x[0-9a-fA-F]+|0b[01]+|\d+)\s*(?:to|in|as|->|→)\s*(hex(?:adecimal)?|bin(?:ary)?|dec(?:imal)?)$/i);
+  if (!m) return null;
+  const srcText = m[1];
+  let value, srcBase;
+  if (/^0x/i.test(srcText)) { value = parseInt(srcText, 16); srcBase = "hex"; }
+  else if (/^0b/i.test(srcText)) { value = parseInt(srcText.slice(2), 2); srcBase = "bin"; }
+  else { value = parseInt(srcText, 10); srcBase = "dec"; }
+  if (!Number.isFinite(value) || value < 0) return null;
+
+  const targetWord = m[2].toLowerCase();
+  const target = targetWord.startsWith("hex") ? "hex" : targetWord.startsWith("bin") ? "bin" : "dec";
+  const render = base => base === "hex" ? "0x" + value.toString(16).toUpperCase()
+    : base === "bin" ? "0b" + value.toString(2)
+    : String(value);
+  const outStr = render(target);
+
+  const rows = [
+    { k: "from", v: srcText + " (" + srcBase + ")", c: "#abb2bf" },
+    { k: "to", v: outStr, c: "#e5c07b" },
+  ];
+  ["dec", "hex", "bin"].filter(b => b !== target).forEach(b => rows.push({ k: b, v: render(b), c: "#7f848e" }));
+  rows.push({ k: "copies", v: outStr, c: "#7f848e" });
+  return {
+    ok: true,
+    domain: "base",
+    label: "= " + outStr,
+    sub: srcText + " → " + target,
+    rawOut: outStr,
+    rows,
+  };
+}
+
+// Text <-> hex byte encoding ("hello" <-> "68 65 6c 6c 6f") -- checked
+// after baseEval, so a bare number like "42 to hex" is always read as a
+// number (base conversion), never as the two-character string "42" being
+// hex-encoded; encoding kicks in for genuinely non-numeric text.
+// "X to hex" always encodes (X can be anything). "Y to text" only decodes
+// when Y actually looks like hex bytes (nothing but hex digits, an even
+// count of them once spaces are stripped) -- otherwise this returns null
+// and falls through to a normal search, so a short query that happens to
+// end in "to text" doesn't get hijacked for no reason.
+function textHexEval(raw) {
+  if (!raw || raw.length > 120) return null;
+  let m = raw.match(/^(.+?)\s+to\s+hex$/i);
+  if (m) {
+    const text = m[1];
+    const bytes = [];
+    for (const ch of text) {
+      const code = ch.codePointAt(0);
+      if (code > 0xff) return null; // single-byte (Latin-1) chars only -- kept simple, not full UTF-8
+      bytes.push(code);
+    }
+    if (bytes.length === 0) return null;
+    const hexStr = bytes.map(b => b.toString(16).padStart(2, "0")).join(" ");
+    const hexCompact = hexStr.replace(/\s+/g, "");
+    return {
+      ok: true,
+      domain: "text",
+      label: "= " + hexStr,
+      sub: "“" + text + "” → hex",
+      rawOut: hexCompact,
+      rows: [
+        { k: "text", v: text, c: "#abb2bf" },
+        { k: "hex", v: hexStr, c: "#e5c07b" },
+        { k: "bytes", v: String(bytes.length), c: "#7f848e" },
+        { k: "copies", v: hexCompact, c: "#7f848e" },
+      ],
+    };
+  }
+  m = raw.match(/^(.+?)\s+to\s+text$/i);
+  if (m) {
+    const hexPart = m[1].replace(/\s+/g, "");
+    if (!/^[0-9a-fA-F]+$/.test(hexPart) || hexPart.length === 0 || hexPart.length % 2 !== 0) return null;
+    let text = "";
+    for (let i = 0; i < hexPart.length; i += 2) {
+      text += String.fromCharCode(parseInt(hexPart.slice(i, i + 2), 16));
+    }
+    return {
+      ok: true,
+      domain: "text",
+      label: "= “" + text + "”",
+      sub: hexPart + " → text",
+      rawOut: text,
+      rows: [
+        { k: "hex", v: hexPart, c: "#abb2bf" },
+        { k: "text", v: text, c: "#e5c07b" },
+        { k: "copies", v: text, c: "#7f848e" },
+      ],
+    };
+  }
+  return null;
 }

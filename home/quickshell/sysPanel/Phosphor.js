@@ -110,6 +110,25 @@ const codepoints = {
   sparkle: 0xe6a2, // ph-sparkle (eye candy toggle)
   "hard-drives": 0xe2a0, // ph-hard-drives (ssh category, tagged "servers")
   "arrows-left-right": 0xe0a0, // ph-arrows-left-right (convert category/results)
+
+  // lock/ -- lock screen (media transport, password field, power buttons)
+  "skip-back": 0xe5a4, // ph-skip-back (media prev)
+  "skip-forward": 0xe5a6, // ph-skip-forward (media next)
+  play: 0xe3d0, // ph-play (media toggle, paused state)
+  pause: 0xe39e, // ph-pause (media toggle, playing state)
+  "lock-simple": 0xe308, // ph-lock-simple (password field prefix icon)
+  "lock-simple-open": 0xe30a, // ph-lock-simple-open (auth success state)
+  eye: 0xe220, // ph-eye (show password)
+  "eye-slash": 0xe224, // ph-eye-slash (hide password)
+  "arrow-right": 0xe06c, // ph-arrow-right (password submit button)
+  fingerprint: 0xe23e, // ph-fingerprint (fingerprint button)
+  users: 0xe4d6, // ph-users (switch-user button)
+  "caret-left": 0xe138, // ph-caret-left (session switcher prev)
+  "caret-right": 0xe13a, // ph-caret-right (session switcher next)
+  "arrow-fat-up": 0xe52e, // ph-arrow-fat-up (caps-lock warning)
+  check: 0xe182, // ph-check (auth success status line)
+  x: 0xe4f6, // ph-x (auth error status line)
+  "circle-notch": 0xeb44, // ph-circle-notch ("checking..." status line)
 };
 
 function icon(name) {

@@ -218,7 +218,14 @@ in
         # not just the same launcher pre-filtered to the emoji category
         # (there isn't one -- emoji is search-only, no chip, same as apps).
         "$mainMod, period, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openEmoji"
-        "$mainMod, L, exec, ${pkgs.hyprlock}/bin/hyprlock"
+        # Was hyprlock directly -- now the real Quickshell lock screen
+        # (home/quickshell/lock/), same repo path (and same reasoning) as
+        # home/hypridle.nix's lockCmd -- confirmed live that the deployed
+        # ~/.config/quickshell/ path silently pointed at a stale pre-lock-
+        # screen generation and just didn't run at all. hyprlock's own
+        # config is left in place, unused, as a manual fallback -- see
+        # home/hypridle.nix's comment on programs.hyprlock.
+        "$mainMod, L, exec, ${pkgs.quickshell}/bin/quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml"
         "$mainMod, W, killactive"
         "$mainMod, M, exit"
         "$mainMod, B, exec, coel-random-wallpaper"

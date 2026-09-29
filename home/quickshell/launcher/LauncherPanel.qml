@@ -123,6 +123,8 @@ Item {
         ["5 km to mi", "length"], ["72 f to c", "temperature"], ["$120 to eur", "currency"],
         ["2.5 gib in mb", "data"], ["90 min to h", "time"], ["100 kmh to mph", "speed"],
         ["3 cups to ml", "volume"], ["180 lb", "bare unit → default"],
+        ["255 to hex", "decimal → base"], ["0xFF to bin", "hex → base"], ["0b1010 to dec", "binary → base"],
+        ["hello to hex", "text → hex bytes"], ["68656c6c6f to text", "hex bytes → text"],
       ].map(([ex, d]) => ({ label: ex, sub: d, icon: "arrows-left-right", right: "", fill: true })) },
       { id: "math", label: "math", icon: "function", items: [
         ["sqrt16", "square root"], ["root(3)(27)", "nth root"], ["log(2)(1024)", "log base 2"],

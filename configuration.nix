@@ -221,6 +221,21 @@
   security.pam.services.login.rules.auth.fprintd.order =
     config.security.pam.services.login.rules.auth.unix.order + 10;
 
+  # Real auth backend for the new Quickshell-based lock screen
+  # (home/quickshell/lock/, replacing hyprlock -- see home/hypridle.nix's
+  # own comment for why hyprlock's config is left in place, unused, as a
+  # manual fallback rather than removed). Driven by `pamtester`
+  # (home/quickshell.nix) via home/quickshell/lock/backends/AuthBackend.qml.
+  #
+  # Two single-purpose stacks, not one shared one -- deliberately sidesteps
+  # the exact "password waits on the fingerprint conversation" ordering bug
+  # already fixed twice above (hyprlock/login) by never putting pam_unix
+  # and pam_fprintd in the same stack together at all, matching hyprlock's
+  # own genuinely-independent CPam/CFingerprint split more directly than
+  # login's reordering fix does.
+  security.pam.services.quickshell-lock.fprintAuth = false;
+  security.pam.services.quickshell-lock-fp.unixAuth = false;
+
   # Grants the `video` group write access to /sys/class/backlight so swayosd
   # (Hyprland session's volume/brightness OSD) can adjust brightness without
   # running as root.
@@ -385,6 +400,9 @@
 
     # Freecad from unstable
     pkgs-unstable.freecad
+
+    # Wireshark
+    pkgs.wireshark
   ];
 
   services.flatpak.enable = true;

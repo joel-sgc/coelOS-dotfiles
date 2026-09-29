@@ -38,5 +38,16 @@ in
     # a Nerd Font mono like rofi/ghostty use, per the panel redesign.
     pkgs.jetbrains-mono
     phosphorFont
+
+    # Real password/fingerprint auth for the lock screen
+    # (lock/backends/AuthBackend.qml) -- drives the two dedicated PAM
+    # services declared in configuration.nix (quickshell-lock/
+    # quickshell-lock-fp) by feeding a typed password over stdin or just
+    # waiting on the fingerprint conversation, and reading back the real
+    # exit code. No QML-native PAM binding exists, so this is the same
+    # "shell out to a small existing tool" idiom every other real backend
+    # in this project already uses (scripts/list-apps.py etc.), just via
+    # an existing nixpkgs package instead of a bespoke script.
+    pkgs.pamtester
   ];
 }
