@@ -110,10 +110,17 @@ Scope {
         implicitHeight: root.barHeight
         color: root.bgColor
 
-        // Above Border.qml's own screen-edge overlay (which sits one
-        // layer down, at Top) so the bar's popups/dropdowns render over
-        // the border frame instead of being drawn behind it.
-        WlrLayershell.layer: WlrLayer.Overlay
+        // Top, not Overlay -- Overlay is wlr-layer-shell's "never
+        // hidden, even by a fullscreen client" layer, which is why the
+        // bar was staying visible over a fullscreen video player (real
+        // user-reported bug). Border.qml is already correctly on Top
+        // (and correctly disappears behind fullscreen content); this
+        // brings the bar in line with it. Doesn't affect the popups'
+        // own stacking above Border's frame -- Popup.qml sets its own
+        // WlrLayershell.layer (still Overlay) independently on its own
+        // separate PanelWindow, unrelated to what layer this one, the
+        // bar strip itself, is on.
+        WlrLayershell.layer: WlrLayer.Top
 
         RowLayout {
           anchors.verticalCenter: parent.verticalCenter

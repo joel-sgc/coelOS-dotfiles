@@ -21,7 +21,6 @@ Item {
   property var colors: ["#61afef", "#ef596f", "#e5c07b", "#89ca78", "#d55fde"]
 
   property string ssid: "home-5g"
-  property int batteryPct: 82
 
   property bool playing: true
   property string mediaTitle: ""
@@ -58,6 +57,9 @@ Item {
   signal debugCapsToggleRequested()
 
   MediaWidget {
+    // Lock-screen only -- confirmed with user that a media player
+    // control has no real meaning before anyone's logged in yet.
+    visible: root.mode !== "login"
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.topMargin: 28
@@ -77,13 +79,17 @@ Item {
   }
 
   NetworkBattery {
+    // Battery stays visible in login mode (still useful to know charge
+    // before logging in); the wifi chip doesn't, since the greeter
+    // doesn't pre-connect to a network before login, so it'd only ever
+    // show stale/meaningless state.
+    showNetwork: root.mode !== "login"
     anchors.top: parent.top
     anchors.right: parent.right
     anchors.topMargin: 30
     anchors.rightMargin: 40
     fgColor: root.mutedColor
     ssid: root.ssid
-    batteryPct: root.batteryPct
   }
 
   ClockDate {

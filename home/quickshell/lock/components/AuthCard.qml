@@ -197,11 +197,20 @@ Item {
             MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: root.sessionStepRequested(-1) }
           }
           Text {
+            // 64px was a placeholder that never got sized against real
+            // session names -- confirmed live that names like "Hyprland
+            // (uwsm-managed)" need ~165px at this font size and were
+            // overflowing into the right-caret arrow next to them. The
+            // row actually has ~280px available (RowLayout width 332
+            // minus the 40px avatar and spacing), so 220px leaves
+            // headroom plus an elide fallback for anything longer still.
             text: root.sessions.length > 0 ? root.sessions[root.selectedSession] : ""
             color: root.fgColor
             font.family: "JetBrains Mono"
             font.pixelSize: 12
-            width: 64
+            width: 220
+            elide: Text.ElideRight
+            clip: true
             horizontalAlignment: Text.AlignLeft
           }
           Text {

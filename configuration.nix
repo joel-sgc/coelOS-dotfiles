@@ -13,7 +13,22 @@
     ./modules/nix-ld.nix
     ./modules/filesystems.nix
     ./modules/ultraleap.nix
+    ./modules/greeter.nix
   ];
+
+  # Importing modules/greeter.nix above is a no-op on its own (see its own
+  # comment); this is the one line that actually flips SDDM -> the
+  # Quickshell/greetd login screen. Real-hardware testing via
+  # `nixos-rebuild test` only (reversible -- an unplanned reboot before
+  # `switch` returns to the current, SDDM-based generation), never
+  # `switch` yet, until this has actually been confirmed working.
+  #
+  # The VM-only `boot.initrd.luks.devices = mkForce {}` override used for
+  # nixos-rebuild build-vm testing (hardware-configuration.nix's real
+  # LUKS UUIDs don't exist in the VM's virtual disk) has been removed --
+  # it must never reach real hardware, where those UUIDs are real and
+  # genuinely need unlocking at boot.
+  services.qs-greeter.enable = true;
 
   ##############################################################################
   # Boot / Bootloader

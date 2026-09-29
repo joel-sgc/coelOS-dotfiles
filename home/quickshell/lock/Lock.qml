@@ -166,17 +166,16 @@ Scope {
   function onSubmitCheckFinished() {
     handlePasswordResult(pw === "coel", "");
   }
-  // `error` is pamtester's own stderr text (empty for the fake login-mode
-  // path above). A genuine backend problem (wrong/missing PAM service,
-  // pamtester itself failing) and a plain wrong password both just exit
-  // non-zero with nothing else to tell them apart by -- confirmed live
-  // that pamtester's stderr does differ ("Initialization failure" vs.
-  // "Permission denied"), and showing the real text instead of a blanket
-  // "incorrect password" is what would have told a previous real-mode
-  // test the PAM service hadn't been switched in yet, rather than leaving
-  // it looking like an unwinnable "wrong password" loop with no escape.
+  // `error` is empty for a routine failure (AuthBackend.qml's PamContext
+  // handlers only pass a non-empty PamResult/PamError diagnostic string
+  // for a genuine backend problem, never for an ordinary wrong password/
+  // no-match) and for the fake login-mode path above. Showing that real
+  // text instead of a blanket "incorrect password" is what would have
+  // told a previous real-mode test the PAM service hadn't been switched
+  // in yet, rather than leaving it looking like an unwinnable "wrong
+  // password" loop with no escape.
   function isBackendError(error) {
-    return !!error && error.indexOf("Permission denied") === -1;
+    return !!error;
   }
   function handlePasswordResult(success, error) {
     if (success) { succeedAuth(); return; }

@@ -73,6 +73,25 @@ ShellRoot {
     }
   }
 
+  // Wraparound border -- borderColor is intentionally bound to the opaque
+  // bgColor here rather than left at Border.qml's own translucent default;
+  // confirmed with the user, not an oversight.
+  //
+  // Declared *before* Panel below, deliberately: both are on WlrLayer.Top
+  // now (Panel used to be Overlay, moved to Top to fix a real "bar stays
+  // visible over fullscreen" bug -- see Panel.qml's own comment on its
+  // WlrLayershell.layer). Two windows sharing one wlr-layer-shell layer
+  // stack by creation order (confirmed live via `hyprctl -j layers`: both
+  // show up on level 2, in the same order they're instantiated here, and
+  // paint order follows that list with the later one on top) -- with
+  // Panel declared first as it used to be, Border ended up rendering over
+  // it. Border first, Panel second puts the bar back on top while both
+  // stay correctly coverable by a fullscreen client.
+  Border {
+    borderColor: root.bgColor
+    barHeight: root.barHeight
+  }
+
   // Waybar-like panel
   Panel {
     id: panel
@@ -83,14 +102,6 @@ ShellRoot {
     hoverColor: root.hoverColor
     barHeight: root.barHeight
     onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
-  }
-
-  // Wraparound border -- borderColor is intentionally bound to the opaque
-  // bgColor here rather than left at Border.qml's own translucent default;
-  // confirmed with the user, not an oversight.
-  Border {
-    borderColor: root.bgColor
-    barHeight: root.barHeight
   }
 
   // Spotlight-style launcher (rofi replacement) -- see Launcher.qml
