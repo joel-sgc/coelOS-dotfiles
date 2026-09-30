@@ -103,6 +103,14 @@ in
   # too and couldn't resolve its QQC2 style anymore (see home/theme.nix's
   # comment). Hyprland's `env=` only reaches processes it execs itself, so
   # it can never reach a separate Plasma session.
+  #
+  # QT_QPA_PLATFORMTHEME alone isn't enough for any KDE Frameworks app
+  # (Dolphin, etc.) -- their own Nix wrapper bakes in a QT_PLUGIN_PATH from
+  # just their own build closure, which never includes this package's
+  # plugin. home/hyprland.nix's own QT_PLUGIN_PATH (pointed at the
+  # home-manager profile's merged plugin dir, where installing this
+  # package via home.packages already symlinks libqt6ct.so to) is what
+  # actually makes it discoverable -- see that file's comment.
   home.packages = [ pkgs.kdePackages.qt6ct ];
 
   xdg.configFile = {

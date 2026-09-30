@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  config,
   ...
 }:
 
@@ -70,6 +71,19 @@ in
         # falling back to plain light Qt defaults, without ever touching
         # a separate Plasma session.
         "QT_QPA_PLATFORMTHEME,qt6ct"
+        # Without this, QT_QPA_PLATFORMTHEME=qt6ct is a silent no-op for
+        # any Qt app whose own Nix wrapper bakes in its own QT_PLUGIN_PATH
+        # (every kdePackages app, e.g. Dolphin -- confirmed live: its
+        # wrapper's baked-in path list has no qt6ct anywhere in it, so
+        # libqt6ct.so is simply never found and it falls straight back to
+        # stock/unthemed). Those wrappers append the *inherited*
+        # QT_PLUGIN_PATH to their own list rather than replacing it, so
+        # pointing this at the home-manager profile's merged plugin dir
+        # (where qt6ct's own plugins already get symlinked to, since it's
+        # installed via home.packages in home/qt-theme.nix) is enough --
+        # confirmed live via the fixed process's own /proc/<pid>/maps
+        # actually loading libqt6ct.so, it didn't before this.
+        "QT_PLUGIN_PATH,${config.home.profileDirectory}/lib/qt-6/plugins"
       ];
 
       "$terminal" = "ghostty";

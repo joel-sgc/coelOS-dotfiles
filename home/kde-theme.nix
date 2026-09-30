@@ -173,17 +173,33 @@ in
   # xdg.configFile symlink would fight it on every login. Same pattern as
   # kglobalshortcutsrc in home/kde-shortcuts.nix.
   #
-  # kdeglobals' ColorScheme/Icons cover plain Qt Widgets apps (Dolphin,
-  # System Settings) directly, but not the Plasma shell's own chrome
-  # (panels, tray, task manager) -- that reads a separate "Plasma Desktop
-  # Theme" in plasmarc, which the breezedark LookAndFeelPackage had left on
-  # a fixed-dark theme instead of one that follows the active color
-  # scheme. Plasma's bundled "default" theme (not "breeze-dark"/
-  # "breeze-light", which hardcode their own colors) is the adaptive one
-  # that recolors from whatever color scheme is active.
+  # kdeglobals' ColorScheme/Icons cover plain Qt Widgets apps under a real
+  # Plasma session directly, but not the Plasma shell's own chrome (panels,
+  # tray, task manager) -- that reads a separate "Plasma Desktop Theme" in
+  # plasmarc, which the breezedark LookAndFeelPackage had left on a
+  # fixed-dark theme instead of one that follows the active color scheme.
+  # Plasma's bundled "default" theme (not "breeze-dark"/"breeze-light",
+  # which hardcode their own colors) is the adaptive one that recolors
+  # from whatever color scheme is active.
+  #
+  # [UiSettings] ColorScheme=qt6ct is the actual fix for real KDE
+  # Frameworks apps (Dolphin, etc.) under Hyprland specifically -- found
+  # via NixOS Discourse after extensive live debugging, confirmed working
+  # here. Root cause: home/hyprland.nix sets QT_QPA_PLATFORMTHEME=qt6ct so
+  # plain Qt6 apps get a real color source under Hyprland (see that file's
+  # comment), but KDE Frameworks apps use libKF6ColorScheme, which -- once
+  # a foreign (non-"kde") platform theme is active -- ignores both qt6ct's
+  # palette AND kdeglobals' `[General] ColorScheme=` name entirely,
+  # falling back to a compiled-in default (confirmed live: correct
+  # QT_PLUGIN_PATH, confirmed-loaded libqt6ct.so, forced QT_STYLE_OVERRIDE,
+  # and even manually-patched-in kdeglobals `[Colors:*]` blocks all failed
+  # to fix it on their own). This literal sentinel value tells
+  # KColorScheme to defer to the platform theme's own QPalette instead of
+  # resolving a named KDE scheme file -- not a real scheme name.
   home.activation.coelKdeTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${kwriteconfig6} --file kdeglobals --group General --key ColorScheme CoelOSOneDark
     $DRY_RUN_CMD ${kwriteconfig6} --file kdeglobals --group Icons --key Theme Papirus
+    $DRY_RUN_CMD ${kwriteconfig6} --file kdeglobals --group UiSettings --key ColorScheme qt6ct
     $DRY_RUN_CMD ${kwriteconfig6} --file plasmarc --group Theme --key name default
   '';
 }
