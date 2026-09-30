@@ -106,7 +106,11 @@ stop_screenrecording() {
 }
 
 toggle_screenrecording_indicator() {
-  pkill -RTMIN+8 waybar || true
+  # No-op: waybar (and its custom/screenrecording-indicator module, which
+  # this signal used to refresh) is gone. Nothing wired up as a
+  # replacement yet -- add one here if the Quickshell panel grows an
+  # equivalent indicator.
+  :
 }
 
 screenrecording_active() {

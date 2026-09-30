@@ -36,37 +36,28 @@ let
 in
 {
   # Papirus for Dolphin/KDE's file & folder icons -- the same icon theme
-  # Nautilus already gets implicitly under GTK. `color` bakes the folder
-  # tint in at *build* time: nixpkgs' papirus-icon-theme derivation runs
-  # `papirus-folders -C ${color}` itself, on its own writable build
-  # directory, before the result becomes an immutable /nix/store path
-  # (see pkgs/by-name/pa/papirus-icon-theme/package.nix). Running
-  # papirus-folders at runtime/activation against the already-installed
-  # package doesn't work under Nix at all -- it rewrites SVGs in place
-  # inside the theme directory, which is read-only in the store; it was
-  # tried first and failed both on a missing `awk` on the activation
-  # script's PATH *and*, after fixing that, on trying to sudo its way
-  # around the read-only store once it noticed the theme dir wasn't
-  # writable.
+  # Nautilus gets implicitly under GTK. `color` bakes the folder tint in at
+  # *build* time: nixpkgs' papirus-icon-theme derivation runs
+  # `papirus-folders -C ${color}` itself before the result becomes an
+  # immutable /nix/store path. Running papirus-folders at runtime/
+  # activation against the already-installed package doesn't work under
+  # Nix -- it rewrites SVGs in place, and the theme dir is read-only in the
+  # store.
   #
   # "blue" is the closest built-in preset to theme.blue (#61afef) --
-  # papirus-folders only supports a fixed named palette, not arbitrary
-  # hex (confirmed by reading its source), so this compares the shipped
-  # preset SVGs' own hex fills against our real blue rather than guessing:
-  # blue=#5294e2 was closest, well ahead of nordic/bluegrey.
+  # papirus-folders only supports a fixed named palette, not arbitrary hex,
+  # and blue=#5294e2 is closest among the shipped presets.
   home.packages = [
     (pkgs.papirus-icon-theme.override { color = "blue"; })
   ];
 
   # A native KDE/Qt color scheme (~/.local/share/color-schemes/), built
-  # from the same real palette (home/theme/onedark.nix) as every other
-  # themed surface in this config. Deliberately NOT the qt5ct/qt6ct
-  # platform-theme route home/theme.nix used to take -- that broke Plasma
-  # outright (KWin/plasmashell couldn't resolve the QQC2 style once
-  # QT_QPA_PLATFORMTHEME was overridden; see home/theme.nix's comment). A
-  # .colorscheme file is a different, much narrower mechanism: it only
-  # supplies a named color palette for Breeze's own style engine to read,
-  # nothing about platform theme/style resolution changes.
+  # from the same palette (home/theme/onedark.nix) as every other themed
+  # surface. Deliberately NOT the qt5ct/qt6ct platform-theme route
+  # home/theme.nix used to take -- that broke Plasma outright (see
+  # home/theme.nix's comment). A .colorscheme file only supplies a named
+  # palette for Breeze's style engine; nothing about platform theme/style
+  # resolution changes.
   xdg.dataFile."color-schemes/CoelOSOneDark.colorscheme".text = ''
     [ColorEffects:Disabled]
     Color=${rgb theme.comment}
@@ -179,24 +170,17 @@ in
   # Applied via kwriteconfig6 (patches one key at a time), not by
   # symlinking kdeglobals/plasmarc wholesale -- Plasma owns and rewrites
   # these live as the user changes things in System Settings, so a full
-  # xdg.configFile symlink there would fight it on every login. Same
-  # pattern already used for kglobalshortcutsrc in home/kde-shortcuts.nix.
+  # xdg.configFile symlink would fight it on every login. Same pattern as
+  # kglobalshortcutsrc in home/kde-shortcuts.nix.
   #
   # kdeglobals' ColorScheme/Icons cover plain Qt Widgets apps (Dolphin,
-  # System Settings, ...), which read kdeglobals directly -- that's why
-  # Dolphin already looked right without the line below. They do *not*
-  # cover the Plasma shell's own chrome (panels, system tray, widgets,
-  # task manager): that reads a separate "Plasma Desktop Theme" setting
-  # in plasmarc, which LookAndFeelPackage=org.kde.breezedark.desktop
-  # (still active -- only its ColorScheme/Icons pieces are overridden
-  # above, not the bundle selection itself) had left on a *fixed*-dark
-  # theme rather than one that follows the active color scheme. Plasma's
-  # bundled "default" theme (KPlugin.Id "default", user-facing name
-  # "Breeze" -- not "breeze-dark"/"breeze-light", both of which hardcode
-  # their own colors) is the adaptive one: confirmed by decompressing its
-  # panel-background.svgz and finding the literal `current-color-scheme`
-  # token Plasma's SVG renderer looks for to recolor an element from
-  # whatever color scheme is active, i.e. CoelOSOneDark above.
+  # System Settings) directly, but not the Plasma shell's own chrome
+  # (panels, tray, task manager) -- that reads a separate "Plasma Desktop
+  # Theme" in plasmarc, which the breezedark LookAndFeelPackage had left on
+  # a fixed-dark theme instead of one that follows the active color
+  # scheme. Plasma's bundled "default" theme (not "breeze-dark"/
+  # "breeze-light", which hardcode their own colors) is the adaptive one
+  # that recolors from whatever color scheme is active.
   home.activation.coelKdeTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${kwriteconfig6} --file kdeglobals --group General --key ColorScheme CoelOSOneDark
     $DRY_RUN_CMD ${kwriteconfig6} --file kdeglobals --group Icons --key Theme Papirus

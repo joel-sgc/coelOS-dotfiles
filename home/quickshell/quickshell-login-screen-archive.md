@@ -1,4 +1,14 @@
-# Quickshell Login Screen on NixOS (greetd + Quickshell)
+# Quickshell Login Screen on NixOS (greetd + Quickshell) — archived, pre-implementation draft
+
+**Archived 2026-09-30.** This was written *before* the real greeter/lock
+screen existed, as a design sketch. The actual implementation diverged
+significantly and none of the file paths or component names below are
+real: the module is `modules/greeter.nix` (not `modules/qs-greeter.nix`),
+there's no `quickshell/theme/` directory, no `Theme.qml`/`Avatar.qml`/
+`UserPicker.qml`/`SessionPicker.qml`/`LockBackend.qml`. For the real,
+verified architecture and file layout, see `home/quickshell/STATUS.md`'s
+"Lock screen + greetd login screen" section instead. Kept here only for
+whatever design rationale still applies, not as a reference for real paths.
 
 A design and implementation guide for a login screen written in Quickshell/QML, running under greetd on NixOS, able to start both **Hyprland** and **KDE Plasma (Wayland)** sessions. It is built so the login screen and the lock screen share one set of QML components and look the same.
 

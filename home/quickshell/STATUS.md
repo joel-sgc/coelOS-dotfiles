@@ -7,6 +7,22 @@ this file — the lock/login work described below (this doc's own previous
 version, itself now committed) is done; this update's real news is the
 **rofi retirement + misc cleanup** section, all still uncommitted.
 
+**Update, 2026-09-30 (not this doc's original session):** the rofi
+retirement pass below got committed (`b96ce68`), so it's no longer
+uncommitted as the rest of this doc says. Since then: `home/waybar.nix`
+and its assets were deleted outright (waybar is now fully gone, not just
+unused); a documentation/comment-cleanup pass trimmed verbose comments
+across most `.nix` files and fixed several stale references this doc's
+own "left no dangling references anywhere real" claim missed (the
+`pamtester` claim in `configuration.nix`'s lock-PAM comment was wrong —
+the real backend is `PamContext`, see `AuthBackend.qml`'s own comment);
+and the orphaned in-app "about" view this doc flagged below (`AboutBackend`/
+`aboutView`/`view` in `LauncherPanel.qml`) was removed entirely, along with
+the same dead `hyprlock`-direct-call pattern found a second time in
+`sysPanel/dropdowns/PowerDropdown.qml`'s session actions (not just the
+launcher's "Lock" entry this doc originally caught) — both now call the
+real `quickshell -p .../lock-real-shell.qml` command.
+
 Commit history: `git log`, most recent relevant commits `0344391`,
 `ec76ac3`, `26871ef` for the bar/launcher work, `54c1a5e`/`6e27aba` for the
 start of the lock+login work, and **`41c81d6`** (the previous version of
@@ -676,13 +692,10 @@ effect of making it the running default, just without a ceremonial
 - Avatar images (`greeter/assets/<username>.png`) — the greeter user
   can't read `~/.face`; would need images baked into the Nix store
   per-user. Non-urgent, never requested.
-- The launcher's own "Lock" entry (`sysPanel`/`LauncherPanel.qml`'s system
-  category) still runs `hyprlock` directly — stale, since the real lock
-  keybind (`home/hypridle.nix`/`home/hyprland.nix`) was already repointed
-  at `quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml` earlier
-  in this arc. Noticed incidentally while writing this update, not
-  chased down; the launcher entry was never mentioned/requested to
-  change.
+- ~~The launcher's own "Lock" entry... still runs `hyprlock` directly~~ —
+  **fixed 2026-09-30**, along with the same pattern in
+  `PowerDropdown.qml`'s session actions (not mentioned when this was first
+  found); both now call `quickshell -p .../lock-real-shell.qml` directly.
 - Plasma's own separate Look-and-Feel lock-screen adapter is explicitly
   out of scope (this project's lock screen replaces hyprlock/Hyprland's
   own locking, not KDE's).
@@ -730,14 +743,13 @@ function; no behavior change.
 - "About this system" changed from `view: "about"` (opening the
   launcher's own in-app about page, `AboutBackend.qml`'s data rendered
   inline) to a plain `command:` that runs `fastfetch` directly in a
-  floating ghostty window instead. **This orphans the in-app about-view
-  code** — `LauncherPanel.qml`'s `AboutBackend { id: about }`, the
-  `view`/`aboutView` state, and the about-page rendering block (including
-  the `|| ""` fallbacks this doc's own "Two real QML warning bugs fixed"
-  section documents fixing) have no remaining entry point now that
-  nothing sets `view = "about"` anymore. Found by grepping for it while
-  writing this update, not chased down or removed — genuinely dead code
-  as of this doc, not yet confirmed intentional with the user.
+  floating ghostty window instead. This orphaned the in-app about-view
+  code (`AboutBackend { id: about }`, `view`/`aboutView` state, the
+  about-page rendering block, and the generic `it.view`/`cur.view`
+  plumbing that turned out to only ever have been used for this one case)
+  — **removed entirely 2026-09-30**, including deleting
+  `launcher/backends/AboutBackend.qml` itself, since nothing else
+  instantiated it.
 
 **`home/hyprland.nix`**: one window-rule size tweak for the
 `com.joelsgc.info` floating terminal class (1111x725 → 1144x655),
@@ -753,22 +765,15 @@ this session's work. No single stated top priority right now; treat the
 open items below on their own merits if asked, in rough likely-relevance
 order:
 
-1. Commit the rofi-retirement/cleanup pass (see the top-of-file note and
-   "Rofi retirement + misc cleanup" above — real uncommitted changes as of
-   this doc). Same rule as always: **the user commits themselves**, don't
-   commit unasked, don't assume it's done either.
-2. Confirm whether dropping the in-app "about" view (`LauncherPanel.qml`'s
-   `AboutBackend`/`view`/`aboutView`, now unreachable — see "Rofi
-   retirement" above) in favor of a direct `fastfetch` terminal was
-   intentional, and if so whether the now-dead code should actually be
-   removed rather than left orphaned.
+1. ~~Commit the rofi-retirement/cleanup pass~~ — done (`b96ce68`).
+2. ~~Confirm whether dropping the in-app "about" view... should actually be
+   removed~~ — removed entirely 2026-09-30 (see the top-of-file update
+   note).
 3. fprintd's ~30s timeout on the greeter (see the lock/login section's
    "Known open items") — revisit if a fast password-only login still
    feels slow without touching the sensor.
-4. The launcher's stale "Lock" entry still calls `hyprlock` directly
-   instead of the real quickshell lock command (see "Known open items"
-   above) — a one-line fix in `LauncherPanel.qml`, not yet made since it
-   was never actually asked for.
+4. ~~The launcher's stale "Lock" entry still calls `hyprlock` directly~~ —
+   fixed 2026-09-30, along with the same pattern in `PowerDropdown.qml`.
 5. Live-test the tray dropdown end-to-end against a real menu click (does
    `entry.triggered()` actually perform the real action?) and confirm the
    340px width is enough for whatever else shows up in real tray menus

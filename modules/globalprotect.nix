@@ -9,16 +9,14 @@ let
   gpFHS = (import ../lib/globalprotect-fhs.nix { inherit pkgs; }) "globalprotect-fhs";
 
   # GlobalProtect's full-tunnel config duplicates routes for whatever local
-  # subnet you're actually on through its own tunnel interface (gpd0), with
-  # no explicit metric (defaults to 0), beating the real route -- breaks
-  # SSH/DNS/anything else on that subnet while connected. Confirmed on a
-  # test VM and on this host itself (see globalprotect-hip-investigation.md).
-  # PanGPS has a netlink-reactive watchdog that re-adds a plainly-deleted
-  # route within milliseconds, so this bypasses it with policy routing
-  # instead of fighting it: finds every subnet routed via *both* gpd0 and a
-  # different device (that pairing is the hijack signature, regardless of
-  # which specific subnet/network you're on) and routes it through a
-  # separate table that PanGPS has no reason to touch.
+  # subnet you're on through its own tunnel interface (gpd0), with no
+  # explicit metric (defaults to 0), beating the real route -- breaks
+  # SSH/DNS/anything else on that subnet while connected (see
+  # modules/globalprotect/globalprotect-hip-investigation.md). PanGPS has a
+  # netlink-reactive watchdog that re-adds a plainly-deleted route within
+  # milliseconds, so this bypasses it with policy routing instead: finds
+  # every subnet routed via *both* gpd0 and a different device (the hijack
+  # signature) and routes it through a separate table PanGPS never touches.
   gpRouteFix = pkgs.writeShellApplication {
     name = "gp-route-fix";
     runtimeInputs = [ pkgs.iproute2 pkgs.jq pkgs.gnugrep ];
@@ -58,17 +56,13 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/globalprotect 0775 root globalprotect -"
 
-    # Real host mountpoint the FHS sandboxes (both the root daemon and the
-    # per-user agent below) bind /var/lib/globalprotect onto. It's just an
-    # empty bind-mount target, no real content of its own -- but it
-    # predates this NixOS module (leftover from GlobalProtect's original
-    # native install, which drops it root:root 0700) and bwrap has to
-    # mkdir its own mountpoint *inside* it as whichever user is running
-    # the sandbox. That mkdir succeeds for the daemon (root) but fails for
-    # the per-user agent, which isn't root -- "bwrap: Can't mkdir
-    # /opt/paloaltonetworks/globalprotect: Permission denied", and the
-    # agent's sandbox never starts as a result. Same root:globalprotect
-    # 0775 treatment as /var/lib/globalprotect above fixes it the same way.
+    # Real host mountpoint the FHS sandboxes bind /var/lib/globalprotect
+    # onto. It predates this NixOS module (leftover from GlobalProtect's
+    # original native install, root:root 0700), and bwrap has to mkdir its
+    # own mountpoint inside it as whichever user runs the sandbox -- that
+    # succeeds for the root daemon but fails for the per-user agent with
+    # "Permission denied". Same root:globalprotect 0775 treatment as
+    # /var/lib/globalprotect above fixes it.
     "d /opt/paloaltonetworks 0775 root globalprotect -"
   ];
 

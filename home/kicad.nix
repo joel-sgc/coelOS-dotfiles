@@ -8,8 +8,7 @@
   #
   # No home-manager-level config yet; upstream's own .desktop entries
   # (org.kicad.*) already put "KiCad" in Name, so unlike gimp.desktop this
-  # doesn't hit the drun-match-fields issue in home/rofi.nix -- no
-  # home/desktop-entries.nix override needed.
+  # needs no home/desktop-entries.nix override.
   home.packages = [
     pkgs.kicad
   ];

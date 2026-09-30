@@ -1,4 +1,12 @@
-# Hyprland migration
+# Hyprland migration (archived — superseded)
+
+**Archived 2026-09-30.** This tracks the *original* Hyprland migration,
+when the daily-driver setup was waybar + rofi. Both were fully retired and
+replaced by the from-scratch Quickshell panel/launcher/lock/greeter — see
+`home/quickshell/STATUS.md` for the current, accurate state. Kept here only
+as a historical record of the early migration decisions (Phases 0-2, the
+Plasma-isolation architecture note, the invisible-DE-plumbing audit); don't
+treat anything below describing waybar/rofi as current.
 
 Plasma stays installed and selectable in SDDM for the entire migration — no phase here removes the fallback. See chat history for full rationale per phase.
 

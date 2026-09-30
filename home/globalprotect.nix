@@ -22,8 +22,8 @@ let
 
   # Driven wrapper around the vendor `globalprotect connect`. LUC auth is
   # plain username+password against the portal (no SAML) followed by a
-  # gateway OTP challenge -- see globalprotect-hip-investigation.md and
-  # home/globalprotect/gp-connect.exp for the reverse-engineered flow.
+  # gateway OTP challenge -- see home/globalprotect/gp-connect.exp for the
+  # reverse-engineered flow.
   #
   # Built to be called from another program (a Go TUI, a script):
   #   - no controlling tty needed; expect makes its own pty for the CLI
@@ -143,18 +143,12 @@ let
     '';
   };
 
-  # The agent (re)creates ~/GP_HTML every time it starts. It's the scratch
-  # area for the browser-based SAML login handoff: the agent writes a page
-  # there, opens it in the browser, and the browser posts the response back
-  # into GP_HTML/defaultbrowser/. The path is built from $HOME inside the
-  # vendor binaries, so it can't be renamed or moved. LUC login here is
-  # plain password + OTP (see vpnConnect), so nothing uses it after startup
-  # and it just sits in the home directory as clutter.
-  #
-  # So: delete it, but only once it's been idle. Anything in it (or the
-  # folder itself) touched in the last 15 minutes means a browser login
-  # could be mid-flight, so leave it alone and let the next run retry. The
-  # client makes it again on demand, so removing it is harmless.
+  # The agent (re)creates ~/GP_HTML every time it starts -- scratch area for
+  # a browser-based SAML login handoff, hardcoded from $HOME in the vendor
+  # binaries so it can't be relocated. LUC login here is plain password+OTP
+  # (see vpnConnect), so nothing uses it after startup and it just sits as
+  # clutter. Deleted only once idle for 15 minutes, since a browser login
+  # could still be mid-flight; the client recreates it on demand.
   gpHtmlCleanup = pkgs.writeShellApplication {
     name = "coel-gp-html-cleanup";
     runtimeInputs = [
@@ -193,14 +187,11 @@ in
     Service = {
       Type = "simple";
       ExecStart = "${gpFHS}/bin/globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./PanGPA start'";
-      # "on-failure" only restarts on a nonzero exit/signal -- confirmed
-      # live that a home-manager switch's restart of this unit can leave
-      # PanGPA exiting clean (status 0) almost immediately afterward
-      # instead of running as the long-lived background service it's
-      # supposed to be, silently requiring a manual `systemctl --user
-      # restart globalprotect-agent` before VPN connect attempts (CLI or
-      # panel) would stop hitting a confusing "already established"-style
-      # refusal. "always" restarts on any exit, clean or not.
+      # "on-failure" isn't enough: a home-manager switch's restart of this
+      # unit can leave PanGPA exiting clean (status 0) instead of running
+      # as the long-lived service it's supposed to be, silently requiring a
+      # manual restart before VPN connect attempts would stop refusing.
+      # "always" restarts on any exit, clean or not.
       Restart = "always";
       RestartSec = 1;
     };

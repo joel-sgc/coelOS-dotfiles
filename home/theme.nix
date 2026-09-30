@@ -32,14 +32,11 @@ in
       @define-color accent_bg_color ${theme.blue};
 
       # Primary/secondary/error scheme: blue+yellow are the primary duo
-      # (see home/hyprland.nix's border gradient and home/rofi.nix's
-      # accent/urgent, which already used this pairing), green is
-      # secondary, and error/destructive use theme.error (their real
-      # dedicated failure-state red, #f44747 -- not theme.red/coral,
-      # which is the emphasis/accent color, not a failure color). These
-      # three were previously undefined here, so GTK/libadwaita apps
-      # silently fell back to upstream's own default green/yellow/red
-      # instead of the theme's palette.
+      # (matching home/hyprland.nix's border gradient), green is secondary,
+      # and error/destructive use theme.error (the dedicated failure-state
+      # red, #f44747 -- not theme.red/coral, the emphasis/accent color).
+      # These three were previously undefined here, so GTK/libadwaita apps
+      # fell back to upstream's default green/yellow/red instead.
       @define-color success_color ${theme.green};
       @define-color success_bg_color ${theme.green};
       @define-color success_fg_color ${theme.bg};
@@ -72,11 +69,11 @@ in
   };
 
   # Qt theming is intentionally left to KDE/Plasma's native platform theme
-  # (plasma-integration) here. The old qt5ct/qt6ct setup (QT_QPA_PLATFORMTHEME=qt5ct)
-  # bypassed that and broke Plasma: KWin/plasmashell then couldn't resolve the
-  # QtQuickControls2 styles (module "breeze"/"adwaita-dark" is not installed),
-  # crashing the shell to a black screen. The custom One Dark palette lives on
-  # via the GTK overrides above and the Plasma color scheme instead.
+  # (plasma-integration) here -- an earlier qt5ct/qt6ct setup
+  # (QT_QPA_PLATFORMTHEME=qt5ct) bypassed that and crashed the shell to a
+  # black screen (KWin/plasmashell couldn't resolve the QtQuickControls2
+  # style). The custom One Dark palette lives on via the GTK overrides
+  # above and the Plasma color scheme (home/kde-theme.nix) instead.
 
   home.packages = [ themeTest ];
 }

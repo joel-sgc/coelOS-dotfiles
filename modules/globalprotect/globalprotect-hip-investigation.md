@@ -132,8 +132,9 @@ Current live state:
 - `lib/globalprotect-fhs.nix`: `targetPkgs` includes `iptables` + `nftables`
 - `services.firewalld.enable = true;` / `networking.nftables.enable = true;`
   (configuration.nix) -- this is what's actually being detected as "enabled"
-- `enableGpHipComplianceExperiment = true;` (ClamAV) -- no longer load-bearing
-  for what's needed, could be reverted; left on, harmless either way
+- `enableGpHipComplianceExperiment`/ClamAV has since been removed from the
+  config entirely -- confirmed never load-bearing for base-tier access, so
+  no functional loss
 - `networking.firewall.package = pkgs.iptables-legacy;` -- inert/superseded,
   see the comment above it
 

@@ -2,15 +2,12 @@
 
 let
   # Real LSP client for micro (AndCake/micro-plugin-lsp) -- diagnostics,
-  # hover, completion, go-to-definition, backed by actual language servers,
-  # instead of micro's bundled `linter` plugin (which just shells out to
-  # external linters and can't do any of that). This is what was missing
-  # before and is the thing that actually gets closer to VS Code-level
-  # tooling within what micro can support.
+  # hover, completion, go-to-definition, unlike micro's bundled `linter`
+  # plugin, which just shells out to external linters.
   #
   # Vendored via fetchFromGitHub rather than micro's own `-plugin install`
-  # (which fetches at runtime, non-reproducible) -- this places the exact
-  # same files that command would, just declaratively.
+  # (which fetches at runtime, non-reproducible) -- places the same files
+  # that command would, just declaratively.
   lspPlugin = pkgs.fetchFromGitHub {
     owner = "AndCake";
     repo = "micro-plugin-lsp";
@@ -36,8 +33,7 @@ in
     settings = {
       autosave = true;
       tabsize = 2;
-      # Hand-rolled, not micro's bundled "one-dark" (runtime/colorschemes/
-      # one-dark.micro) -- checked its actual source and it's the canonical
+      # Hand-rolled, not micro's bundled "one-dark" -- that's the canonical
       # Atom values (#21252C bg, #C678DD purple, #98C379 green), not
       # tal7aouy's tweaked ones (home/theme/onedark.nix). Same gap as
       # ghostty's bundled "Atom One Dark". Built below from the bundled
@@ -99,14 +95,12 @@ in
     color-link trailingws "${theme.error}"
   '';
 
-  # Extends micro's bundled runtime/syntax/typescript.yaml (same filetype
-  # declaration + detect regex overrides it, per micro's own docs) with
-  # coverage the stock ruleset lacks for a JSX-heavy codebase: JSX/TSX tag
-  # names, decorators, and a few TS keywords added after the bundled file's
-  # last update (satisfies, keyof, readonly, infer, unique, override, out).
-  # Also fixes a real bug in the stock `identifier` rule: it only matched a
-  # bare `name(`, so any generic-parameterized call like `useMemo<T>(...)`
-  # never got identifier coloring while plain `useState()` did.
+  # Extends micro's bundled typescript.yaml with coverage the stock ruleset
+  # lacks for a JSX-heavy codebase: JSX/TSX tag names, decorators, and a few
+  # newer TS keywords (satisfies, keyof, readonly, infer, unique, override,
+  # out). Also fixes the stock `identifier` rule, which only matched a bare
+  # `name(`, so a generic-parameterized call like `useMemo<T>(...)` never
+  # got identifier coloring while plain `useState()` did.
   xdg.configFile."micro/syntax/typescript.yaml".text = builtins.readFile ./micro/typescript.yaml;
 
   home.packages = [

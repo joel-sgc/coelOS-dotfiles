@@ -7,13 +7,12 @@ in
   programs.ghostty = {
     enable = true;
 
-    # Ghostty's own bundled "Atom One Dark" is the canonical Atom palette,
-    # not tal7aouy's personally-tweaked values (bg #21252b vs this file's
-    # #282c34, green #98c379 vs #89ca78, purple #c678dd vs #d55fde, cyan
-    # #56b6c2 vs #2bbac5) -- close family, not an exact match, so hand-rolled
-    # from the verified real values instead (same situation Everforest was
-    # in). ANSI slots assigned by conventional role; 8-15 repeat 0-7 like
-    # ghostty's own bundled themes do.
+    # Ghostty's bundled "Atom One Dark" is the canonical Atom palette, not
+    # tal7aouy's tweaked values (bg #21252b vs this file's #282c34, green
+    # #98c379 vs #89ca78, purple #c678dd vs #d55fde, cyan #56b6c2 vs
+    # #2bbac5) -- close family, not an exact match, so hand-rolled from the
+    # real values instead. ANSI slots assigned by conventional role; 8-15
+    # repeat 0-7 like ghostty's own bundled themes do.
     themes.onedark-tal7aouy = {
       background = theme.bg;
       foreground = theme.fg;
@@ -48,16 +47,12 @@ in
       "font-size" = 10;
       keybind = [
         "ctrl+t=new_tab"
-        # Unbound rather than pointed at ghostty's own tab actions: ghostty
-        # has no concept of "which program is running in this pane" to
-        # switch behavior on, but `unbind` sends the key straight through to
-        # whatever's actually running instead of consuming it here. Fresh's
-        # keymap (home/fresh.nix) binds all three to its own tab/buffer
-        # actions (close_tab / next_buffer / prev_buffer), so while Fresh is
-        # open these three now do tab navigation *in Fresh*; falling through
-        # to a plain shell just gets zsh's own readline behavior for them
-        # (ctrl+w = delete word backward) instead of ghostty eating them
-        # first.
+        # Unbound rather than pointed at ghostty's own tab actions:
+        # `unbind` sends the key straight through to whatever's running
+        # instead of ghostty consuming it. Fresh's keymap (home/fresh.nix)
+        # binds all three to its own tab/buffer actions, so these do tab
+        # navigation in Fresh while it's open, and fall through to zsh's
+        # own readline behavior (ctrl+w = delete word backward) otherwise.
         "ctrl+w=unbind"
         "ctrl+tab=unbind"
         "ctrl+shift+tab=unbind"

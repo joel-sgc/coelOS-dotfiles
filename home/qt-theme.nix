@@ -14,12 +14,9 @@ let
   argb = hex: "#ff" + (lib.removePrefix "#" hex);
 
   # Order is QPalette::ColorRole's own declared order (Qt6's qpalette.h),
-  # which is what qt6ct iterates when reading/writing these lists --
-  # confirmed by reading qt6ct's actual source
-  # (src/qt6ct-common/qt6ct.cpp, src/qt6ct/appearancepage.cpp) rather than
-  # assuming. This build predates Qt 6.6's added `Accent` role (qt6ct's
-  # own shipped scheme files only have 21 entries, not 22), so it's left
-  # out here too.
+  # which is what qt6ct iterates when reading/writing these lists. This
+  # build predates Qt 6.6's added `Accent` role (qt6ct's own shipped scheme
+  # files only have 21 entries, not 22), so it's left out here too.
   roles = [
     "WindowText"
     "Button"
@@ -96,22 +93,16 @@ in
   # plugin (QT_QPA_PLATFORMTHEME=qt6ct below) that reads qt6ct.conf.
   #
   # Why this exists: hyprland-share-picker (xdg-desktop-portal-hyprland's
-  # screen-share picker) turned out to be a Qt6 app -- its wrapper script
-  # sets QT_PLUGIN_PATH to Qt6 plugins -- rendering in plain light Qt
-  # defaults under Hyprland, despite everything else in this config being
-  # themed. Under Plasma, Qt apps get colors for free from
-  # plasma-integration's platform-theme service; Hyprland has no
-  # equivalent, so any stray Qt app there had nothing to source colors
-  # from at all.
+  # screen-share picker) is a Qt6 app, rendering in plain light Qt defaults
+  # under Hyprland since Plasma's plasma-integration normally supplies
+  # colors for free and Hyprland has no equivalent.
   #
-  # QT_QPA_PLATFORMTHEME is intentionally set in home/hyprland.nix's own
-  # `env=` list, NOT globally (e.g. not in home.sessionVariables) -- that
-  # distinction matters. Setting it globally is exactly what broke Plasma
-  # before: QT_QPA_PLATFORMTHEME=qt5ct applied everywhere meant Plasma's
-  # own session picked it up too and couldn't resolve its QQC2 style
-  # anymore (see home/theme.nix's comment on that crash). Hyprland's own
-  # `env=` only reaches processes Hyprland itself execs, so this can never
-  # reach a separate Plasma session.
+  # QT_QPA_PLATFORMTHEME is set in home/hyprland.nix's own `env=` list, NOT
+  # globally -- setting it globally (home.sessionVariables) is what broke
+  # Plasma before: applied everywhere, Plasma's own session picked it up
+  # too and couldn't resolve its QQC2 style anymore (see home/theme.nix's
+  # comment). Hyprland's `env=` only reaches processes it execs itself, so
+  # it can never reach a separate Plasma session.
   home.packages = [ pkgs.kdePackages.qt6ct ];
 
   xdg.configFile = {

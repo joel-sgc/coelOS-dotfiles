@@ -1,5 +1,5 @@
-# Nerd Font icons for the rofi menus (home/rofi.nix), defined once, by
-# codepoint.
+# Nerd Font icons for rofi-based menus (home/os-commands.nix), defined
+# once, by codepoint.
 #
 # Why codepoints and not the glyphs themselves: these are private-use
 # characters, and an AI assistant that reads a file containing one can't see
@@ -10,9 +10,9 @@
 # entirely, as plain ASCII codepoints here, makes that impossible: nothing is
 # hidden, so nothing can be dropped.
 #
-# Scripts refer to an icon as @icon:<name>@ (see withIcons in home/rofi.nix),
-# or as ${icons.<name>} in inline Nix strings. Names/codepoints were checked
-# against the official Nerd Fonts glyph list; the official name is noted.
+# Scripts refer to an icon as ${icons.<name>} in inline Nix strings.
+# Names/codepoints were checked against the official Nerd Fonts glyph list;
+# the official name is noted.
 { lib }:
 
 let
@@ -68,7 +68,6 @@ builtins.mapAttrs (_: glyph) {
   autostart = "F14DE"; # md-rocket_launch
   window-rules = "F10AC"; # md-dock_window
   look-and-feel = "F03D8"; # md-palette
-  waybar = "F0327"; # md-launch
 
   # Fingerprint menu. These two never had a recoverable icon in any
   # version -- they were already blank gaps when first written -- so

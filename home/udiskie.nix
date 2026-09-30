@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, lib, ... }:
 
 {
   # Automounts removable media (USB drives, SD cards) under Hyprland.
@@ -8,9 +8,10 @@
   services.udiskie = {
     enable = true;
     # "auto" (the default) makes udiskie Require a tray.target that only
-    # becomes active once a systray exists. Waybar doesn't have a tray
-    # module configured yet, so automount would silently never start.
-    # Revisit once waybar's tray module lands.
+    # becomes active once a systray exists and registers as a
+    # StatusNotifierWatcher. Not yet confirmed whether the Quickshell
+    # panel's own tray (sysPanel/buttons/Tray.qml) does that, so left off
+    # rather than risk automount silently never starting.
     tray = "never";
   };
 

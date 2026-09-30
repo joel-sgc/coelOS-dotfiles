@@ -12,10 +12,9 @@ let
   keyFor = n: if n == 10 then "0" else toString n;
 
   # The middle field is the "default", not a second copy of the active
-  # value -- duplicating it there is exactly what silently broke the KWin
-  # script shortcuts earlier this session (kglobalaccel disregarded the
-  # whole entry rather than just override the active binding). "none" here
-  # since none of these actions have a real compiled-in default anyway.
+  # value -- duplicating it there makes kglobalaccel disregard the whole
+  # entry instead of overriding the active binding. "none" here since none
+  # of these actions have a real compiled-in default anyway.
   switchDesktopBinds = lib.concatMapStrings (n: ''
     $DRY_RUN_CMD ${kwriteconfig6} --file kglobalshortcutsrc --group kwin --key "Switch to Desktop ${toString n}" "Meta+${keyFor n},none,Switch to Desktop ${toString n}"
   '') desktopNums;
@@ -29,20 +28,14 @@ let
   '') (lib.genList (i: i + 1) 9);
 in
 {
-  # Mirroring a subset of the Hyprland keybinds (home/hyprland.nix) into
-  # Plasma, since Plasma's shortcuts got a bit tangled during the
-  # maximize/minimize debugging. Same surgical kwriteconfig6 approach as
-  # home/kde-window-shortcuts.nix -- only touches the specific keys below,
-  # not the whole shortcuts file.
+  # Mirrors a subset of the Hyprland keybinds (home/hyprland.nix) into
+  # Plasma. Same surgical kwriteconfig6 approach as
+  # home/kde-window-shortcuts.nix -- only touches the specific keys below.
 
   # Lock screen and close window already have Meta+L / Meta+W as stock KDE
-  # defaults, but setting them explicitly rather than assuming they survived
-  # the earlier kglobalshortcutsrc churn.
-  #
-  # "Overview" also claims Meta+W by default (its own default field is
-  # literally "Meta+W"), and it was winning the conflict over our Window
-  # Close binding, so it has to be explicitly cleared here too -- same
-  # category of fix as clearing "Window Maximize" for the maximize script.
+  # defaults, set explicitly rather than assumed. "Overview" also claims
+  # Meta+W by default and was winning the conflict over Window Close, so it
+  # has to be explicitly cleared here too.
   home.activation.kdeLockAndClose = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${kwriteconfig6} --file kglobalshortcutsrc --group ksmserver --key "Lock Session" $'Meta+L\tScreensaver,Meta+L\tScreensaver,Lock Session'
     $DRY_RUN_CMD ${kwriteconfig6} --file kglobalshortcutsrc --group kwin --key "Overview" "none,Meta+W,Toggle Overview"
@@ -68,8 +61,7 @@ in
 
   # Ghostty and the emoji picker have no native KDE action, so each gets a
   # .desktop entry and a shortcut bound via kglobalaccel's per-app "_launch"
-  # mechanism -- the same mechanism (and confirmed real value format) an
-  # earlier, now-removed kglobalshortcutsrc snapshot used for Ghostty.
+  # mechanism.
   xdg.desktopEntries.coel-emoji-picker = {
     name = "Emoji Picker";
     exec = "coel-emoji-picker";
@@ -78,13 +70,10 @@ in
     categories = [ "Utility" ];
   };
 
-  # Ghostty's shortcut works off the bat because its .desktop file ships
-  # with the package and has long been in KDE's application cache
-  # (ksycoca). coel-emoji-picker.desktop is brand new every time it's
-  # (re)written here, and kglobalaccel can't resolve a "_launch" target it
-  # doesn't know about yet -- same category of "new package, stale cache"
-  # issue as the KWin script needing kpackagetool6 instead of a raw file
-  # drop. Rebuilding the cache after writing the entry fixes that.
+  # Ghostty's shortcut works off the bat since its .desktop file ships with
+  # the package and is already in KDE's application cache (ksycoca).
+  # coel-emoji-picker.desktop is rewritten here each time, so kglobalaccel
+  # can't resolve its "_launch" target until the cache is rebuilt.
   home.activation.kdeAppLaunchBinds = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6
     $DRY_RUN_CMD ${kwriteconfig6} --file kglobalshortcutsrc --group services --group com.mitchellh.ghostty.desktop --key "_launch" "Meta+T"

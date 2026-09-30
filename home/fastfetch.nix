@@ -12,25 +12,11 @@ let
   logoPath = "${config.xdg.configHome}/fastfetch/ascii-logo.txt";
 in
 {
-  # Ported from configs/fastfetch.jsonc on the old Arch/Omarchy dotfiles
-  # (coelOS-dotfiles, "arch" branch). Layout/keys/colors are unchanged;
-  # only the Omarchy-specific `omarchy-*` helper commands had no direct
-  # equivalent and were swapped for real NixOS/flake analogues rather than
-  # dropped silently:
-  #   - omarchy-version            -> nixos-version
-  #   - omarchy-version-branch     -> git branch of ~/.nixos itself
-  #   - omarchy-version-channel    -> the nixpkgs ref this flake is pinned
-  #                                    to (e.g. "nixos-26.05"), read from
-  #                                    flake.lock -- the closest real
-  #                                    equivalent of an Arch "channel"
-  #   - omarchy-theme-current       -> label changed to "matugen" (see
-  #                                    home/matugen.nix); the ANSI color
-  #                                    swatch itself is unchanged
-  #   - omarchy-version-pkgs        -> was a pending-update count, which
-  #                                    has no flake equivalent (updates are
-  #                                    explicit, not queued); shows the
-  #                                    last `nixos-rebuild switch` date
-  #                                    instead (mtime of /run/current-system)
+  # Omarchy-specific `omarchy-*` helper commands swapped for NixOS/flake
+  # analogues: nixos-version, git branch of ~/.nixos, the nixpkgs ref this
+  # flake is pinned to (read from flake.lock), and the last
+  # `nixos-rebuild switch` date (mtime of /run/current-system) in place of
+  # a pending-update count, which has no flake equivalent.
   programs.fastfetch = {
     enable = true;
     settings = {

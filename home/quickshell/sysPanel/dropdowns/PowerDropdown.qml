@@ -214,7 +214,7 @@ Item {
 
   // ----- session actions -----
   readonly property var sessionActions: [
-    { id: "lock", icon: "lock", label: "lock", command: ["hyprlock"] },
+    { id: "lock", icon: "lock", label: "lock", command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"] },
     { id: "suspend", icon: "moon", label: "suspend", command: ["systemctl", "suspend"] },
     { id: "hibernate", icon: "snowflake", label: "hibernate", command: ["systemctl", "hibernate"] },
     { id: "reboot", icon: "arrow-clockwise", label: "reboot", command: ["systemctl", "reboot"] },

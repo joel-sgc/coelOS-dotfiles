@@ -1,12 +1,10 @@
 { config, pkgs, lib, ... }:
 
 let
-  # The real thing, not our own reproduction: our from-scratch KWin script
-  # (twice) never actually got picked up by KWin even with correct logic
-  # and correct metadata fields, but installing this exact repo through
-  # Plasma's own "Install from File" GUI worked immediately. Rather than
-  # keep guessing at what KPackage step we were missing, install this
-  # upstream package directly.
+  # A from-scratch KWin script never got picked up by KWin despite correct
+  # logic and metadata, but installing this repo through Plasma's own
+  # "Install from File" GUI worked immediately -- using the upstream
+  # package directly rather than chasing the missing KPackage step.
   winMaxMin = pkgs.fetchFromGitHub {
     owner = "gcrtnst";
     repo = "kwin-win-max-min";
@@ -26,13 +24,10 @@ in
     $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Maximize" "none,none,Maximize Window"
   '';
 
-  # Installed the same way Plasma's own "Install from File" does it
+  # Installed the same way Plasma's "Install from File" does it
   # (kpackagetool6), instead of hand-placing files under
-  # ~/.local/share/kwin/scripts -- that's what we were doing before across
-  # two from-scratch attempts, and KWin never picked either one up despite
-  # correct logic and correct metadata, so something about that path is
-  # missing a step (likely a KPackage/sycoca registration) that
-  # kpackagetool6 handles for us.
+  # ~/.local/share/kwin/scripts -- that path is missing a KPackage/sycoca
+  # registration step that kpackagetool6 handles for us.
   home.activation.installWinMaxMin = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${pkgs.kdePackages.kpackage}/bin/kpackagetool6 --type KWin/Script --install "${winMaxMin}" \
       || $DRY_RUN_CMD ${pkgs.kdePackages.kpackage}/bin/kpackagetool6 --type KWin/Script --upgrade "${winMaxMin}"
@@ -42,17 +37,14 @@ in
     $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kwinrc --group Plugins --key kwin-snap-keysEnabled true
   '';
 
-  # The script's own registerShortcut() calls pass "Meta+Up"/"Meta+Down" as
-  # a suggested default, but the upstream README documents these as
-  # non-default -- they don't actually get bound to anything until you
-  # assign them yourself in System Settings. Doing that assignment here
-  # instead. Confirmed the exact group by binding these manually once and
-  # reading it back: [kwin], keyed by the internal action name passed as
-  # registerShortcut's first argument. The middle field (the "default") has
-  # to stay "none" -- that's what a real manual bind produces (the script
-  # itself is the source of truth for its own default, which is "none" per
-  # the README), and writing a non-none value there caused kglobalaccel to
-  # disregard the whole entry rather than just override the active binding.
+  # The script's registerShortcut() calls pass "Meta+Up"/"Meta+Down" as a
+  # suggested default, but the upstream README documents these as
+  # non-default -- they aren't actually bound until assigned in System
+  # Settings, so this does that assignment declaratively instead. Group is
+  # [kwin], keyed by the internal action name passed as registerShortcut's
+  # first argument. The middle field (the "default") must stay "none" --
+  # writing a non-none value there makes kglobalaccel disregard the whole
+  # entry instead of overriding the active binding.
   home.activation.bindWinMaxMinShortcuts = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "WindowsLikeMaximize" "Meta+Up,none,Windows-Like Maximize"
     $DRY_RUN_CMD ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "WindowsLikeMinimize" "Meta+Down,none,Windows-Like Minimize"

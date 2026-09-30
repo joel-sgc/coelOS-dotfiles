@@ -1,16 +1,12 @@
 { pkgs, lib, ... }:
 
 let
-  # Counterpart to the old coel-rebuild: same shape (echo the command, run it
-  # under sudo, hold the window open afterwards whether it succeeded or not),
-  # but runs nix-collect-garbage instead. `-d` also deletes old generations
-  # of the system profile, which is what actually frees the space; without
-  # sudo it would only clean the user's own profiles.
-  #
-  # coel-show-done went away with home/rofi.nix, so the hold-open is inlined
-  # here as an EXIT trap (fires on failure too, unlike a line at the bottom).
   icons = import ./icons.nix { inherit lib; };
 
+  # `-d` also deletes old generations of the system profile, which is what
+  # actually frees the space; without sudo it would only clean the user's
+  # own profiles. Hold-open is inlined as an EXIT trap (fires on failure
+  # too) rather than using showDone below, since this doesn't need gum.
   purge = pkgs.writeShellApplication {
     name = "coel-purge";
     text = ''
@@ -53,9 +49,6 @@ let
   };
 
   # --- Screenshot / screen recording -------------------------------------
-  # Ported from bin/screenshot.sh and bin/screenrecord.sh — these had no
-  # Arch/Omarchy-package-manager dependencies at all, just Wayland tooling,
-  # so they came over unmodified apart from PATH resolution.
   screenshot = pkgs.writeShellApplication {
     name = "coel-screenshot";
     runtimeInputs = with pkgs; [
@@ -80,7 +73,6 @@ let
       hyprland
       jq
       libnotify
-      waybar
       procps
     ];
     text = builtins.readFile ../scripts/coel-screenrecord.sh;
@@ -88,13 +80,10 @@ let
 
   # --- Fingerprint helpers ------------------------------------------------
   # Keeps a one-shot script's terminal window open until a key is pressed, so
-  # output stays scrollable. Ported from the old dotfiles' bin/show-done.sh,
-  # which worked because those scripts had no `set -e`: a failing command
-  # fell through to this wait instead of ending the script. Ours are built
-  # with writeShellApplication (`set -euo pipefail`), so a failure would exit
-  # before ever reaching it and ghostty would close with the error gone.
-  # Scripts that want it install it as an EXIT trap instead of calling it
-  # at the bottom, which fires on failure too:
+  # output stays scrollable. Scripts built with writeShellApplication
+  # (`set -euo pipefail`) would otherwise exit and close ghostty with the
+  # error gone before this ever ran, so scripts install it as an EXIT trap
+  # instead of calling it at the bottom, which fires on failure too:
   #
   #   trap 'coel-show-done --status "$?"' EXIT
   #
@@ -110,8 +99,8 @@ let
         shift 2
       fi
 
-      # Ctrl+C, or the window itself being closed (SIGHUP/SIGTERM): nobody
-      # is left to read anything, and the old scripts closed on Ctrl+C too.
+      # Ctrl+C, or the window itself closing (SIGHUP/SIGTERM): nobody is
+      # left to read anything.
       case "$status" in
         129 | 130 | 143) exit "$status" ;;
       esac
@@ -155,11 +144,9 @@ let
     '';
   };
 
-  # Ported from uninstall.sh's Fingerprint entry (delete) + settings.sh's
-  # Fingerprint entry (enroll) — the original split enroll/delete across two
-  # different top-level menus (Settings vs. Uninstall); since Uninstall is
-  # now a TODO stub (see mainMenu), both live together here instead so
-  # fingerprintDelete still has somewhere to be reached from.
+  # Enroll and delete live together in one menu (unlike the split
+  # Settings/Uninstall menus this was ported from) so fingerprintDelete has
+  # somewhere to be reached from.
   fingerprintMenu = pkgs.writeShellScriptBin "coel-fingerprint-menu" ''
     #!/usr/bin/env bash
     choice=$(printf \

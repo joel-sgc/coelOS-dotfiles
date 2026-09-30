@@ -17,14 +17,10 @@ in
   # home/wallpaper.nix, home/clipboard.nix.
   wayland.systemd.target = "hyprland-session.target";
 
-  # Mirrors configuration.nix's system-level xdg.portal.config. This is a
-  # *separate* option namespace under home-manager (writes to
-  # ~/.config/xdg-desktop-portal/), which the Hyprland module would normally
-  # wire up on its own via its `configPackages` default — except that only
-  # triggers when `package != null`, and we set that to null above. Left
-  # unset, home-manager warns and the per-desktop split only exists at the
-  # system level (still correct via XDG config fallback, but better to have
-  # both agree explicitly).
+  # Mirrors configuration.nix's system-level xdg.portal.config in
+  # home-manager's own separate option namespace (~/.config/xdg-desktop-portal/),
+  # since the Hyprland module only wires this up itself when `package != null`,
+  # and that's set to null below.
   xdg.portal.config = {
     hyprland.default = [
       "hyprland"
@@ -34,18 +30,12 @@ in
     common.default = [ "gtk" ];
   };
 
-  # The actual xdg-desktop-portal *service* runs with
-  # NIX_XDG_DESKTOP_PORTAL_DIR pointed at this per-user profile's portal
-  # dir, not the system one -- configuration.nix's xdg.portal.extraPortals
-  # (which does list xdg-desktop-portal-gtk) populates a different profile
-  # that the dispatcher never looks at here. Without gtk's package present
-  # in home.packages too, its .portal file (declaring which interfaces it
-  # implements, e.g. OpenURI, FileChooser, Settings) never reaches that
-  # dir, so the dispatcher has no way to know "gtk" can serve those
-  # interfaces at all -- `default = [ "hyprland" "gtk" ]` above is a no-op
-  # for anything gtk-only, regardless of ordering, since the fallback
-  # target is invisible to it. (xdg-desktop-portal-hyprland doesn't need
-  # this explicit entry -- the Hyprland module above adds it on its own.)
+  # The user-profile portal service looks in this per-user profile's dir,
+  # not the system one configuration.nix's xdg.portal.extraPortals
+  # populates -- without gtk's package in home.packages too, its .portal
+  # file never reaches here, so "gtk" in the `default` list above would be
+  # a no-op. (xdg-desktop-portal-hyprland needs no such entry -- the
+  # Hyprland module adds it on its own.)
   home.packages = [ pkgs.xdg-desktop-portal-gtk ];
 
   wayland.windowManager.hyprland = {
@@ -90,12 +80,9 @@ in
         gaps_out = "8, 20, 20, 20";
         border_size = 2;
 
-        # Primary duo (blue + yellow) gradient on focus, matching the
-        # primary/secondary/error scheme now also wired into home/theme.nix
-        # and already the pairing home/rofi.nix's accent/urgent used -- was
-        # blue -> red (coral) before; red is reserved for errors
-        # (theme.error) now, not general emphasis. Muted comment-grey when
-        # idle, unchanged.
+        # Blue -> yellow gradient on focus, matching the primary/secondary/
+        # error scheme in home/theme.nix -- red is reserved for errors
+        # (theme.error), not general emphasis. Muted comment-grey when idle.
         "col.active_border" = "rgba(${strip theme.blue}ee) rgba(${strip theme.yellow}ee) 45deg";
         "col.inactive_border" = "rgba(${strip theme.comment}aa)";
       };
@@ -119,26 +106,20 @@ in
 
       windowrule = [
         {
-          # Ported from the old Arch/Omarchy dotfiles' window-rules.conf.
-          # `ghostty --class=com.joelsgc.floating -e <cmd>` (see home/rofi.nix)
-          # opens a one-off utility terminal (fingerprint enroll/delete,
-          # coel-update, pulsemixer, btop, netpala, ...) that should float
-          # instead of tiling. Sized in pixels (not ghostty's own
-          # window-width/window-height, which are cell-based but documented
-          # as buggy under GTK decorations) -- 1556x925 was picked by
-          # empirically resizing a live window at this system's actual font
-          # (FiraCode Nerd Font Mono, size 10) and measuring the resulting
-          # `stty size` grid: ~140 cols x 41 rows, comfortable for btop's
-          # panes and netpala's TUI.
+          # `ghostty --class=com.joelsgc.floating -e <cmd>` opens a one-off
+          # utility terminal (fingerprint enroll/delete, coel-update,
+          # pulsemixer, btop, ...) that should float instead of tiling.
+          # Sized in pixels (ghostty's own cell-based window-width/height is
+          # documented as buggy under GTK decorations) -- 1556x925 measures
+          # to ~140x41 cols at this system's font (FiraCode Nerd Font Mono,
+          # size 10), comfortable for btop-style TUI panes.
           name = "float-utility-terminal";
           "match:class" = "^com\\.joelsgc\\.floating$";
           float = true;
           size = "1556 925";
         }
         {
-          # Same idea, but for the fastfetch "About" popup. Also enlarged
-          # (was 778x506, ~72x27) using the same empirical calibration --
-          # 1111x725 measures out to ~100 cols x 32 rows.
+          # Same idea, but for the fastfetch "About" popup.
           name = "float-info-terminal";
           "match:class" = "^com\\.joelsgc\\.info$";
           float = true;
@@ -165,64 +146,42 @@ in
 
       exec-once = [
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
-        #         "${pkgs.waybar}/bin/waybar"
         "${pkgs.mako}/bin/mako"
         # Blocks logind's default hardware-power-key handling so the
         # XF86PowerOff bind below (-> coel-power-menu) is what actually
         # fires, instead of an immediate shutdown racing the menu.
         "${pkgs.systemd}/bin/systemd-inhibit --what=handle-power-key --who=Hyprland --why='Custom power menu' --mode=block sleep infinity"
-        # Random wallpaper on every login (home/wallpaper.nix). Plasma's
-        # equivalent is an XDG autostart entry (home/kde-wallpaper.nix) --
-        # exec-once is Hyprland's own version of "run once per session
-        # start". The script itself retries for a few seconds in case it
-        # races the awww daemon's systemd-user startup.
+        # Random wallpaper on every login (home/wallpaper.nix; Plasma's
+        # equivalent is the XDG autostart entry in home/kde-wallpaper.nix).
+        # The script itself retries for a few seconds in case it races the
+        # awww daemon's systemd-user startup.
         "coel-random-wallpaper"
-        # -c straight at this repo (not ~/.config/quickshell) for quick
-        # reload while developing -- quickshell watches and hot-reloads
-        # these files on edit, home-manager's deployed copy obviously
-        # doesn't. Icons no longer depend on this being the *built* config
-        # either way (sysPanel/Phosphor.js resolves codepoints to glyphs
-        # at QML runtime, not via a Nix-time text substitution), so
-        # pointing straight at source here is safe again.
+        # -c straight at this repo (not ~/.config/quickshell) so quickshell
+        # hot-reloads on edit while developing the panel; home-manager's
+        # deployed copy doesn't.
         #
-        # QML_DISABLE_DISK_CACHE=1: Qt keeps a compiled-QML bytecode cache
-        # across process launches, keyed loosely enough that it served a
-        # stale compile of a fixed file straight through a full process
-        # restart during this panel's own development (confirmed live: the
-        # same load error persisted across kill+relaunch until this env
-        # var was set) -- exactly the kind of edit-and-save-but-nothing-
-        # changes confusion "quick reload" exists to avoid. The config
-        # here is small enough that losing the cache's JIT-skip benefit on
-        # every launch isn't a real cost.
+        # QML_DISABLE_DISK_CACHE=1: Qt's compiled-QML bytecode cache is
+        # keyed loosely enough that it can serve a stale compile straight
+        # through a kill+relaunch. The config here is small enough that
+        # losing the cache's JIT-skip benefit isn't a real cost.
         "env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
       ];
 
       bind = [
         "$mainMod, T, exec, $terminal"
-        # Both used to point at rofi (drun / coel-main-menu's own dmenu) --
-        # now the same Quickshell launcher (Launcher.qml/LauncherPanel.qml)
-        # covers both jobs itself: its own app search replaces drun, and
-        # its category list replaces coel-main-menu's. `quickshell ipc call`
-        # talks to the IpcHandler in Launcher.qml, not a separate process --
-        # but the running instance above was launched with `-c
-        # ~/.nixos/home/quickshell`, so with no path/config flag `ipc call`
-        # looks for the *default* `~/.config/quickshell/shell.qml` instance
-        # instead, finds none, and silently no-ops ("No running instances
-        # for ..."). `-p` (quickshell's actual flag for "path to a config",
-        # confirmed against `quickshell ipc --help` -- `-c` there means a
-        # named XDG config, not a path) targets the real instance.
+        # `quickshell ipc call` talks to the IpcHandler in Launcher.qml --
+        # needs `-p ~/.nixos/home/quickshell` (a path) to target the
+        # instance launched above with `-c` (a named XDG config); with no
+        # path/config flag it looks for the default
+        # ~/.config/quickshell/shell.qml instance instead and silently
+        # no-ops.
         "$mainMod, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
         "$mainMod SHIFT, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
-        # Was rofi-emoji's coel-emoji-picker -- now opens the launcher
-        # restricted to emoji-only search (LauncherPanel.qml's searchScope),
-        # not just the same launcher pre-filtered to the emoji category
-        # (there isn't one -- emoji is search-only, no chip, same as apps).
+        # Opens the launcher restricted to emoji-only search
+        # (LauncherPanel.qml's searchScope) -- emoji is search-only, no chip.
         "$mainMod, period, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openEmoji"
-        # Was hyprlock directly -- now the real Quickshell lock screen
-        # (home/quickshell/lock/), same repo path (and same reasoning) as
-        # home/hypridle.nix's lockCmd -- confirmed live that the deployed
-        # ~/.config/quickshell/ path silently pointed at a stale pre-lock-
-        # screen generation and just didn't run at all. hyprlock's own
+        # The real Quickshell lock screen (home/quickshell/lock/), same
+        # repo-path reasoning as home/hypridle.nix's lockCmd. hyprlock's own
         # config is left in place, unused, as a manual fallback -- see
         # home/hypridle.nix's comment on programs.hyprlock.
         "$mainMod, L, exec, ${pkgs.quickshell}/bin/quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml"
@@ -239,11 +198,9 @@ in
         "$mainMod SHIFT, right, resizeactive, -10"
         "$mainMod SHIFT, up, resizeactive, 0 -10"
         "$mainMod SHIFT, down, resizeactive, 0 10"
-        # Was cliphist|rofi|cliphist|wl-copy -- the launcher's own clipboard
-        # tab (LauncherPanel.qml) now covers this with a real preview
-        # (formatted text / actual images, not rofi's plain-text dmenu
-        # list), reachable directly via openClipboard()'s IpcHandler
-        # function rather than a separate shell pipeline.
+        # Launcher's own clipboard tab (LauncherPanel.qml) -- real preview
+        # (formatted text / actual images), reachable via openClipboard()'s
+        # IpcHandler function.
         "$mainMod, V, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openClipboard"
         ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
         ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"

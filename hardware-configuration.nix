@@ -27,13 +27,8 @@
       options = [ "subvol=/nix" ];
     };
 
-  # /home, added during the impermanence/reinstall-survivability research —
-  # was a stale LUKS partition from a previous install (nvme0n1p3), wiped
-  # and reformatted, being migrated in manually. See home-migration.md at
-  # the repo root for the full runbook. Do NOT rebuild+reboot with this
-  # active until the mkfs + rsync migration steps are done, or this mount
-  # will shadow the real (still root-partition-resident) home data with an
-  # empty filesystem.
+  # /home: separate LUKS partition (was nvme0n1p3 from a previous install,
+  # wiped/reformatted and migrated in manually).
   boot.initrd.luks.devices."luks-home".device = "/dev/disk/by-uuid/2ad05545-2e7b-4191-93ad-3f654549bb9d";
 
   fileSystems."/home" =

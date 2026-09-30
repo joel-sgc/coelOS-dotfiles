@@ -16,18 +16,10 @@
     ./modules/greeter.nix
   ];
 
-  # Importing modules/greeter.nix above is a no-op on its own (see its own
-  # comment); this is the one line that actually flips SDDM -> the
-  # Quickshell/greetd login screen. Real-hardware testing via
-  # `nixos-rebuild test` only (reversible -- an unplanned reboot before
-  # `switch` returns to the current, SDDM-based generation), never
-  # `switch` yet, until this has actually been confirmed working.
-  #
-  # The VM-only `boot.initrd.luks.devices = mkForce {}` override used for
-  # nixos-rebuild build-vm testing (hardware-configuration.nix's real
-  # LUKS UUIDs don't exist in the VM's virtual disk) has been removed --
-  # it must never reach real hardware, where those UUIDs are real and
-  # genuinely need unlocking at boot.
+  # Flips SDDM -> the Quickshell/greetd login screen (modules/greeter.nix
+  # is a no-op until this is set). Use `nixos-rebuild test` only until this
+  # is confirmed working on real hardware -- `switch` would make an
+  # unconfirmed regression the default boot.
   services.qs-greeter.enable = true;
 
   ##############################################################################
@@ -73,34 +65,18 @@
   networking.networkmanager.enable = true;
   networking.firewall.checkReversePath = false; # Needed for ProtonVPN
 
-  # See globalprotect-hip-investigation.md for the LUC HIP-compliance
-  # investigation this nftables/firewalld choice (and the commented-out
-  # iptables-legacy line below) came out of.
+  # nftables/firewalld chosen over iptables-legacy per the LUC HIP-compliance
+  # investigation (modules/globalprotect/globalprotect-hip-investigation.md).
   # networking.firewall.package = pkgs.iptables-legacy;
   networking.nftables.enable = true;
   services.firewalld.enable = true;
 
-  # Split-horizon DNS: Cloudflare as the general-purpose resolver, while
-  # Tailscale's *.ts.net names and (if/when GlobalProtect ever pushes any)
-  # LUC-internal names get scoped to their own resolvers instead of a
-  # strict try-everything-in-order chain -- a flat priority list would mean
-  # internal names only resolve after the earlier resolvers fail/time out,
-  # which is backwards for domains a generic public resolver never knows
-  # about anyway.
-  #
-  # enabling this handles the NetworkManager/resolvconf wiring itself
-  # (nixos/modules/system/boot/resolved.nix sets
-  # networking.networkmanager.dns = "systemd-resolved" and switches
-  # networking.resolvconf.package to systemd's own resolvconf-compatible
-  # shim automatically) -- GlobalProtect's `resolvconf -a` calls keep
-  # working unchanged, just properly captured as gpd0's per-link DNS in
-  # resolved instead of overwriting /etc/resolv.conf directly. Tailscale
-  # auto-detects resolved and registers its own ts.net-scoped DNS the same
-  # way, no extra config needed. DHCP-provided network DNS still becomes
-  # wlp1s0's per-link DNS as before, so it's still in the resolver pool as
-  # a fallback if Cloudflare is unreachable (e.g. a captive portal) --
-  # just not as a hardcoded, network-specific address, since that changes
-  # every time the laptop joins a different network.
+  # systemd-resolved for split-horizon DNS: Cloudflare as the general
+  # resolver, while Tailscale's *.ts.net names and any LUC-internal names
+  # GlobalProtect pushes get scoped to their own per-link resolvers instead
+  # of a flat try-in-order chain. Enabling this also wires NetworkManager/
+  # resolvconf to resolved automatically, so GlobalProtect's `resolvconf -a`
+  # calls and Tailscale's own DNS registration keep working unchanged.
   services.resolved = {
     enable = true;
     settings.Resolve.DNS = [
@@ -108,10 +84,6 @@
       "1.0.0.1"
     ];
   };
-
-  # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala). Configured
-  # via its Home Manager module + modules/netpala.nix, both imported from
-  # home.nix -- see there, not here.
 
   # Tailscale
   services.tailscale.enable = true;
@@ -190,64 +162,38 @@
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.sddm.enableGnomeKeyring = true;
 
-  # Required for hyprlock to actually authenticate (Hyprland's lock screen,
-  # separate from Plasma's own kscreenlocker/PAM service).
-  #
-  # fprintAuth explicitly disabled here even though services.fprintd.enable
-  # would otherwise default it to true: hyprlock has its own independent
-  # native fingerprint backend (home/hypridle.nix's `auth.fingerprint.enabled`,
-  # confirmed straight from hyprlock's src/auth/Auth.cpp -- CPam and
-  # CFingerprint are two separate implementations, either succeeding
-  # unlocks). Leaving pam_fprintd.so *also* in this PAM stack made it
-  # redundant -- worse, since pam_fprintd is `sufficient` and listed before
-  # pam_unix, it blocked *this* conversation's password check until its own
-  # fingerprint attempt resolved, which is exactly what made typing a
-  # password and pressing enter feel like it also required a fingerprint
-  # scan. Native hyprlock fingerprint auth genuinely runs in parallel
-  # instead of nesting inside the password conversation.
+  # Required for hyprlock to authenticate. fprintAuth disabled here even
+  # though fprintd.enable would default it to true: hyprlock has its own
+  # independent native fingerprint backend (auth.fingerprint.enabled in
+  # home/hypridle.nix; CPam/CFingerprint are separate, either succeeding
+  # unlocks). Leaving pam_fprintd.so in this stack too was redundant and
+  # actively wrong -- as a `sufficient` module listed before pam_unix, it
+  # blocked the password check until its own fingerprint attempt resolved,
+  # making a typed password feel like it needed a fingerprint scan too.
   security.pam.services.hyprlock.fprintAuth = false;
 
-  # SDDM (the login screen) had the same "feels like it needs both a password
-  # AND a fingerprint" symptom as hyprlock did before the fix above -- but
-  # the fix itself has to be different. Confirmed from /etc/pam.d/sddm: SDDM
-  # doesn't get its own generated PAM stack at all, it's `auth substack
-  # login`, so this is really about /etc/pam.d/login. Unlike hyprlock, login
-  # (and therefore SDDM) has no independent native fingerprint path to fall
-  # back on -- pam_fprintd.so is the *only* way it can check a fingerprint,
-  # so disabling fprintAuth here (hyprlock's fix) would remove fingerprint
-  # login from the greeter entirely, not just stop it from blocking the
-  # password field.
-  #
-  # Instead: pam_fprintd.so is `sufficient` and was ordered *before*
-  # pam_unix.so (order 11400 vs 12900, confirmed from the generated file),
-  # so typing a password and hitting enter had to wait for the fingerprint
-  # module's own conversation to resolve first -- same root cause as
-  # hyprlock, just fixed by reordering instead of disabling. Moving it to
-  # just after the real password check (`unix`, not the earlier
-  # `likeauth`-only `unix-early`) means: typing a password authenticates
-  # immediately without ever reaching pam_fprintd, and a fingerprint scan
-  # with no password typed still falls through unix's (fast, non-blocking)
-  # failure to reach pam_fprintd and succeed on its own -- fingerprint alone
-  # is sufficient either way, matching hyprlock's actual behavior even
-  # though the mechanism differs. Set as a relative offset from `unix`'s own
-  # order per the option's own documented guidance, since the absolute
-  # values are that module's internal implementation detail and could shift
-  # on a nixpkgs update.
+  # SDDM has the same "password waits on fingerprint" symptom as hyprlock,
+  # but no independent native fingerprint path to fall back on -- SDDM has
+  # no PAM stack of its own (`auth substack login`), and pam_fprintd is the
+  # only way /etc/pam.d/login can check a fingerprint, so disabling it here
+  # would remove fingerprint login entirely rather than just unblocking the
+  # password field. Fix instead: reorder pam_fprintd to run just after the
+  # real password check (`unix`), not before it, so a typed password
+  # authenticates immediately and a lone fingerprint scan still falls
+  # through unix's fast failure to reach pam_fprintd. Set as an offset from
+  # unix's own order per the option's documented guidance, since the
+  # absolute values are nixpkgs' internal detail.
   security.pam.services.login.rules.auth.fprintd.order =
     config.security.pam.services.login.rules.auth.unix.order + 10;
 
-  # Real auth backend for the new Quickshell-based lock screen
-  # (home/quickshell/lock/, replacing hyprlock -- see home/hypridle.nix's
-  # own comment for why hyprlock's config is left in place, unused, as a
-  # manual fallback rather than removed). Driven by `pamtester`
-  # (home/quickshell.nix) via home/quickshell/lock/backends/AuthBackend.qml.
-  #
-  # Two single-purpose stacks, not one shared one -- deliberately sidesteps
-  # the exact "password waits on the fingerprint conversation" ordering bug
-  # already fixed twice above (hyprlock/login) by never putting pam_unix
-  # and pam_fprintd in the same stack together at all, matching hyprlock's
-  # own genuinely-independent CPam/CFingerprint split more directly than
-  # login's reordering fix does.
+  # Auth backend for the Quickshell lock screen (home/quickshell/lock/,
+  # replacing hyprlock -- see home/hypridle.nix for why hyprlock's config
+  # stays as an unused manual fallback), driven by a native PamContext
+  # (Quickshell.Services.Pam) in AuthBackend.qml -- not a `pamtester`
+  # subprocess, which an earlier pass wrongly believed was necessary before
+  # finding the real native binding. Two single-purpose stacks, not one
+  # shared one -- keeps pam_unix and pam_fprintd from ever sharing a stack,
+  # sidestepping the same ordering bug fixed above for hyprlock/login.
   security.pam.services.quickshell-lock.fprintAuth = false;
   security.pam.services.quickshell-lock-fp.unixAuth = false;
 
@@ -256,13 +202,10 @@
   # running as root.
   services.udev.packages = [ pkgs.swayosd ];
 
-  # XDG Portals
-  #
-  # Per-desktop backend selection instead of a flat wildcard default, so
-  # screen sharing / file pickers / etc. resolve to the *actual* running
-  # session's backend rather than whichever portal implementation happens
-  # to be found first. Matched against $XDG_CURRENT_DESKTOP (case-insensitive):
-  # Hyprland sets "Hyprland", Plasma sets "KDE".
+  # Per-desktop portal backend selection (matched against
+  # $XDG_CURRENT_DESKTOP) instead of a flat default, so screen sharing/file
+  # pickers resolve to the actual running session's portal rather than
+  # whichever implementation is found first.
   xdg.portal = {
     enable = true;
     extraPortals = [
@@ -287,8 +230,7 @@
   hardware.bluetooth.powerOnBoot = true;
   # services.blueman.enable = true; # Optional GUI Bluetooth manager
 
-  # Backs the power-profile switcher in the ported rofi settings menu
-  # (powerprofilesctl) — see home/rofi.nix.
+  # Backs the power-profile switcher (powerprofilesctl).
   services.power-profiles-daemon.enable = true;
 
   services.printing.enable = true;
@@ -313,14 +255,11 @@
   # the old dotfiles' configs/polkit-fprint.rules.
   security.polkit.extraConfig = builtins.readFile ./configuration/polkit-fprint-enroll.js;
 
-  # Lid-close behavior, ported from the old dotfiles' configs/power/logind-power.conf.
-  # Deliberately suspends even on AC power (not the usual NixOS/systemd
-  # default, which normally ignores lid-close while plugged in) -- matches
-  # what was explicitly set up before. Power-key handling is intentionally
-  # not touched here: it's already covered separately, but only within the
-  # Hyprland session (see the systemd-inhibit + coel-power-menu bind in
-  # home/hyprland.nix) -- under Plasma, the physical power key still uses
-  # whatever systemd's own default is.
+  # Suspends on lid-close even on AC power (systemd's default otherwise
+  # ignores lid-close while plugged in). Power-key handling isn't touched
+  # here -- Hyprland covers it separately (systemd-inhibit + coel-power-menu
+  # in home/hyprland.nix); under Plasma the physical key uses systemd's own
+  # default.
   services.logind.settings.Login = {
     HandleLidSwitch = "suspend";
     HandleLidSwitchExternalPower = "suspend";
@@ -427,10 +366,10 @@
   ##############################################################################
 
   # For testing GlobalProtect's HIP compliance detection on a real .deb/.rpm
-  # target (Palo Alto's Linux client is only actually built/tested for
-  # those) -- to check whether the empty anti-malware/firewall detection
-  # (see globalprotect-hip-investigation.md) is a NixOS/vendoring quirk or
-  # a genuine cross-distro OPSWAT Linux limitation.
+  # target (Palo Alto's Linux client is only built/tested for those) -- to
+  # check whether the empty anti-malware/firewall detection
+  # (modules/globalprotect/globalprotect-hip-investigation.md) is a
+  # NixOS/vendoring quirk or a genuine cross-distro OPSWAT limitation.
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
   programs.virt-manager.enable = true;

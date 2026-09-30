@@ -41,7 +41,6 @@
     ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/os-commands.nix
-    ./home/waybar.nix
     ./home/desktop-entries.nix
     ./home/udiskie.nix
     ./home/poweralertd.nix
@@ -98,7 +97,7 @@
     # spotify
 
     # Fonts
-    nerd-fonts.fira-code # rofi + ghostty (home/rofi.nix, home/ghostty.nix)
+    nerd-fonts.fira-code # rofi + ghostty (home/os-commands.nix, home/ghostty.nix)
     noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
 
     # Networking / VPN

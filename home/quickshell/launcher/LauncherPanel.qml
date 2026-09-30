@@ -11,9 +11,9 @@ import "backends"
 // ===== LAUNCHER PANEL =====
 // Content for Launcher.qml's Spotlight overlay -- ported from the "Spotlight"
 // block in "Quickshell Example/Quickshell Bar.dc.html" (search row, category
-// chips, list+preview, about page, footer), with real content in place of
-// that mock's generic Arch placeholders (see home/rofi.nix for what this is
-// actually replacing).
+// chips, list+preview, footer), with real content in place of that mock's
+// generic Arch placeholders (the real rofi-based menu system this replaced
+// is gone; see home/quickshell/STATUS.md's "Launcher" section instead).
 //
 // Moved out of sysPanel/dropdowns/ into its own top-level launcher/ folder
 // (2026-09-27, at the user's request) -- this was never a dropdown (those
@@ -21,9 +21,9 @@ import "backends"
 // Launcher.qml), and by the time it grew clipboard/emoji/ssh/calculator/
 // toggle support it had become a single ~1500-line file mixing six
 // largely-independent backends with the actual search/selection/UI logic.
-// Non-visual backends (apps/ssh/clipboard-list/emoji/toggles/about) now
+// Non-visual backends (apps/ssh/clipboard-list/emoji/toggles/currency) now
 // live in launcher/backends/ as their own small Item-based components,
-// instantiated below by id (apps/ssh/clipboard/emoji/toggles/about) --
+// instantiated below by id (apps/ssh/clipboard/emoji/toggles/currency) --
 // this file keeps only the state and logic that's genuinely about being
 // *the launcher screen*: category/search construction, fuzzy matching,
 // selection, keyboard handling, and the visual tree itself. The one
@@ -68,12 +68,10 @@ Item {
   ClipboardBackend { id: clipboard }
   EmojiBackend { id: emoji }
   TogglesBackend { id: toggles }
-  AboutBackend { id: about }
   CurrencyBackend { id: currency }
 
   onPanelOpenChanged: if (panelOpen) {
     query = "";
-    view = "";
     selIndex = 0;
     catIndex = 0;
     msg = "";
@@ -92,9 +90,9 @@ Item {
   }
 
   // ----- category/item data -----
-  // Real commands/scripts from home/rofi.nix (coel-main-menu and its
-  // sub-menus) and PowerDropdown.qml's session actions, not the mock's
-  // Arch/fuzzel/kitty placeholders.
+  // Real commands/scripts (coel-* wrappers, home/os-commands.nix) and
+  // PowerDropdown.qml's session actions, not the mock's Arch/fuzzel/kitty
+  // placeholders.
   // A function, not a static literal -- the toggles category's "right"
   // badges reflect real state (toggles.dndOn etc.), so this has to re-run
   // whenever that changes. Calling it from a property binding (below)
@@ -135,7 +133,7 @@ Item {
         { label: "Purge", sub: "nix-collect-garbage", icon: "trash", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-purge"] },
         { label: "Rebuild", sub: "nixos-rebuild switch", icon: "arrow-counter-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-rebuild"] },
         { label: "Update", sub: "+ upgrade flake inputs", icon: "arrows-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-update"] },
-        { label: "Lock", sub: "", icon: "lock", right: "super+l", command: ["hyprlock"] },
+        { label: "Lock", sub: "", icon: "lock", right: "super+l", command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"] },
         { id: "suspend", label: "Suspend", sub: "", icon: "moon", right: "", danger: true, command: ["systemctl", "suspend"] },
         { id: "reboot", label: "Reboot", sub: "", icon: "arrow-clockwise", right: "", danger: true, command: ["systemctl", "reboot"] },
         { id: "poweroff", label: "Shut down", sub: "", icon: "power", right: "", danger: true, command: ["systemctl", "poweroff"] },
@@ -166,7 +164,6 @@ Item {
   property string query: ""
   property int catIndex: 0
   property int selIndex: 0
-  property string view: "" // "" | "about"
   property string msg: ""
   property bool msgIsArmed: false
   property string armedId: ""
@@ -397,7 +394,6 @@ Item {
   }
   readonly property var list: fuzzyList()
   readonly property bool hasQuery: query.trim().length > 0
-  readonly property bool aboutView: view === "about"
 
   // Deliberately does NOT embed isSel per-row (used to: `isSel: i ===
   // selIndex`) -- that made this whole array, and therefore the ListView's
@@ -540,11 +536,6 @@ Item {
       searchInput.forceActiveFocus();
       return;
     }
-    if (it.view) {
-      view = it.view;
-      msg = "";
-      return;
-    }
     if (it.id === "dnd") { toggles.toggleDnd(); msg = "toggling do not disturb…"; return; }
     if (it.id === "awake") { toggles.toggleAwake(); msg = "keep awake " + (toggles.awakeOn ? "on" : "off"); return; }
     if (it.id === "micmute") { toggles.toggleMicMute(); msg = "microphone " + (toggles.micMuted ? "muted" : "unmuted"); return; }
@@ -578,16 +569,8 @@ Item {
   Keys.onPressed: (event) => {
     if (event.key === Qt.Key_Escape) {
       event.accepted = true;
-      if (aboutView) { view = ""; return; }
       if (hasQuery) { query = ""; selIndex = 0; return; }
       closeRequested();
-      return;
-    }
-    if (aboutView) {
-      if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Left || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-        event.accepted = true;
-        view = "";
-      }
       return;
     }
     switch (event.key) {
@@ -662,7 +645,7 @@ Item {
           font.family: "JetBrains Mono"
           font.pixelSize: 18
           selectByMouse: true
-          onTextEdited: { panelRoot.query = text; panelRoot.selIndex = 0; panelRoot.armedId = ""; panelRoot.view = ""; }
+          onTextEdited: { panelRoot.query = text; panelRoot.selIndex = 0; panelRoot.armedId = ""; }
           Keys.forwardTo: [panelRoot]
 
           Text {
@@ -688,7 +671,7 @@ Item {
       // emoji-only via super+.) -- there's nothing to browse by category
       // in that mode, categories aren't even consulted by fuzzyList().
       Flow {
-        visible: !panelRoot.hasQuery && !panelRoot.aboutView && panelRoot.searchScope === ""
+        visible: !panelRoot.hasQuery && panelRoot.searchScope === ""
         x: 14
         width: parent.width - 28
         spacing: 4
@@ -731,13 +714,12 @@ Item {
         }
       }
 
-      Item { visible: !panelRoot.hasQuery && !panelRoot.aboutView && panelRoot.searchScope === ""; width: 1; height: 10 }
+      Item { visible: !panelRoot.hasQuery && panelRoot.searchScope === ""; width: 1; height: 10 }
 
       Rectangle { width: parent.width; height: 1; color: panelRoot.hoverColor }
 
       // ----- list + preview -----
       Item {
-        visible: !panelRoot.aboutView
         width: parent.width
         height: visible ? 336 : 0
 
@@ -1090,7 +1072,6 @@ Item {
                   if (cur.emojiChar) return "copy emoji";
                   if (cur.sshHost !== undefined) return "enter: ssh in ghostty · shift+enter: copy command";
                   if (cur.danger && panelRoot.armedId === (cur.id || cur.label)) return "press again to confirm";
-                  if (cur.view) return "view";
                   if (cur.panel) return "open panel";
                   if (cur.fill) return "try it";
                   if (cur.danger) return "run (asks to confirm)";
@@ -1105,62 +1086,6 @@ Item {
         }
       }
 
-      // ----- about page -----
-      Item {
-        visible: panelRoot.aboutView
-        width: parent.width
-        height: visible ? 296 : 0
-
-        RowLayout {
-          x: 22
-          y: 20
-          width: parent.width - 44
-          spacing: 20
-
-          Text {
-            Layout.alignment: Qt.AlignTop
-            text: Phosphor.icon("info")
-            font.family: "Phosphor"
-            font.pixelSize: 64
-            color: panelRoot.colors[0]
-          }
-          ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 2
-            RowLayout {
-              spacing: 0
-              // `|| ""` on every about.data.* read below: AboutBackend gets
-              // torn down and recreated on each hot-reload, and there's a
-              // brief window mid-recreation where these bindings
-              // re-evaluate against it before its `data` (and the real
-              // Process behind it) has settled -- self-heals within the
-              // same reload either way, this just stops it from logging
-              // "Unable to assign [undefined] to QString" while it does.
-              Text { text: about.data.user || ""; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
-              Text { text: "@"; color: panelRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-              Text { text: about.data.host || ""; color: panelRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
-            }
-            Text { text: "──────────────────"; color: panelRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
-            Column {
-              spacing: 0
-              Repeater {
-                model: [
-                  { k: "os", v: "NixOS (CoelOS)" }, { k: "kernel", v: about.data.kernel || "" },
-                  { k: "uptime", v: about.data.uptime || "" }, { k: "wm", v: about.data.wm || "" },
-                  { k: "shell", v: about.data.shell || "" }, { k: "cpu", v: about.data.cpu || "" },
-                  { k: "memory", v: about.data.memory || "" }, { k: "disk /", v: about.data.disk || "" },
-                ]
-                delegate: RowLayout {
-                  required property var modelData
-                  spacing: 10
-                  Text { Layout.preferredWidth: 70; text: modelData.k; color: panelRoot.colors[2]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
-                  Text { Layout.fillWidth: true; elide: Text.ElideRight; text: modelData.v; color: panelRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
-                }
-              }
-            }
-          }
-        }
-      }
 
       // ----- footer -----
       Item {
@@ -1181,9 +1106,8 @@ Item {
             Layout.fillWidth: true
             elide: Text.ElideRight
             text: panelRoot.msg.length > 0 ? panelRoot.msg
-              : (panelRoot.aboutView ? "system › about"
-                : panelRoot.hasQuery ? (panelRoot.list.length + " results")
-                : panelRoot.categories[Math.min(panelRoot.catIndex, panelRoot.categories.length - 1)].label)
+              : panelRoot.hasQuery ? (panelRoot.list.length + " results")
+              : panelRoot.categories[Math.min(panelRoot.catIndex, panelRoot.categories.length - 1)].label
             color: panelRoot.msg.length > 0 ? (panelRoot.armedId.length > 0 ? panelRoot.colors[1] : panelRoot.colors[3]) : panelRoot.mutedColor
             font.family: "JetBrains Mono"
             font.pixelSize: 13
@@ -1192,11 +1116,9 @@ Item {
           Row {
             spacing: 14
             Repeater {
-              model: panelRoot.aboutView
-                ? [{ k: "esc", l: "back" }]
-                : panelRoot.hasQuery
-                  ? [{ k: "↑↓", l: "move" }, { k: "⏎", l: "run" }, { k: "esc", l: "clear" }]
-                  : [{ k: "tab", l: "category" }, { k: "↑↓", l: "move" }, { k: "⏎", l: "run" }, { k: "esc", l: "close" }]
+              model: panelRoot.hasQuery
+                ? [{ k: "↑↓", l: "move" }, { k: "⏎", l: "run" }, { k: "esc", l: "clear" }]
+                : [{ k: "tab", l: "category" }, { k: "↑↓", l: "move" }, { k: "⏎", l: "run" }, { k: "esc", l: "close" }]
               delegate: Row {
                 required property var modelData
                 spacing: 4
