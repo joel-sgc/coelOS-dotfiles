@@ -50,12 +50,13 @@ Item {
     { name: "joelsgc", init: "J" },
   ]
   readonly property var demoSessions: [
-    { id: "hyprland", name: "Hyprland", exec: "Hyprland" },
-    { id: "plasma", name: "Plasma (Wayland)", exec: "startplasma-wayland" },
+    { id: "hyprland", name: "Hyprland", exec: "Hyprland", desktopNames: "Hyprland" },
+    { id: "plasma", name: "Plasma (Wayland)", exec: "startplasma-wayland", desktopNames: "KDE" },
   ]
   Component.onCompleted: {
     users = demoUsers;
     sessions = demoSessions;
+    checkEnrollment();
   }
 
   FileView {
@@ -105,6 +106,27 @@ Item {
     selectedSessionIndex = (selectedSessionIndex + delta + sessions.length) % sessions.length;
   }
 
+  // ----- fingerprint enrollment, per selected user -----
+  // Same fprintd-list check AuthBackend.qml (the lock screen) already
+  // uses, re-run whenever the selected account changes -- unlike the
+  // lock screen, the greeter can switch between several real accounts,
+  // so "is fingerprint available" isn't fixed for the whole session.
+  property string enrollListText: ""
+  readonly property bool fingerprintEnrolled: !root.mock && root.enrollListText.indexOf(" - #") !== -1
+  Process {
+    id: enrollProc
+    command: ["fprintd-list", root.selectedUser]
+    stdout: StdioCollector {
+      onStreamFinished: root.enrollListText = text
+    }
+  }
+  function checkEnrollment() {
+    if (root.mock || root.selectedUser === "") return;
+    enrollProc.running = false;
+    enrollProc.running = true;
+  }
+  onSelectedUserChanged: checkEnrollment()
+
   function submit(pw) {
     if (busy) return;
     busy = true;
@@ -146,12 +168,18 @@ Item {
       busy = false;
       return;
     }
-    // XDG_CURRENT_DESKTOP deliberately left unset -- confirmed live
-    // (real hardware) that Hyprland's own startup script sets that one
-    // itself and warns "environment seems to be managed externally"
-    // when it's already present. Per the XDG spec, XDG_SESSION_DESKTOP
-    // is the login-manager-owned variable; XDG_CURRENT_DESKTOP belongs
-    // to the desktop environment being launched, not to us.
+    // XDG_CURRENT_DESKTOP set from the session's own real DesktopNames=
+    // value (e.g. "KDE" for Plasma, "Hyprland" for Hyprland), not our
+    // own filename-derived s.id -- confirmed live (real hardware) that
+    // Plasma's session flatly failed to start without this set
+    // correctly (portals, Qt platform theming and KDE component
+    // detection all key off it), while omitting it entirely -- the
+    // previous fix for Hyprland's own "environment seems to be managed
+    // externally" warning -- had only ever been masking a *wrong value*
+    // problem (s.id is lowercase "plasma"/"hyprland", not the real
+    // "KDE"/"Hyprland" DesktopNames= each session actually declares),
+    // not a "don't set it at all" one. Falls back to s.id if a session's
+    // .desktop file has no DesktopNames= line.
     //
     // Routed through /bin/sh with stdout/stderr redirected to a log
     // file -- confirmed live (real hardware) that Greetd.launch() execs
@@ -161,9 +189,20 @@ Item {
     // the brief moment before Hyprland's compositor takes over and
     // starts actually rendering. Redirecting it keeps that console
     // silent through the handoff.
+    // PATH explicitly set -- confirmed live (real hardware) that Plasma's
+    // session silently died in ~34ms with zero output: its own
+    // plasma-dbus-run-session-if-needed script (unlike Hyprland's, which
+    // uses full absolute store paths throughout) execs the bare command
+    // name "dbus-run-session", relying on $PATH to find it. Greetd.launch
+    // doesn't inherit a normal login shell's PATH setup, so that exec
+    // failed instantly. /run/current-system/sw/bin is the standard NixOS
+    // location every system-wide package (including dbus) is symlinked
+    // into, same as a normal session would have.
     Greetd.launch(["/bin/sh", "-c", s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1"], [
       "XDG_SESSION_TYPE=wayland",
       "XDG_SESSION_DESKTOP=" + s.id,
+      "XDG_CURRENT_DESKTOP=" + (s.desktopNames || s.id),
+      "PATH=/run/current-system/sw/bin",
     ]);
   }
 

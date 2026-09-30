@@ -29,8 +29,16 @@ let
         id=$(basename "$f" .desktop)
         name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
         exec=$(grep -m1 '^Exec=' "$f" | cut -d= -f2- | sed -E 's/ ?%[a-zA-Z]//g')
-        jq -n --arg id "$id" --arg n "$name" --arg e "$exec" \
-          '{id:$id, name:$n, exec:$e}'
+        # The real DesktopNames= value, not our own filename-derived id --
+        # confirmed live that Plasma's session genuinely failed to start
+        # without XDG_CURRENT_DESKTOP set to its real expected value
+        # ("KDE", not "plasma"): portals, Qt platform theming and various
+        # KDE component detection all key off this variable being
+        # correct, unlike Hyprland's own startup script, which happens to
+        # set/correct it itself if absent.
+        desktopNames=$(grep -m1 '^DesktopNames=' "$f" | cut -d= -f2-)
+        jq -n --arg id "$id" --arg n "$name" --arg e "$exec" --arg d "$desktopNames" \
+          '{id:$id, name:$n, exec:$e, desktopNames:$d}'
       done | jq -s . > $out
     '';
 
@@ -168,16 +176,14 @@ in
     # starts the session.
     security.pam.services.greetd.enableGnomeKeyring = true;
 
-    # Same fprintAuth-disable configuration.nix already applies to the
-    # lock screen's own PAM services -- confirmed live (real hardware)
-    # that without it, greetd's PAM stack tries fprintd before unix auth
-    # automatically, so a typed password just sits queued behind an
-    # unrequested "place your finger" step (which GreeterBackend.qml
-    # never shows UI for -- fpOn is hardcoded false there) until it times
-    # out, making password login look broken while a finger on the
-    # sensor completes instantly. This greeter has no real fingerprint
-    # UI wired up yet, so disable it here the same way, rather than
-    # silently depending on an accidental PAM ordering.
-    security.pam.services.greetd.fprintAuth = false;
+    # fprintAuth deliberately left at its default (enabled) -- previously
+    # disabled here because greetd's PAM stack tries fprintd before unix
+    # auth automatically, and GreeterBackend.qml had no UI for that
+    # "place your finger" step, making password look silently broken
+    # while it waited behind an unrequested ~30s fprintd timeout. Now
+    # that GreeterBackend.qml surfaces that PAM message as real status
+    # text (matching the lock screen's own always-on fingerprint
+    # indicator) rather than hiding it, this is the intended UX rather
+    # than a bug -- see GreeterBackend.qml's own comments.
   };
 }

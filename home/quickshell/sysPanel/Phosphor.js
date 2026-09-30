@@ -110,6 +110,7 @@ const codepoints = {
   sparkle: 0xe6a2, // ph-sparkle (eye candy toggle)
   "hard-drives": 0xe2a0, // ph-hard-drives (ssh category, tagged "servers")
   "arrows-left-right": 0xe0a0, // ph-arrows-left-right (convert category/results)
+  trash: 0xe4a6,
 
   // lock/ -- lock screen (media transport, password field, power buttons)
   "skip-back": 0xe5a4, // ph-skip-back (media prev)

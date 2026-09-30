@@ -138,7 +138,7 @@ Scope {
       armedPower: root.armedPower
       powerActions: root.powerActions
       shakeSeq: root.shakeSeq
-      fpOn: false
+      fpOn: backend.fingerprintEnrolled
 
       onPwEdited: (text) => root.pw = text
       onSubmitRequested: root.submitPassword()
