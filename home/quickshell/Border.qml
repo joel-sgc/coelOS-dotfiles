@@ -20,7 +20,7 @@ Scope {
   // gives the frame an actual edge distinguishing it from the desktop.
   property color innerAccentColor: "#22ffffff"
   property real innerAccentWidth: 1.5
-  property int radius: 12
+  property int radius: 16
   property bool enabled: true
   property int barHeight: 36
 

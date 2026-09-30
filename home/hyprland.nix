@@ -142,7 +142,7 @@ in
           name = "float-info-terminal";
           "match:class" = "^com\\.joelsgc\\.info$";
           float = true;
-          size = "1111 725";
+          size = "832 502";
         }
         {
           # Ignore maximize requests from all apps.

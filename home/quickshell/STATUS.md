@@ -3,27 +3,41 @@
 Handoff doc written for a future session (or you) to pick this up with
 zero conversation history. Everything here reflects real, verified state
 as of **2026-09-29**, not aspiration. Supersedes the previous version of
-this file (2026-09-28) — that one described the bar/launcher work only and
-said the user's next focus was "a new lockscreen and login screen"; that
-work is now done (see the new **Lock screen + greetd login screen**
-section below) and is what this update is really about.
+this file — the lock/login work described below (this doc's own previous
+version, itself now committed) is done; this update's real news is the
+**rofi retirement + misc cleanup** section, all still uncommitted.
 
-Most of the bar/launcher/GlobalProtect work described below is committed
-(`git log`, most recent: `0344391`, `ec76ac3`, `26871ef`, then
-`54c1a5e`/`6e27aba`/`09f33de` for the start of the lock+login work). **As
-of this doc, there are real uncommitted changes on top of `09f33de`** —
-the user hasn't committed since starting real-hardware testing of the
-greeter. Currently modified (per `git status`):
-- `modules/greeter.nix`, `home/quickshell/greeter/Greeter.qml`,
-  `home/quickshell/greeter/backends/GreeterBackend.qml` — all the real-
-  hardware fixes described in the new section below (this is the
-  substantial part).
-- `home/quickshell/launcher/LauncherPanel.qml`,
-  `home/quickshell/sysPanel/Phosphor.js` — one line each, a new "Purge"
-  (`nix-collect-garbage -d`) entry in the launcher's system category plus
-  its `trash` icon codepoint. **Not something this session touched** —
-  the user's own small addition, made independently of the lock/login
-  work; noted here only so it isn't mistaken for stray/leftover state.
+Commit history: `git log`, most recent relevant commits `0344391`,
+`ec76ac3`, `26871ef` for the bar/launcher work, `54c1a5e`/`6e27aba` for the
+start of the lock+login work, and **`41c81d6`** (the previous version of
+this doc, plus the full greeter real-hardware debugging arc) is now
+committed. **As of this doc, there are real uncommitted changes on top of
+`41c81d6`** — the user hasn't committed since. Currently modified/deleted
+(per `git status`), all from the same pass, **none of it touched by this
+session** (found while re-reading the repo to write this update, not
+something Claude did):
+- `home/rofi.nix` and every `home/rofi/scripts/*.sh` **deleted entirely**,
+  plus the `netpala`/`bluepala` flake inputs and their home-manager
+  modules (`home/netpala.nix`, `home/bluepala.nix`, `flake.nix`,
+  `flake.lock`, `home.nix`) — see the new section below.
+- `home/purge.nix` — reworked its `EXIT` trap into a named function
+  (`hold_open`), no behavior change.
+- `home/quickshell/launcher/LauncherPanel.qml` — "About this system" no
+  longer opens the launcher's own in-app about view, and "Purge" now
+  calls the real `coel-purge` wrapper instead of an inlined command — see
+  below, including a real orphaned-code finding this uncovered.
+- `home/hyprland.nix` — one window-rule size tweak (`float-info-terminal`,
+  1111x725 → 1144x655), presumably retuned for fastfetch's own output
+  now that "About this system" opens it directly in that floating
+  terminal instead of the launcher's in-app view.
+
+Verified this pass: the whole config still builds clean (`nix build
+.#nixosConfigurations.coelos.config.system.build.toplevel --no-link`)
+with all of the above in place — the rofi/netpala/bluepala removal left no
+dangling references anywhere real (a few stray *comments* elsewhere in
+`home/hyprland.nix`/`home.nix` still mention `home/rofi.nix` by name as
+historical context for why certain keybinds/window rules exist; harmless,
+not chased down).
 
 ## What this project is
 
@@ -156,12 +170,13 @@ Calendar's todos persist in real SQLite via `QtQuick.LocalStorage`.
 ## Launcher (rofi replacement) — overall status
 
 Fully replaces rofi's categorized dmenu (`coel-main-menu`) and `rofi -show
-drun`. `rofi.nix`'s own scripts were left untouched, only the Hyprland
-keybinds pointing at them changed (`$mainMod space`/`$mainMod shift+space`
+drun`. Originally `rofi.nix`'s own scripts were left untouched with only
+the Hyprland keybinds repointed (`$mainMod space`/`$mainMod shift+space`
 → `quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle`,
 `$mainMod V` → `... call launcher openClipboard`, `$mainMod .` → `... call
-launcher openEmoji`). Whether to retire `coel-emoji-picker` entirely is
-still an open call, not made unilaterally (unchanged from before).
+launcher openEmoji`) — **since resolved**: `rofi.nix` and every one of its
+scripts are now deleted entirely (see "Rofi retirement + misc cleanup"
+below), not just the emoji picker question this used to leave open.
 
 Categories as of now, in search-priority order (see "search ordering"
 below for what that means): **launch, ssh, actions** (merged
@@ -672,38 +687,99 @@ effect of making it the running default, just without a ceremonial
   out of scope (this project's lock screen replaces hyprlock/Hyprland's
   own locking, not KDE's).
 
+## Rofi retirement + misc cleanup (uncommitted, not this session's work)
+
+A separate pass, unrelated to the lock/login work above, found while
+re-reading the repo to write this update — **not something Claude did**,
+just documented here so it isn't mistaken for stray state. All still
+uncommitted as of this doc; the whole config still builds clean with it
+in place (verified this pass).
+
+**Rofi fully removed.** `home/rofi.nix` (529 lines) and all six of its
+`home/rofi/scripts/*.sh` helpers (`actions-menu`, `coel-package-search`,
+`coel-screenrecord`, `coel-screenshot`, `config-menu`, `power-menu`,
+`settings-menu`) are deleted outright, not just unimported — the Hyprland
+keybinds that used to point at them were already repointed at the
+Quickshell launcher in an earlier arc (see "Launcher" above), so this is
+the actual final retirement, resolving that section's long-open "whether
+to retire `coel-emoji-picker`" question by removing the whole rofi setup
+it was part of, not just that one piece.
+
+**`netpala`/`bluepala` also removed** — same pass, same cleanup, unrelated
+to rofi specifically. These were terminal-UI network/Bluetooth tools
+(`github:joel-sgc/netpala`, `github:joel-sgc/bluepala`, both the user's own
+repos) wired in as home-manager modules; both flake inputs, their
+`home/netpala.nix`/`home/bluepala.nix` modules, and the corresponding
+`home.nix` import lines are gone, with `flake.lock` pruned to match.
+Presumably superseded by the panel's own real `NetworkDropdown`/
+`BluetoothDropdown` — not confirmed with the user, inferred from timing
+and the fact that nothing else changed to replace them.
+
+**`home/purge.nix`** (new module, the backing for the "Purge" launcher
+entry added alongside the greeter work): a `coel-purge` wrapper script
+(`pkgs.writeShellApplication`) running `sudo nix-collect-garbage -d` and
+holding the terminal window open afterward (via an `EXIT` trap) whether it
+succeeds or fails — the direct replacement for `coel-show-done`, a rofi.nix
+helper that no longer exists now that rofi itself is gone. This pass
+reworked that trap from an inline one-liner into a named `hold_open`
+function; no behavior change.
+
+**`LauncherPanel.qml`'s system category, two real changes**:
+- "Purge" now calls the real `coel-purge` wrapper instead of the inlined
+  `sudo nix-collect-garbage -d` the previous commit shipped it with.
+- "About this system" changed from `view: "about"` (opening the
+  launcher's own in-app about page, `AboutBackend.qml`'s data rendered
+  inline) to a plain `command:` that runs `fastfetch` directly in a
+  floating ghostty window instead. **This orphans the in-app about-view
+  code** — `LauncherPanel.qml`'s `AboutBackend { id: about }`, the
+  `view`/`aboutView` state, and the about-page rendering block (including
+  the `|| ""` fallbacks this doc's own "Two real QML warning bugs fixed"
+  section documents fixing) have no remaining entry point now that
+  nothing sets `view = "about"` anymore. Found by grepping for it while
+  writing this update, not chased down or removed — genuinely dead code
+  as of this doc, not yet confirmed intentional with the user.
+
+**`home/hyprland.nix`**: one window-rule size tweak for the
+`com.joelsgc.info` floating terminal class (1111x725 → 1144x655),
+presumably retuned to fit fastfetch's own output now that this class is
+what "About this system" opens directly, rather than a leftover from
+something else.
+
 ## Immediate next steps
 
-The lock screen + greeter work (previously "the user's own stated next
-focus") is **done** — see the section above. No single stated top
-priority right now; treat the open items below on their own merits if
-asked, in rough likely-relevance order:
+The lock screen + greeter work is **done and committed** (`41c81d6`). The
+rofi retirement + cleanup pass above is real but **uncommitted** and not
+this session's work. No single stated top priority right now; treat the
+open items below on their own merits if asked, in rough likely-relevance
+order:
 
-1. Commit the lock/login-screen work (see the top-of-file note — real
-   uncommitted changes on top of `09f33de` as of this doc). Per this
-   project's own established convention, **the user commits themselves**,
-   in large infrequent batches — don't commit unasked, just don't assume
-   it's done either.
-2. fprintd's ~30s timeout on the greeter (see "Known open items" above) —
-   revisit if a fast password-only login still feels slow without
-   touching the sensor.
-3. The launcher's stale "Lock" entry still calls `hyprlock` directly
+1. Commit the rofi-retirement/cleanup pass (see the top-of-file note and
+   "Rofi retirement + misc cleanup" above — real uncommitted changes as of
+   this doc). Same rule as always: **the user commits themselves**, don't
+   commit unasked, don't assume it's done either.
+2. Confirm whether dropping the in-app "about" view (`LauncherPanel.qml`'s
+   `AboutBackend`/`view`/`aboutView`, now unreachable — see "Rofi
+   retirement" above) in favor of a direct `fastfetch` terminal was
+   intentional, and if so whether the now-dead code should actually be
+   removed rather than left orphaned.
+3. fprintd's ~30s timeout on the greeter (see the lock/login section's
+   "Known open items") — revisit if a fast password-only login still
+   feels slow without touching the sensor.
+4. The launcher's stale "Lock" entry still calls `hyprlock` directly
    instead of the real quickshell lock command (see "Known open items"
    above) — a one-line fix in `LauncherPanel.qml`, not yet made since it
    was never actually asked for.
-4. Live-test the tray dropdown end-to-end against a real menu click (does
+5. Live-test the tray dropdown end-to-end against a real menu click (does
    `entry.triggered()` actually perform the real action?) and confirm the
    340px width is enough for whatever else shows up in real tray menus
    beyond Steam's.
-5. Live-test a real GlobalProtect connect attempt now that both the
+6. Live-test a real GlobalProtect connect attempt now that both the
    capability fix and `Restart = "always"` are in place — the underlying
    cause of the "already established"/interface-setup failure was
    root-caused and fixed, but never confirmed working end-to-end
    afterward.
-6. Decide (asked twice already) whether to revert the `"OnDemand"` status
+7. Decide (asked twice already) whether to revert the `"OnDemand"` status
    case removal in `coel-vpn-status`.
-7. Decide whether to retire/repoint `coel-emoji-picker` now that emoji
-   search is native to the launcher (unchanged open question from before).
 8. The `Border.qml` `bgColor`-as-`borderColor` binding in `shell.qml` is
    *not* a bug — user confirmed live the opaque border is intentional,
    already settled, don't revisit.

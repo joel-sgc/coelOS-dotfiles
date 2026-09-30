@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   # Auto-switches monitor layout profiles based on which outputs are

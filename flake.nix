@@ -27,9 +27,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    netpala.url = "github:joel-sgc/netpala";
-    bluepala.url = "github:joel-sgc/bluepala";
-
     # Ultraleap Gemini hand tracking (Leap Motion camera driver). Ultraleap's
     # own Linux downloads have gone dark; this builds the service from the
     # last hash-pinned .deb it still references and packages leapc-cffi/
@@ -55,12 +52,9 @@
 
   outputs =
     inputs@{
-      self,
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
-      opencode,
-      netpala,
       ...
     }:
     let

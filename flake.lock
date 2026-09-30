@@ -1,24 +1,5 @@
 {
   "nodes": {
-    "bluepala": {
-      "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1786638289,
-        "narHash": "sha256-F7GAHa5yLgn+2Qw0E8tYZMXhJ/wDRcwJyQdS3051mNw=",
-        "owner": "joel-sgc",
-        "repo": "bluepala",
-        "rev": "6ca7d4d5ed2707733855952c190d4f8833218f7c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "joel-sgc",
-        "repo": "bluepala",
-        "type": "github"
-      }
-    },
     "crane": {
       "locked": {
         "lastModified": 1765145449,
@@ -191,25 +172,6 @@
         "type": "github"
       }
     },
-    "netpala": {
-      "inputs": {
-        "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs_3"
-      },
-      "locked": {
-        "lastModified": 1786634046,
-        "narHash": "sha256-IRWAiUxgHm0nmI+rK4k1IseZ+D2IQX5yReovLgQeubU=",
-        "owner": "joel-sgc",
-        "repo": "netpala",
-        "rev": "00929a60590878f7e5497da1bc9b64e8aa8d79d4",
-        "type": "github"
-      },
-      "original": {
-        "owner": "joel-sgc",
-        "repo": "netpala",
-        "type": "github"
-      }
-    },
     "nix-flatpak": {
       "locked": {
         "lastModified": 1783368811,
@@ -372,10 +334,8 @@
     },
     "root": {
       "inputs": {
-        "bluepala": "bluepala",
         "fresh": "fresh",
         "home-manager": "home-manager",
-        "netpala": "netpala",
         "nix-flatpak": "nix-flatpak",
         "nixpkgs": "nixpkgs_4",
         "nixpkgs-unstable": "nixpkgs-unstable",

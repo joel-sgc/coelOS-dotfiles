@@ -131,8 +131,8 @@ Item {
         ["5!", "factorial"], ["ncr(10, 3)", "combinations"], ["120 + 15%", "percent of"],
       ].map(([ex, d]) => ({ label: ex, sub: d, icon: "function", right: "", fill: true })) },
       { id: "system", label: "system", icon: "gear-six", items: [
-        { label: "About this system", sub: "", icon: "info", right: "›", rightColor: "#5c6370", view: "about" },
-        { label: "Purge", sub: "nix-collect-garbage", icon: "trash", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "sudo", "nix-collect-garbage", "-d"] },
+        { label: "About this system", sub: "fastfetch", icon: "info", right: "", command: ["ghostty", "--class=com.joelsgc.info", "-e", "bash", "-c", "fastfetch; read -n1 -r"] },
+        { label: "Purge", sub: "nix-collect-garbage", icon: "trash", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-purge"] },
         { label: "Rebuild", sub: "nixos-rebuild switch", icon: "arrow-counter-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-rebuild"] },
         { label: "Update", sub: "+ upgrade flake inputs", icon: "arrows-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-update"] },
         { label: "Lock", sub: "", icon: "lock", right: "super+l", command: ["hyprlock"] },

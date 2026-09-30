@@ -24,7 +24,15 @@ let
   # mkDesktopItem below is just pkgs.makeDesktopItem -- the same builder
   # home-manager's own module uses -- so entry generation itself is
   # unchanged; only the install location is.
-  mkDesktopItem = id: args: pkgs.makeDesktopItem ({ name = id; type = "Application"; } // args);
+  mkDesktopItem =
+    id: args:
+    pkgs.makeDesktopItem (
+      {
+        name = id;
+        type = "Application";
+      }
+      // args
+    );
 
   # --- Menu declutter -------------------------------------------------
   # A running list of launcher entries that don't belong -- duplicate
@@ -42,8 +50,6 @@ let
     "org.kicad.pcbcalculator"
     "org.kicad.pcbnew"
     "qt6ct" # Qt theme is wired declaratively (home/qt-theme.nix), don't need the GUI
-    "rofi" # rofi's own "launch with default config" entry -- redundant with the coel-* menus/keybinds that actually invoke it
-    "rofi-theme-selector"
 
     "org.kde.ark" # archive manager GUI, not used
     "btop" # btop++, terminal system monitor -- launched via coel-* menus/keybinds, not a menu entry

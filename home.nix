@@ -40,7 +40,7 @@
     ./home/fastfetch.nix
     ./home/swayosd.nix
     ./home/clipboard.nix
-    ./home/rofi.nix
+    ./home/os-commands.nix
     ./home/waybar.nix
     ./home/desktop-entries.nix
     ./home/udiskie.nix
@@ -60,14 +60,6 @@
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
     inputs.steam-config-nix.homeModules.default
     ./home/steam.nix
-
-    # Terminal-friendly NetworkManager TUI (github:joel-sgc/netpala).
-    inputs.netpala.homeManagerModules.default
-    ./home/netpala.nix
-
-    inputs.bluepala.homeManagerModules.default
-    ./home/bluepala.nix
-    #     bluetui    # Safe alternative to bluepala
   ];
 
   ##############################################################################
