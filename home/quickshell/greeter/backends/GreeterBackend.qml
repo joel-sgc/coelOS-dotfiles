@@ -136,14 +136,16 @@ Item {
     Greetd.createSession(selectedUser);
   }
 
+  // fprintd is listed `sufficient`-and-first in the greetd PAM stack
+  // (modules/greeter.nix), so a successful fingerprint scan alone
+  // completes auth; a failed/timed-out scan falls through to pam_unix's
+  // own password prompt, which is what `responseRequired` below answers.
+  // Only one such prompt is expected per attempt for this stack.
   Connections {
     target: Greetd
     enabled: !root.mock
     function onAuthMessage(message, error, responseRequired, echoResponse) {
       if (responseRequired) {
-        // First (and, for this stack, only expected) secret prompt --
-        // real multi-step conversations (OTP etc.) would need an
-        // interactive follow-up here, not attempted this pass.
         Greetd.respond(root._pendingPw);
         root._pendingPw = "";
       } else if (message) {
@@ -169,41 +171,85 @@ Item {
       return;
     }
     // XDG_CURRENT_DESKTOP set from the session's own real DesktopNames=
-    // value (e.g. "KDE" for Plasma, "Hyprland" for Hyprland), not our
-    // own filename-derived s.id -- confirmed live (real hardware) that
-    // Plasma's session flatly failed to start without this set
-    // correctly (portals, Qt platform theming and KDE component
-    // detection all key off it), while omitting it entirely -- the
-    // previous fix for Hyprland's own "environment seems to be managed
-    // externally" warning -- had only ever been masking a *wrong value*
-    // problem (s.id is lowercase "plasma"/"hyprland", not the real
-    // "KDE"/"Hyprland" DesktopNames= each session actually declares),
-    // not a "don't set it at all" one. Falls back to s.id if a session's
-    // .desktop file has no DesktopNames= line.
-    //
-    // Routed through /bin/sh with stdout/stderr redirected to a log
-    // file -- confirmed live (real hardware) that Greetd.launch() execs
-    // the command directly with no shell, so once cage exits and hands
-    // back the VT, the session script's own startup logging (Hyprland's
-    // own, quite verbose) prints straight to the bare text console for
-    // the brief moment before Hyprland's compositor takes over and
-    // starts actually rendering. Redirecting it keeps that console
-    // silent through the handoff.
-    // PATH explicitly set -- confirmed live (real hardware) that Plasma's
-    // session silently died in ~34ms with zero output: its own
-    // plasma-dbus-run-session-if-needed script (unlike Hyprland's, which
-    // uses full absolute store paths throughout) execs the bare command
-    // name "dbus-run-session", relying on $PATH to find it. Greetd.launch
-    // doesn't inherit a normal login shell's PATH setup, so that exec
-    // failed instantly. /run/current-system/sw/bin is the standard NixOS
-    // location every system-wide package (including dbus) is symlinked
-    // into, same as a normal session would have.
-    Greetd.launch(["/bin/sh", "-c", s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1"], [
+    // value (e.g. "KDE" for Plasma, "Hyprland" for Hyprland), not our own
+    // filename-derived s.id -- portals, Qt platform theming and KDE
+    // component detection all key off the real value. PATH is explicit
+    // since Greetd.launch() doesn't inherit a normal login shell's PATH,
+    // and session scripts that exec bare command names (not full store
+    // paths) need it to find them. stdout/stderr redirected to a log file
+    // so a session's own startup logging doesn't flash on the bare
+    // console during the cage-to-session VT handoff.
+    const envArgs = [
       "XDG_SESSION_TYPE=wayland",
       "XDG_SESSION_DESKTOP=" + s.id,
       "XDG_CURRENT_DESKTOP=" + (s.desktopNames || s.id),
       "PATH=/run/current-system/sw/bin",
-    ]);
+    ];
+
+    if (s.exec.indexOf("dbus-run-session") === -1) {
+      // Hyprland (and anything else not needing the Plasma-specific
+      // fixups below) -- left completely untouched, still the exact
+      // short inline -c string confirmed working on real hardware.
+      Greetd.launch(["/bin/sh", "-c",
+        s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1"], envArgs);
+      return;
+    }
+
+    // Plasma: write the real launch script to a file first, then tell
+    // Greetd.launch() to run just that short file path -- confirmed live
+    // (a phone video of the real console during a failed attempt) that
+    // the previous approach, one long inline `/bin/sh -c "<giant
+    // string>"` argument (export DBUS_SESSION_BUS_ADDRESS + sleep 5 +
+    // the real exec + redirect, ~3x longer than Hyprland's always-working
+    // one-liner), never actually ran: the console showed NixOS's normal
+    // environment setup finish, then sat on a bare, blinking interactive
+    // /bin/sh prompt -- i.e. /bin/sh started with no script/argument at
+    // all, meaning the long command string was getting lost somewhere
+    // between here and the shell actually executing, not failing inside
+    // whatever it would have run. A short, fixed-size argv regardless of
+    // which session is picked sidesteps that entirely.
+    //
+    // DBUS_SESSION_BUS_ADDRESS: plasma-dbus-run-session-if-needed spawns
+    // its own private bus when this is unset, which fails immediately on
+    // this system (/etc/dbus-1/session.conf is dbus's own deprecated
+    // empty stub) -- pointing it at the systemd-user bus Hyprland's own
+    // D-Bus clients already fall back to sidesteps that spawn entirely.
+    // sleep: the same cage/kwin DRM-master handoff race this project
+    // already fixed once for cage's own startup (a sleep 1 before
+    // quickshell connects). The earlier "5s" value here was never
+    // actually validated -- the whole command wasn't executing at all
+    // until the script-file fix above -- so this is back to 1s, matching
+    // cage's own fix, to see if that's actually sufficient now that the
+    // real launch path works.
+    const scriptContent =
+      "#!/bin/sh\n" +
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus\n" +
+      "sleep 1\n" +
+      "exec " + s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1\n";
+    const safeScript = scriptContent.replace(/'/g, "'\\''");
+    launchScriptWriterComponent.createObject(root, {
+      command: ["/bin/sh", "-c",
+        "printf '%s' '" + safeScript + "' > /tmp/qs-greeter-launch.sh && chmod +x /tmp/qs-greeter-launch.sh"],
+      running: true,
+      _launchEnv: envArgs,
+    });
+  }
+
+  // Writes the launch script, then (only once that write process has
+  // actually exited, so the file is guaranteed complete) runs it via
+  // Greetd.launch() with just its short path -- see doLaunch()'s own
+  // comment for why this two-step indirection replaced a single long
+  // inline command string.
+  Component {
+    id: launchScriptWriterComponent
+    Process {
+      property var _launchEnv: []
+      stdout: StdioCollector {}
+      onExited: {
+        Greetd.launch(["/bin/sh", "/tmp/qs-greeter-launch.sh"], _launchEnv);
+        destroy();
+      }
+    }
   }
 
   // Mock auth: "test" succeeds, anything else fails -- mirrors the

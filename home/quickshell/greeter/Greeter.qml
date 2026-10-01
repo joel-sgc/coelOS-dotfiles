@@ -73,15 +73,18 @@ Scope {
     backend.submit(pw);
   }
 
+  // Calls doLaunch() immediately, no deliberate delay -- confirmed live
+  // (real hardware, auth debug log) that a 150ms Timer here (originally
+  // added for a fade transition that was never actually wired to any
+  // visible animation -- pure delay, zero cosmetic payoff) let the whole
+  // greeter process get killed before the timer fired in 2 of 3 real
+  // login attempts, meaning Greetd.launch() was never even called.
+  // Collapsing the gap between "auth succeeded" and "launch requested"
+  // to zero removes that window entirely.
   Connections {
     target: backend
-    function onLaunchRequested() { fadeTimer.start(); }
+    function onLaunchRequested() { backend.doLaunch(); }
   }
-  // A short pause before actually launching -- greetd expects the greeter
-  // to exit promptly after launch, but an instant cut with zero
-  // transition reads as a crash rather than a deliberate handoff. Kept
-  // short per the reference doc's own warning not to delay launch().
-  Timer { id: fadeTimer; interval: 150; onTriggered: backend.doLaunch() }
 
   // Hardcoded to the real panel's known resolution -- confirmed live
   // (real hardware log.qslog, re-checked after removing the
