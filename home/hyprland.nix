@@ -18,6 +18,26 @@ in
   # home/wallpaper.nix, home/clipboard.nix.
   wayland.systemd.target = "hyprland-session.target";
 
+  # Home Manager only creates this when wayland.windowManager.hyprland.
+  # systemd.enable is true, which UWSM replaces. Same definition, started
+  # by exec-once below.
+  systemd.user.targets.hyprland-session.Unit = {
+    Description = "Hyprland compositor session";
+    BindsTo = [ "graphical-session.target" ];
+    Wants = [ "graphical-session-pre.target" ];
+    After = [ "graphical-session-pre.target" ];
+  };
+
+  # Hyprland-only env for systemd-started services (portals etc.), which
+  # never see Hyprland's own `env =` lines. env-hyprland is sourced by
+  # UWSM for Hyprland sessions only, so Plasma is untouched.
+  xdg.configFile."uwsm/env-hyprland".text = ''
+    export NIXOS_OZONE_WL=1
+    export MOZ_ENABLE_WAYLAND=1
+    export QT_QPA_PLATFORMTHEME=qt6ct
+    export QT_PLUGIN_PATH=${config.home.profileDirectory}/lib/qt-6/plugins
+  '';
+
   # Mirrors configuration.nix's system-level xdg.portal.config in
   # home-manager's own separate option namespace (~/.config/xdg-desktop-portal/),
   # since the Hyprland module only wires this up itself when `package != null`,
@@ -46,11 +66,10 @@ in
     package = null;
     configType = "hyprlang";
 
-    # Defaults to false. Without it, apps that rely on the standard XDG
-    # autostart mechanism (a .desktop file in ~/.config/autostart or
-    # /etc/xdg/autostart) to launch themselves at login never do -- Plasma
-    # and GNOME both honor this automatically, Hyprland doesn't unless told.
-    systemd.enableXdgAutostart = true;
+    # UWSM owns the systemd session (env import, graphical-session.target,
+    # XDG autostart via wayland-session-xdg-autostart@.target). Home
+    # Manager's own integration would double-start all of that.
+    systemd.enable = false;
 
     settings = {
       monitor = [
@@ -159,6 +178,7 @@ in
       ];
 
       exec-once = [
+        "systemctl --user start hyprland-session.target"
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
         "${pkgs.mako}/bin/mako"
         # Blocks logind's default hardware-power-key handling so the

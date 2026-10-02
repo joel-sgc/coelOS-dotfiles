@@ -136,7 +136,12 @@
   # Hyprland, added alongside Plasma as a second selectable SDDM session
   # while migrating. Phase 1: bare compositor only — portals, bars, and
   # the rest of the tray/applet stack land in later phases.
-  programs.hyprland.enable = true;
+  programs.hyprland = {
+    enable = true;
+    # Launch through UWSM: Hyprland runs as wayland-wm@*.service and the
+    # session gets a real graphical-session.target / env import / cgroups.
+    withUWSM = true;
+  };
 
   services.xserver.xkb = {
     layout = "us";

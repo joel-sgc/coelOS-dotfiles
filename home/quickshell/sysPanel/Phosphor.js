@@ -130,6 +130,10 @@ const codepoints = {
   check: 0xe182, // ph-check (auth success status line)
   x: 0xe4f6, // ph-x (auth error status line)
   "circle-notch": 0xeb44, // ph-circle-notch ("checking..." status line)
+
+  // powermenu/ -- PowerMenu.qml
+  "sign-out": 0xe42a, // ph-sign-out (log out tile)
+  warning: 0xe4e0, // ph-warning (armed/countdown status line)
 };
 
 function icon(name) {

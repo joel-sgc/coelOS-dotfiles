@@ -24,6 +24,24 @@ let
     '';
   };
 
+  # Launched by home/hyprland.nix's XF86PowerOff bind -- see
+  # home/quickshell/power-menu-shell.qml's own comment for why this is a
+  # separate, standalone Quickshell process (not part of Panel.qml's
+  # already-running shell) and why it points at the live repo path rather
+  # than a Nix-store copy. The pgrep guard keys on that same path for the
+  # same reason: a second power-key press while the menu's already open
+  # should do nothing, not stack a second overlay on top of the first.
+  powerMenu = pkgs.writeShellApplication {
+    name = "coel-power-menu";
+    runtimeInputs = [ pkgs.quickshell pkgs.procps ];
+    text = ''
+      if pgrep -f "quickshell -p .*power-menu-shell\.qml" >/dev/null; then
+        exit 0
+      fi
+      exec quickshell -p "$HOME/.nixos/home/quickshell/power-menu-shell.qml"
+    '';
+  };
+
   rebuild = pkgs.writeShellApplication {
     name = "coel-rebuild";
     runtimeInputs = [ showDone ];
@@ -168,6 +186,7 @@ in
 {
   home.packages = [
     purge
+    powerMenu
     rebuild
     update
     screenshot

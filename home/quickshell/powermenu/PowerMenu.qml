@@ -52,6 +52,7 @@ Item {
   Component.onCompleted: {
     hostnameProc.running = true;
     uptimeProc.running = true;
+    root.forceActiveFocus();
   }
   Process {
     id: hostnameProc
@@ -94,7 +95,7 @@ Item {
   property int sel: 0
   property string armed: ""
   property string done: ""
-  property int left: 0
+  property int secondsLeft: 0
 
   Timer { id: armTimer; interval: 1000; repeat: true; onTriggered: root.tickArm() }
   Timer { id: doneTimer; interval: 1600; onTriggered: root.done = "" }
@@ -104,23 +105,23 @@ Item {
   function cancel() {
     armTimer.stop();
     armed = "";
-    left = 0;
+    secondsLeft = 0;
   }
 
   function run(i) {
     const a = root.acts[i];
     armTimer.stop();
     armed = "";
-    left = 0;
+    secondsLeft = 0;
     done = a.k;
     doneTimer.restart();
     Quickshell.execDetached(a.command);
   }
 
   function tickArm() {
-    const l = root.left - 1;
+    const l = root.secondsLeft - 1;
     if (l <= 0) { run(root.sel); return; }
-    root.left = l;
+    root.secondsLeft = l;
   }
 
   function pick(i) {
@@ -131,7 +132,7 @@ Item {
     if (root.armed === a.k) { run(i); return; }
     armTimer.stop();
     root.armed = a.k;
-    root.left = root.countdown;
+    root.secondsLeft = root.countdown;
     armTimer.restart();
   }
 
@@ -143,7 +144,7 @@ Item {
     if (doneAction) return { icon: "check", text: doneAction.label + " · running", color: colors[3] };
     if (armedAction) return {
       icon: "warning",
-      text: armedAction.label + " in " + left + "s · ⏎ now · esc cancel",
+      text: armedAction.label + " in " + secondsLeft + "s · ⏎ now · esc cancel",
       color: armedAction.danger ? colors[1] : colors[2],
     };
     return { icon: "info", text: curAction.label + (curAction.safe ? "" : " · asks to confirm"), color: mutedColor };
@@ -287,87 +288,100 @@ Item {
       Rectangle { width: parent.width; height: 1; color: root.rowBorderColor }
 
       // ----- action grid -----
-      RowLayout {
+      // RowLayout wrapped in a plain Item for padding, not Layout.margins
+      // directly on the RowLayout -- Layout.* attached properties are only
+      // honored when the item sits inside another Layout, and this
+      // RowLayout's actual parent is cardColumn, a plain Column
+      // positioner, which silently ignores them (confirmed live: the grid
+      // was rendering completely flush against the header/status-line
+      // dividers above and below it).
+      Item {
         width: parent.width
-        Layout.margins: 18
-        spacing: 8
+        implicitHeight: grid.implicitHeight + 36
+        RowLayout {
+          id: grid
+          x: 18
+          y: 18
+          width: parent.width - 36
+          spacing: 8
 
-        Repeater {
-          model: root.acts
-          delegate: Rectangle {
-            id: tile
-            required property var modelData
-            required property int index
+          Repeater {
+            model: root.acts
+            delegate: Rectangle {
+              id: tile
+              required property var modelData
+              required property int index
 
-            readonly property bool isSel: index === root.sel
-            readonly property bool isArmed: root.armed === modelData.k
-            readonly property bool isDone: root.done === modelData.k
-            readonly property color hot: isArmed
-              ? (modelData.danger ? root.colors[1] : root.colors[2])
-              : isDone ? root.colors[3]
-              : modelData.danger ? root.colors[1] : root.colors[0]
+              readonly property bool isSel: index === root.sel
+              readonly property bool isArmed: root.armed === modelData.k
+              readonly property bool isDone: root.done === modelData.k
+              readonly property color hot: isArmed
+                ? (modelData.danger ? root.colors[1] : root.colors[2])
+                : isDone ? root.colors[3]
+                : modelData.danger ? root.colors[1] : root.colors[0]
 
-            Layout.fillWidth: true
-            Layout.preferredHeight: 118
-            radius: 10
-            border.width: 1
-            border.color: (isSel || isArmed || isDone) ? hot : root.rowBorderColor
-            color: (isSel || isArmed) ? root.selectedBg : root.rowBg
+              Layout.fillWidth: true
+              Layout.preferredHeight: 118
+              radius: 10
+              border.width: 1
+              border.color: (isSel || isArmed || isDone) ? hot : root.rowBorderColor
+              color: (isSel || isArmed) ? root.selectedBg : root.rowBg
 
-            Text {
-              anchors.top: parent.top
-              anchors.left: parent.left
-              anchors.topMargin: 7
-              anchors.leftMargin: 9
-              text: (tile.index + 1) + " " + tile.modelData.key
-              color: root.mutedColor
-              font.family: "JetBrains Mono"
-              font.pixelSize: 10
-            }
-
-            ColumnLayout {
-              anchors.centerIn: parent
-              spacing: 12
               Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: Phosphor.icon(tile.modelData.icon)
-                color: (tile.isSel || tile.isArmed || tile.isDone) ? tile.hot : root.dimColor
-                font.family: "Phosphor"
-                font.pixelSize: 28
-              }
-              Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: tile.isArmed ? tile.modelData.label + "?" : tile.modelData.label
-                color: (tile.isSel || tile.isArmed) ? root.brightColor : root.dimColor
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.topMargin: 7
+                anchors.leftMargin: 9
+                text: (tile.index + 1) + " " + tile.modelData.key
+                color: root.mutedColor
                 font.family: "JetBrains Mono"
-                font.pixelSize: 12
+                font.pixelSize: 10
               }
-            }
 
-            Rectangle {
-              visible: tile.isArmed
-              anchors.left: parent.left
-              anchors.right: parent.right
-              anchors.bottom: parent.bottom
-              anchors.margins: 10
-              anchors.bottomMargin: 8
-              height: 2
-              radius: 1
-              color: root.rowBorderColor
+              ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 12
+                Text {
+                  Layout.alignment: Qt.AlignHCenter
+                  text: Phosphor.icon(tile.modelData.icon)
+                  color: (tile.isSel || tile.isArmed || tile.isDone) ? tile.hot : root.dimColor
+                  font.family: "Phosphor"
+                  font.pixelSize: 28
+                }
+                Text {
+                  Layout.alignment: Qt.AlignHCenter
+                  text: tile.isArmed ? tile.modelData.label + "?" : tile.modelData.label
+                  color: (tile.isSel || tile.isArmed) ? root.brightColor : root.dimColor
+                  font.family: "JetBrains Mono"
+                  font.pixelSize: 12
+                }
+              }
+
               Rectangle {
-                height: parent.height
-                width: parent.width * (root.left / root.countdown)
+                visible: tile.isArmed
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 10
+                anchors.bottomMargin: 8
+                height: 2
                 radius: 1
-                color: tile.hot
+                color: root.rowBorderColor
+                Rectangle {
+                  height: parent.height
+                  width: parent.width * (root.secondsLeft / root.countdown)
+                  radius: 1
+                  color: tile.hot
+                }
               }
-            }
 
-            MouseArea {
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onEntered: { if (!root.armed && !root.done && root.sel !== tile.index) root.sel = tile.index; }
-              onClicked: { root.focus = true; root.pick(tile.index); }
+              MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onEntered: { if (!root.armed && !root.done && root.sel !== tile.index) root.sel = tile.index; }
+                onClicked: { root.focus = true; root.pick(tile.index); }
+              }
             }
           }
         }
@@ -463,6 +477,4 @@ Item {
       Item { width: 1; height: 10 }
     }
   }
-
-  Component.onCompleted: root.forceActiveFocus()
 }

@@ -88,14 +88,39 @@ Item {
           // "hyprland.desktop" alphabetically ('-' < '.' in ASCII) in
           // the shell glob modules/greeter.nix builds this list from,
           // which silently made the uwsm-managed session the default.
+          // Overridden below by the real last-used session, if any.
           const i = parsed.findIndex(s => s.id === "hyprland");
           if (i !== -1) root.selectedSessionIndex = i;
+          root.applySavedSession();
         }
       } catch (e) {
         console.warn("GreeterBackend: malformed sessions.json, keeping demo data:", e);
       }
     }
     onLoadFailed: (error) => {} // file doesn't exist yet (dev preview) -- keep demo data
+  }
+
+  // Remembers whichever session was last actually launched (written at
+  // the end of doLaunch() below) so the greeter defaults to it instead of
+  // always resetting to "hyprland" -- /var/lib/qs-greeter is real,
+  // writable, persistent state reserved for exactly this in
+  // modules/greeter.nix. Applied from both FileViews' onLoaded (not just
+  // this one), since sessions.json and this file load asynchronously in
+  // either order -- whichever finishes last is the one that can actually
+  // find the matching session and apply it.
+  property string savedSessionId: ""
+  function applySavedSession() {
+    if (root.savedSessionId === "" || root.sessions.length === 0) return;
+    const i = root.sessions.findIndex(s => s.id === root.savedSessionId);
+    if (i !== -1) root.selectedSessionIndex = i;
+  }
+  FileView {
+    path: "/var/lib/qs-greeter/last-session"
+    onLoaded: {
+      root.savedSessionId = text().trim();
+      root.applySavedSession();
+    }
+    onLoadFailed: (error) => {} // no session launched yet (first run) -- keep the "hyprland" default
   }
 
   readonly property string selectedUser: users.length > 0 ? users[selectedUserIndex].name : ""
@@ -186,49 +211,52 @@ Item {
       "PATH=/run/current-system/sw/bin",
     ];
 
-    if (s.exec.indexOf("dbus-run-session") === -1) {
-      // Hyprland (and anything else not needing the Plasma-specific
-      // fixups below) -- left completely untouched, still the exact
-      // short inline -c string confirmed working on real hardware.
-      Greetd.launch(["/bin/sh", "-c",
-        s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1"], envArgs);
-      return;
-    }
-
-    // Plasma: write the real launch script to a file first, then tell
-    // Greetd.launch() to run just that short file path -- confirmed live
-    // (a phone video of the real console during a failed attempt) that
-    // the previous approach, one long inline `/bin/sh -c "<giant
-    // string>"` argument (export DBUS_SESSION_BUS_ADDRESS + sleep 5 +
-    // the real exec + redirect, ~3x longer than Hyprland's always-working
-    // one-liner), never actually ran: the console showed NixOS's normal
-    // environment setup finish, then sat on a bare, blinking interactive
-    // /bin/sh prompt -- i.e. /bin/sh started with no script/argument at
-    // all, meaning the long command string was getting lost somewhere
-    // between here and the shell actually executing, not failing inside
-    // whatever it would have run. A short, fixed-size argv regardless of
-    // which session is picked sidesteps that entirely.
+    // Every session launches through a script file written to disk
+    // first, then Greetd.launch() just runs that short file path --
+    // confirmed live (a phone video of the real console during a failed
+    // Plasma attempt) that a long inline `/bin/sh -c "<giant string>"`
+    // argument never actually ran at all: the console showed NixOS's
+    // normal environment setup finish, then sat on a bare, blinking
+    // interactive /bin/sh prompt with no script/argument, meaning the
+    // command string was getting lost somewhere before the shell actually
+    // executed, not failing inside whatever it would have run. This
+    // wasn't unique to Plasma's longer command either -- confirmed live
+    // that the uwsm-managed Hyprland entry (a few words longer than plain
+    // Hyprland's single bare path) hit the exact same silent-drop failure
+    // on the old inline-command path. A short, fixed-size argv regardless
+    // of session avoids the whole class of bug, so every session now
+    // goes through this, not just Plasma.
     //
-    // DBUS_SESSION_BUS_ADDRESS: plasma-dbus-run-session-if-needed spawns
-    // its own private bus when this is unset, which fails immediately on
+    // DBUS_SESSION_BUS_ADDRESS and the startup sleep are still Plasma-only
+    // (scoped below) -- plasma-dbus-run-session-if-needed spawns its own
+    // private bus when the former is unset, which fails immediately on
     // this system (/etc/dbus-1/session.conf is dbus's own deprecated
-    // empty stub) -- pointing it at the systemd-user bus Hyprland's own
-    // D-Bus clients already fall back to sidesteps that spawn entirely.
-    // sleep: the same cage/kwin DRM-master handoff race this project
-    // already fixed once for cage's own startup (a sleep 1 before
-    // quickshell connects). The earlier "5s" value here was never
-    // actually validated -- the whole command wasn't executing at all
-    // until the script-file fix above -- so this is back to 1s, matching
-    // cage's own fix, to see if that's actually sufficient now that the
-    // real launch path works.
+    // empty stub); the sleep is the same cage/kwin DRM-master handoff race
+    // already fixed once for cage's own startup. Neither is needed for
+    // Hyprland (plain or uwsm-managed): its D-Bus clients already fall
+    // back to the systemd-user bus on their own, and it's never shown the
+    // DRM-handoff race plain Hyprland doesn't hit either.
+    const needsPlasmaFixups = s.exec.indexOf("dbus-run-session") !== -1;
+    const plasmaFixupLines = needsPlasmaFixups
+      ? "export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus\nsleep 1\n"
+      : "";
     const scriptContent =
       "#!/bin/sh\n" +
-      "export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus\n" +
-      "sleep 1\n" +
+      plasmaFixupLines +
       "exec " + s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1\n";
     const safeScript = scriptContent.replace(/'/g, "'\\''");
+    // Remembers this session as the one to default to next time, read
+    // back by the FileView above on the greeter's next start. Written
+    // here, not as a line inside scriptContent above -- confirmed live
+    // (a real "Permission denied" flash on the console) that scriptContent
+    // runs as the real target user once Greetd.launch() execs it, but
+    // /var/lib/qs-greeter is owned by the unprivileged greeter user
+    // (mode 0755, not world-writable). This command, by contrast, is run
+    // directly by the greeter process itself (same as the script-file
+    // write right after it), which does own that directory.
     launchScriptWriterComponent.createObject(root, {
       command: ["/bin/sh", "-c",
+        "echo -n " + s.id + " > /var/lib/qs-greeter/last-session; " +
         "printf '%s' '" + safeScript + "' > /tmp/qs-greeter-launch.sh && chmod +x /tmp/qs-greeter-launch.sh"],
       running: true,
       _launchEnv: envArgs,
