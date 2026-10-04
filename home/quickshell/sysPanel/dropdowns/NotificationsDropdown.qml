@@ -225,7 +225,10 @@ Item {
     if (!clearArmed) {
       clearArmed = true;
       clearArmTimer.restart();
-      say("press confirm again to clear " + items.length + " notification" + (items.length === 1 ? "" : "s"), colors[1]);
+      // Short on purpose -- this lives in the header's status slot, which
+      // overlapped the controls cluster in split view's one-line layout
+      // when this message was its old, much longer self (confirmed live).
+      say("clear " + items.length + "? confirm again", colors[1]);
       return;
     }
     const n = items.length;
@@ -432,19 +435,28 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
-        Text { text: "notifications"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
-        Text { text: "─ " + dropdownRoot.items.length + " ─"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+        Text { id: splitTitleText; text: "notifications"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+        Text { id: splitCountText; text: "─ " + dropdownRoot.items.length + " ─"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
         // Shows the transient action-confirmation message here (e.g.
         // "→ copied to clipboard") when there is one, falling back to the
         // normal unread-count status otherwise -- previously this message
         // replaced the footer's keybind legend instead, which meant the
         // legend kept vanishing every time an action ran. This status slot
         // already exists and is the more natural home for it.
+        //
+        // Bounded width + elide, not just a shorter default message --
+        // this line shares the header with splitRight's own controls
+        // cluster (unlike list mode's version below, which gets a whole
+        // line to itself), and a long enough message visibly overlapped
+        // it instead of being contained (confirmed live with the old,
+        // longer clear-confirm wording).
         Text {
           text: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsg : dropdownRoot.statusText
           color: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsgColor : dropdownRoot.statusColor
           font.family: "JetBrains Mono"
           font.pixelSize: 13
+          elide: Text.ElideRight
+          width: Math.max(40, dropdownRoot.width - splitTitleText.implicitWidth - splitCountText.implicitWidth - splitRight.implicitWidth - 60)
         }
       }
 
@@ -469,20 +481,25 @@ Item {
       spacing: 6
 
       Row {
+        id: listTitleRow
         spacing: 8
-        Text { text: "notifications"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
-        Text { text: "─ " + dropdownRoot.items.length + " ─"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+        Text { id: listTitleText; text: "notifications"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+        Text { id: listCountText; text: "─ " + dropdownRoot.items.length + " ─"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
         // Shows the transient action-confirmation message here (e.g.
         // "→ copied to clipboard") when there is one, falling back to the
         // normal unread-count status otherwise -- previously this message
         // replaced the footer's keybind legend instead, which meant the
         // legend kept vanishing every time an action ran. This status slot
-        // already exists and is the more natural home for it.
+        // already exists and is the more natural home for it. Nothing else
+        // shares this line in list mode, but still bounded + elided
+        // defensively so a long message can't widen the whole dropdown.
         Text {
           text: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsg : dropdownRoot.statusText
           color: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsgColor : dropdownRoot.statusColor
           font.family: "JetBrains Mono"
           font.pixelSize: 13
+          elide: Text.ElideRight
+          width: Math.max(40, dropdownRoot.width - listTitleText.implicitWidth - listCountText.implicitWidth - 40)
         }
       }
 

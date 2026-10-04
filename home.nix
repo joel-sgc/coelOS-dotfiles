@@ -50,6 +50,7 @@
     ./home/kde-wallpaper.nix
     ./home/kde-theme.nix
     ./home/qt-theme.nix
+    ./home/cursor.nix
 
     # Services / integrations
     ./home/globalprotect.nix

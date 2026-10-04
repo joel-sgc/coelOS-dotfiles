@@ -26,12 +26,32 @@ Item {
   // this same bug/fix for the full explanation.
   onIsReplyingChanged: if (isReplying) replyField.forceActiveFocus()
 
-  ColumnLayout {
+  // A real Flickable, not a fixed-height ColumnLayout -- the split view's
+  // container is a fixed 440px, and a long body plus the real image
+  // preview (previewImage) together could genuinely exceed that. Neither
+  // ColumnLayout nor its children clip by default, so overflowing content
+  // just rendered past this pane's own bounds -- and since Popup.qml
+  // auto-sizes the whole frame off `childrenRect` (which measures actual
+  // rendered geometry, not nominal layout bounds), that overflow was
+  // inflating the *entire dropdown's* height, not just spilling messily
+  // within this one pane (confirmed live: the whole card grew taller and
+  // the footer got pushed out of view). `clip: true` here contains it;
+  // Flickable makes the rest actually reachable by scrolling instead of
+  // just invisible.
+  Flickable {
     anchors.fill: parent
-    spacing: 12
-    visible: detailRoot.n !== null
+    contentWidth: width
+    contentHeight: contentCol.implicitHeight
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
 
-    RowLayout {
+    ColumnLayout {
+      id: contentCol
+      width: parent.width
+      spacing: 12
+      visible: detailRoot.n !== null
+
+      RowLayout {
       Layout.fillWidth: true
       spacing: 12
 
@@ -99,7 +119,7 @@ Item {
     Rectangle {
       visible: detailRoot.n && detailRoot.n.previewImage.length > 0
       Layout.fillWidth: true
-      height: 220
+      height: 160
       radius: 4
       color: "#21252b"
       border.width: 1
@@ -236,11 +256,10 @@ Item {
       }
     }
 
-    // Pushes the metadata block to the bottom of the pane, matching the
-    // mock's own `margin-top:auto` on its metadata grid -- only possible
-    // because the outer container is a ColumnLayout (Layout.fillHeight
-    // needs a Layout parent; a plain Column positioner has no equivalent).
-    Item { Layout.fillHeight: true; Layout.fillWidth: true }
+    // No fillHeight spacer pinning this to the bottom anymore -- that only
+    // made sense against a fixed-height parent; inside a Flickable there's
+    // no fixed height to pin against, so metadata just follows normally
+    // with regular spacing instead.
 
     // Metadata rows (app/urgency/received/id) -- a Column of Rows, one per
     // entry, NOT a `Grid { columns: 2 }` with a single two-Text delegate
@@ -263,6 +282,7 @@ Item {
           Text { text: parent.modelData.v; color: parent.modelData.c; font.family: "JetBrains Mono"; font.pixelSize: 12; width: parent.width - 80; elide: Text.ElideRight }
         }
       }
+    }
     }
   }
 }
