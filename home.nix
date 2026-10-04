@@ -33,7 +33,6 @@
     ./home/chromium.nix
     ./home/mimeapps.nix
     ./home/hyprland.nix
-    ./home/mako.nix
     ./home/hypridle.nix
     ./home/wallpaper.nix
     ./home/theme.nix

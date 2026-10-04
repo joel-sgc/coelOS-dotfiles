@@ -4,36 +4,34 @@ import Quickshell.Services.Pipewire
 
 // ----- real toggle backends (do not disturb, keep awake, mic mute,
 // monochrome, eye candy) -----
-// dndOn/monochromeOn are re-read from their real source after every
-// toggle (never assumed) -- same "don't optimistically update, wait for
-// the next real read" rule SystemDropdown.qml's kill action follows,
-// since both are state something *other* than this launcher could change
-// independently (mako mode / Hyprland's screen_shader option). awakeOn/
-// micMuted/eyeCandyOff don't need that: awake is just whether our own
-// systemd-inhibit child process is alive (fully our own lifecycle), mic
-// mute mirrors a live PwNode property directly (no separate read-back
-// needed), and eye candy is a bundle of 4 hyprctl options with no single
-// external source of truth to reconcile against -- "on"/"off" is our own
-// defined bundle, not a fact some other tool could independently flip.
+// monochromeOn is re-read from its real source after every toggle (never
+// assumed) -- same "don't optimistically update, wait for the next real
+// read" rule SystemDropdown.qml's kill action follows, since it's state
+// something *other* than this launcher could change independently
+// (Hyprland's screen_shader option). awakeOn/micMuted/eyeCandyOff don't
+// need that: awake is just whether our own systemd-inhibit child process
+// is alive (fully our own lifecycle), mic mute mirrors a live PwNode
+// property directly (no separate read-back needed), and eye candy is a
+// bundle of 4 hyprctl options with no single external source of truth to
+// reconcile against -- "on"/"off" is our own defined bundle, not a fact
+// some other tool could independently flip.
 Item {
   id: root
 
+  // The one process-wide NotificationsBackend instance, threaded in via
+  // LauncherPanel.qml <- Launcher.qml <- shell.qml.
+  property var notifications: null
+
   // ----- do not disturb -----
-  property bool dndOn: false
-  function refreshDnd() { dndProc.running = true; }
-  Process {
-    id: dndProc
-    command: ["makoctl", "mode"]
-    stdout: StdioCollector {
-      onStreamFinished: root.dndOn = text.split("\n").some(l => l.trim() === "dnd")
-    }
-  }
-  Process {
-    id: dndToggleProc
-    command: ["makoctl", "mode", "-t", "dnd"]
-    onExited: root.refreshDnd()
-  }
-  function toggleDnd() { dndToggleProc.running = true; }
+  // No subprocess, no external daemon to reconcile with -- used to shell
+  // out to `makoctl mode`/`makoctl mode -t dnd`, back when mako was the
+  // real notification daemon and its DND flag lived entirely outside this
+  // launcher's own process. Now that Quickshell's own NotificationsBackend
+  // owns notifications end to end, DND is just a plain property read
+  // straight off it, same as every other real-time value this launcher
+  // reads directly (micMuted, etc).
+  readonly property bool dndOn: notifications ? notifications.dnd : false
+  function toggleDnd() { if (notifications) notifications.toggleDnd(); }
 
   // ----- keep awake -----
   // Held open the whole time awakeOn is true; `running: false` sends it

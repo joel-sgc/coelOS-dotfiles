@@ -3,7 +3,7 @@ for i in $(seq 0 15); do printf "\033[48;5;%sm  \033[0m" "$i"; done
 echo
 echo
 
-echo "== Mako =="
+echo "== Notifications (Quickshell NotificationsBackend, not mako anymore) =="
 notify-send -a "CoelOS" "Theme Test" "Normal notification -- border should be One Dark blue."
 sleep 2
 notify-send -a "CoelOS" -u critical "Theme Test" "Critical notification -- border should be One Dark error red."

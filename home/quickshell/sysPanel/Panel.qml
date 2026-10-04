@@ -42,6 +42,11 @@ Scope {
     "#d55fde"   // Purple
   ]
   property int barHeight: 36
+  // The one process-wide NotificationsBackend instance (Notifications.qml,
+  // instantiated once in shell.qml) -- threaded down the same way as
+  // bgColor/fgColor/colors above, read by Bell.qml (badge/dnd icon) and
+  // NotificationsDropdown.qml (real history/actions) via root.notifications.
+  property var notifications: null
 
   // Bubbled up from whichever screen's Logo button was clicked, since
   // shell.qml owns the actual Launcher open/closed state (one launcher
@@ -70,6 +75,7 @@ Scope {
         property var hoverColor: panelScope.hoverColor
         property var colors: panelScope.colors
         property int barHeight: panelScope.barHeight
+        property var notifications: panelScope.notifications
 
         // Which dropdown (if any) is open, by name -- "" means none.
         // A single string rather than one bool per button so opening one
@@ -134,10 +140,21 @@ Scope {
           Workspaces {  }
         }
 
-        Clock {
+        RowLayout {
           anchors.centerIn: parent
-          active: root.openPopup === "calendar"
-          onClicked: root.openPopup = root.openPopup === "calendar" ? "" : "calendar"
+          spacing: 4
+
+          Clock {
+            active: root.openPopup === "calendar"
+            onClicked: root.openPopup = root.openPopup === "calendar" ? "" : "calendar"
+          }
+
+          Bell {
+            active: root.openPopup === "notifications"
+            unreadCount: root.notifications ? root.notifications.unreadCount : 0
+            dnd: root.notifications ? root.notifications.dnd : false
+            onClicked: root.openPopup = root.openPopup === "notifications" ? "" : "notifications"
+          }
         }
 
         Buttons {
@@ -164,6 +181,31 @@ Scope {
             hoverColor: root.hoverColor
             colors: root.colors
             popupOpen: root.openPopup === "calendar"
+            onCloseRequested: root.openPopup = ""
+          }
+        }
+
+        Popup {
+          screen: root.screen
+          barWindow: root
+          open: root.openPopup === "notifications"
+          barHeight: root.barHeight
+          centerHorizontally: true
+          // 0 (auto-size), not a fixed value like every other dropdown --
+          // NotificationsDropdown.qml's own width legitimately changes
+          // between its list (480) and split (700) view modes, and a fixed
+          // contentWidth here would clip the wider one instead of letting
+          // the frame track it.
+          contentWidth: 0
+          onCloseRequested: root.openPopup = ""
+
+          NotificationsDropdown {
+            fgColor: root.fgColor
+            mutedColor: root.mutedColor
+            hoverColor: root.hoverColor
+            colors: root.colors
+            popupOpen: root.openPopup === "notifications"
+            backend: root.notifications
             onCloseRequested: root.openPopup = ""
           }
         }

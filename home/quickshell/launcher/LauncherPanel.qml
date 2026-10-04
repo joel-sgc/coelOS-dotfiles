@@ -45,6 +45,9 @@ Item {
   property color hoverColor: "#404754"
   property color bgColor: "#282c34"
   property var colors: ["#61afef", "#ef596f", "#e5c07b", "#89ca78", "#d55fde"]
+  // Threaded down to TogglesBackend only -- repoints its "Do not disturb"
+  // toggle at the real NotificationsBackend instead of `makoctl`.
+  property var notifications: null
   property bool panelOpen: false
   // Set (via Launcher.qml/shell.qml) right before panelOpen flips true when
   // opened through openCategoryRequested (super+V) -- jumps straight to
@@ -67,7 +70,7 @@ Item {
   SshBackend { id: ssh }
   ClipboardBackend { id: clipboard }
   EmojiBackend { id: emoji }
-  TogglesBackend { id: toggles }
+  TogglesBackend { id: toggles; notifications: panelRoot.notifications }
   CurrencyBackend { id: currency }
 
   onPanelOpenChanged: if (panelOpen) {
@@ -81,7 +84,8 @@ Item {
       if (idx >= 0) catIndex = idx;
     }
     searchInput.forceActiveFocus();
-    toggles.refreshDnd();
+    // No toggles.refreshDnd() anymore -- dndOn is a plain reactive binding
+    // straight off NotificationsBackend now, nothing to manually re-read.
     toggles.refreshMonochrome();
     apps.refresh();
     ssh.refresh();

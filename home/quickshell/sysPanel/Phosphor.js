@@ -134,6 +134,14 @@ const codepoints = {
   // powermenu/ -- PowerMenu.qml
   "sign-out": 0xe42a, // ph-sign-out (log out tile)
   warning: 0xe4e0, // ph-warning (armed/countdown status line)
+
+  // notifications/ -- Bell.qml, NotificationsDropdown.qml, toast stack
+  "bell-simple": 0xe0d0, // ph-bell-simple (idle bell button)
+  "bell-simple-ringing": 0xe5ea, // ph-bell-simple-ringing (unread bell button)
+  "bell-simple-slash": 0xe0d2, // ph-bell-simple-slash (dnd bell button)
+  "bell-simple-z": 0xe5ec, // ph-bell-simple-z (dropdown empty state)
+  "speaker-simple-slash": 0xe456, // ph-speaker-simple-slash (muted-app tag)
+  "arrow-bend-up-left": 0xe024, // ph-arrow-bend-up-left (inline reply)
 };
 
 function icon(name) {

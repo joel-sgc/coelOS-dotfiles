@@ -121,11 +121,30 @@ let
     # takes priority over the Flatpak/package originals in $XDG_DATA_DIRS.
     # Every field is copied verbatim from the original except "gcode" in
     # Keywords, dropped below.
+    #
+    # WEBKIT_DISABLE_DMABUF_RENDERER=1 replaces an earlier
+    # LIBGL_ALWAYS_SOFTWARE=1 workaround for a 100%-reproducible segfault on
+    # Slice/Save (OrcaSlicer/OrcaSlicer#14453, #15810, #15930). Root cause
+    # (confirmed by the upstream fix's author, OrcaSlicer/OrcaSlicer#15873):
+    # Flathub's GNOME Platform//50 runtime update (2026-09-19) bumped
+    # WebKitGTK -- used by OrcaSlicer's "Home" tab webview -- to 2.54.0,
+    # whose DMA-BUF renderer now runs GL on the main thread. That collides
+    # with OrcaSlicer's own wx GL canvas when it renders plate thumbnails
+    # off-screen (Save/Slice/G-code thumbnails), which calls glDrawElements
+    # with no EBO bound in whatever context is current -- real GPU drivers
+    # (radeonsi here) segfault on that, llvmpipe happens not to.
+    # LIBGL_ALWAYS_SOFTWARE=1 "fixed" it by forcing software rendering for
+    # the *entire app*, which is also why the 3D viewport got so much
+    # slower. This instead stops WebKitGTK from touching GL at all, so
+    # OrcaSlicer's own canvas never loses its context and stays
+    # GPU-accelerated. The real fix (PR #15873, merged 2026-09-24) isn't in
+    # a tagged release yet -- Flathub's stable branch is still on 2.4.2 as
+    # of this writing -- drop this env var entirely once it is.
     "com.orcaslicer.OrcaSlicer" = mkDesktopItem "com.orcaslicer.OrcaSlicer" {
       desktopName = "OrcaSlicer";
       genericName = "3D Printing Software";
       icon = "com.orcaslicer.OrcaSlicer";
-      exec = "flatpak run --env=LIBGL_ALWAYS_SOFTWARE=1 --branch=stable --arch=x86_64 --command=entrypoint --file-forwarding com.orcaslicer.OrcaSlicer @@u %U @@";
+      exec = "flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 --branch=stable --arch=x86_64 --command=entrypoint --file-forwarding com.orcaslicer.OrcaSlicer @@u %U @@";
       terminal = false;
       mimeTypes = [
         "model/stl"

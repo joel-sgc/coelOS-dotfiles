@@ -17,7 +17,10 @@
     shellAliases = {
       ls = "eza -l --header";
       grep = "grep --color=auto";
-      orcaslicer = "env LIBGL_ALWAYS_SOFTWARE=1 flatpak run com.orcaslicer.OrcaSlicer";
+      # See home/desktop-entries.nix's comment on the OrcaSlicer desktop
+      # entry for why this is WEBKIT_DISABLE_DMABUF_RENDERER=1, not
+      # LIBGL_ALWAYS_SOFTWARE=1.
+      orcaslicer = "env WEBKIT_DISABLE_DMABUF_RENDERER=1 flatpak run com.orcaslicer.OrcaSlicer";
     };
 
     # Set environment variables here

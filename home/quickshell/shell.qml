@@ -101,7 +101,14 @@ ShellRoot {
     mutedColor: root.mutedColor
     hoverColor: root.hoverColor
     barHeight: root.barHeight
+    notifications: notifications.backend
     onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
+  }
+
+  // Notification toast stack + global toggle keybind -- see Notifications.qml
+  Notifications {
+    id: notifications
+    onToggleRequested: (screen) => panel.openPanelRequested(screen, "notifications")
   }
 
   // Spotlight-style launcher (rofi replacement) -- see Launcher.qml
@@ -113,6 +120,7 @@ ShellRoot {
     mutedColor: root.mutedColor
     hoverColor: root.hoverColor
     colors: root.colors
+    notifications: notifications.backend
     requestedCategory: root.launcherRequestedCategory
     requestedScope: root.launcherRequestedScope
     onCloseRequested: root.launcherOpen = false

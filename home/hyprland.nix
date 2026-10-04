@@ -180,7 +180,9 @@ in
       exec-once = [
         "systemctl --user start hyprland-session.target"
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
-        "${pkgs.mako}/bin/mako"
+        # mako retired -- Quickshell's own NotificationsBackend.qml is now
+        # the real org.freedesktop.Notifications server (see
+        # home/quickshell/notifications/).
         # Blocks logind's default hardware-power-key handling so the
         # XF86PowerOff bind below (-> coel-power-menu) is what actually
         # fires, instead of an immediate shutdown racing the menu.
@@ -236,6 +238,12 @@ in
         # (formatted text / actual images), reachable via openClipboard()'s
         # IpcHandler function.
         "$mainMod, V, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openClipboard"
+        # Notifications.qml's own IpcHandler -- toggles the notification
+        # dropdown on whichever screen currently has focus, same as clicking
+        # the bar's bell button. $mainMod-based (not the design mock's bare
+        # "ctrl shift n") to match every other bind here and avoid shadowing
+        # some app's own ctrl+shift+n.
+        "$mainMod CTRL SHIFT, N, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call notifications toggle"
         ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
         ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"
         ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"

@@ -28,6 +28,11 @@ Scope {
   property color hoverColor: "#404754"
   property color bgColor: "#282c34"
   property var colors: ["#61afef", "#ef596f", "#e5c07b", "#89ca78", "#d55fde"]
+  // The one process-wide NotificationsBackend instance (threaded in from
+  // shell.qml, same as Panel.qml's own `notifications` prop) -- only
+  // consumed by LauncherPanel's TogglesBackend, to repoint its "Do not
+  // disturb" toggle at the real backend instead of `makoctl`.
+  property var notifications: null
   // Set by shell.qml right before opening via openCategoryRequested --
   // consumed once by LauncherPanel's onPanelOpenChanged, not reset here
   // (shell.qml clears it back to "" on a plain toggle so a later
@@ -145,6 +150,7 @@ Scope {
           hoverColor: launcherScope.hoverColor
           bgColor: launcherScope.bgColor
           colors: launcherScope.colors
+          notifications: launcherScope.notifications
           panelOpen: winRoot.shown
           requestedCategory: launcherScope.requestedCategory
           searchScope: launcherScope.requestedScope
