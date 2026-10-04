@@ -83,7 +83,7 @@ in
       # taste.
       image = [
         {
-          path = "${../coelos-theme/logo.png}";
+          path = "${../assets/plymouth-theme/logo.png}";
           size = 300;
           border_size = 0;
           rounding = 0;

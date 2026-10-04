@@ -44,7 +44,7 @@
         pname = "coelos-plymouth-theme";
         version = "1.0";
         # Points to the folder containing the CoelOS theme files
-        src = ../assets/plymouth-theme;
+        src = ./assets/plymouth-theme;
 
         installPhase = ''
           mkdir -p $out/share/plymouth/themes/coelos

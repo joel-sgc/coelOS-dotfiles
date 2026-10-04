@@ -222,7 +222,7 @@ in
         # home/hypridle.nix's comment on programs.hyprlock.
         "$mainMod, L, exec, ${pkgs.quickshell}/bin/quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml"
         "$mainMod, W, killactive"
-        "$mainMod, M, exit"
+        "$mainMod, M, exec, uwsm stop"
         "$mainMod, B, exec, coel-random-wallpaper"
         "$mainMod, F, togglefloating"
         "$mainMod SHIFT, F, fullscreen"

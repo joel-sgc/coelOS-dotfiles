@@ -84,7 +84,7 @@ Item {
     { k: "suspend", label: "suspend", icon: "moon", key: "s", safe: true,
       command: ["systemctl", "suspend"], cmdText: "systemctl suspend" },
     { k: "logout", label: "log out", icon: "sign-out", key: "l", safe: false,
-      command: ["hyprctl", "dispatch", "exit"], cmdText: "hyprctl dispatch exit" },
+      command: ["uwsm", "stop"], cmdText: "uwsm stop" },
     { k: "reboot", label: "reboot", icon: "arrow-clockwise", key: "r", safe: false,
       command: ["systemctl", "reboot"], cmdText: "systemctl reboot" },
     { k: "poweroff", label: "shut down", icon: "power", key: "p", safe: false, danger: true,
