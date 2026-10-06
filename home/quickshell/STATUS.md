@@ -1329,3 +1329,22 @@ asked, in rough likely-relevance order:
    real such notification. The "show app" heuristic has also only been
    confirmed to *not crash* on a miss, not confirmed to successfully focus
    a real window on a hit.
+
+## Desktop widgets (2026-10-06)
+
+Weather, calendar and kanban as Bottom-layer layer-shell cards, ported from
+`example/Desktop Widgets v2.dc.html`. Entry point `Widgets.qml` (instantiated
+from `shell.qml`), pieces in `widgets/` (shared colors in `widgets/Pal.qml` --
+not named `Palette`, that clashes with a QtQuick type; the `qmldir` there is
+required for the singleton).
+
+- Data lives in `~/.local/share/coel/` (`kanban.json`, optional `events.json`
+  for the calendar agenda); `COEL_DATA_DIR` overrides it for testing.
+- Weather: Open-Meteo, no key, location by IP. Solid icons need the
+  Phosphor-Fill font (`home/quickshell-phosphor-font.nix`); falls back to
+  outline icons until it's installed.
+- Keyboard needs a click on the widget first (OnDemand focus). Focus may not
+  return to the kanban after the card editor closes.
+- IPC: `quickshell ipc -p ~/.nixos/home/quickshell call widgets toggle|newcard`.
+- Testing without touching the session: headless sway + a virtual
+  pointer/keyboard client (wlr-virtual-pointer) worked for click/drag/key tests.

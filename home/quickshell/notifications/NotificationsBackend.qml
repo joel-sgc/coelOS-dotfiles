@@ -148,9 +148,16 @@ Item {
   }
 
   // ----- actions called from the dropdown -----
+  // Both dismiss() and clearAll() used to only drop rows from the
+  // in-memory `history` array, never actually deleting them from SQLite --
+  // the UI looked right (empty) right up until the next real restart,
+  // when loadHistory() reloaded every "dismissed" row right back from the
+  // database, confirmed live (`clear all`, then a session restart, brought
+  // back the full previous count). Both now really delete.
   function dismiss(histId) {
     const row = history.find(r => r.id === histId);
     history = history.filter(r => r.id !== histId);
+    db.transaction(function (tx) { tx.executeSql("DELETE FROM history WHERE hist_id = ?", [histId]); });
     if (!row) return;
     const n = liveMap[String(row.dbusId)];
     if (n) n.dismiss();
@@ -160,6 +167,7 @@ Item {
       const n = liveMap[String(row.dbusId)];
       if (n) n.dismiss();
     }
+    db.transaction(function (tx) { tx.executeSql("DELETE FROM history"); });
     history = [];
   }
   function markRead(histId) {

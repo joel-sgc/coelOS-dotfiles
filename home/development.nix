@@ -18,5 +18,6 @@
     espeak
     
     (vscode.fhsWithPackages (ps: with ps; [ systemd libusb1 stdenv.cc.cc ]))
+    jdk17_headless
   ];  
 }

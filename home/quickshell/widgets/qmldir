@@ -1,0 +1,12 @@
+singleton Pal 1.0 Pal.qml
+Mono 1.0 Mono.qml
+PhIcon 1.0 PhIcon.qml
+Box 1.0 Box.qml
+TextButton 1.0 TextButton.qml
+Hints 1.0 Hints.qml
+DashedLine 1.0 DashedLine.qml
+DesktopWidget 1.0 DesktopWidget.qml
+Weather 1.0 Weather.qml
+Calendar 1.0 Calendar.qml
+Kanban 1.0 Kanban.qml
+KanbanEditor 1.0 KanbanEditor.qml

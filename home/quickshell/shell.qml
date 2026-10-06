@@ -105,6 +105,11 @@ ShellRoot {
     onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
   }
 
+  // Desktop widgets (weather, calendar, kanban) -- see Widgets.qml
+  Widgets {
+    barHeight: root.barHeight
+  }
+
   // Notification toast stack + global toggle keybind -- see Notifications.qml
   Notifications {
     id: notifications

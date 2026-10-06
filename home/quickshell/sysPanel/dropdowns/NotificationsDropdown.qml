@@ -30,7 +30,26 @@ Item {
 
   // Stale-focused-hidden-TextInput gotcha, same as NetworkDropdown.qml --
   // reclaim keyboard focus every time this dropdown opens.
-  onPopupOpenChanged: if (popupOpen) dropdownRoot.forceActiveFocus()
+  //
+  // Also marks everything read on open (matching the mock's own
+  // nToggle handler -- capture which ids were unread *before* marking
+  // read, so the blue "fresh" dot can still show for this viewing session
+  // even though the underlying `read` flag flips immediately). This was
+  // planned from the start (see this file's own `fresh` comment lower
+  // down) but never actually got wired to the real backend in the Phase 2
+  // rewrite -- confirmed live as a real bug, not just a cosmetic gap: with
+  // nothing ever calling markAllRead(), `read` stayed false in SQLite for
+  // nearly everything regardless of how long the dropdown had been looked
+  // at, so a real restart correctly (if confusingly) showed the same
+  // large unread count right back.
+  onPopupOpenChanged: {
+    if (popupOpen) {
+      dropdownRoot.forceActiveFocus();
+      freshIds = items.filter(n => !n.read).map(n => n.id);
+      if (backend) backend.markAllRead();
+    }
+  }
+  property var freshIds: []
 
   readonly property var items: backend ? backend.history : []
   // Expand/collapse is purely a display state -- not persisted, not part
@@ -160,19 +179,19 @@ Item {
   // Raw `items` (backend.history rows -- just id/dbusId/app/icon/image/
   // receivedAt/urgency/read) plus everything the UI needs that isn't
   // persisted on the row itself: a freshly computed `time` label,
-  // `fresh` (simplified to "unread", not a separate ephemeral concept --
-  // Phase 1's sample data had a distinct fresh-vs-read split that nothing
-  // ever actually cleared on open, so collapsing them is a real
-  // simplification, not a regression), `hasImage`, local `expanded`
-  // state, and `actions`/`canReply` -- both only meaningful while the
-  // underlying Notification is still live, fetched fresh from the backend
-  // per item since a closed notification can't be acted on anymore.
-  // Every other computed property below (and every consumer,
-  // NotificationRow/NotificationDetail) reads this, never `items` or
-  // `backend` directly.
+  // `fresh` (which ids were unread at the moment the dropdown last opened
+  // -- see onPopupOpenChanged above -- not simply `!read`, since `read`
+  // itself now flips true immediately on open for real persistence, while
+  // the blue dot should still show for the rest of this viewing session),
+  // `hasImage`, local `expanded` state, and `actions`/`canReply` -- both
+  // only meaningful while the underlying Notification is still live,
+  // fetched fresh from the backend per item since a closed notification
+  // can't be acted on anymore. Every other computed property below (and
+  // every consumer, NotificationRow/NotificationDetail) reads this, never
+  // `items` or `backend` directly.
   readonly property var rendered: items.map(n => Object.assign({}, n, {
     time: relTime(n.receivedAt),
-    fresh: !n.read,
+    fresh: freshIds.indexOf(n.id) >= 0,
     hasImage: !!(n.image && n.image.length > 0),
     previewImage: extractPreviewImage(n),
     expanded: expandedIds.indexOf(n.id) >= 0,

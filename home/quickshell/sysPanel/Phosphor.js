@@ -142,6 +142,24 @@ const codepoints = {
   "bell-simple-z": 0xe5ec, // ph-bell-simple-z (dropdown empty state)
   "speaker-simple-slash": 0xe456, // ph-speaker-simple-slash (muted-app tag)
   "arrow-bend-up-left": 0xe024, // ph-arrow-bend-up-left (inline reply)
+
+  // widgets/ -- desktop widgets (weather, calendar, kanban)
+  sun: 0xe472, // ph-sun (clear)
+  moon: 0xe330, // ph-moon (clear, night)
+  cloud: 0xe1aa, // ph-cloud (overcast)
+  "cloud-sun": 0xe540, // ph-cloud-sun (partly cloudy, day)
+  "cloud-moon": 0xe53e, // ph-cloud-moon (partly cloudy, night)
+  "cloud-rain": 0xe1b4, // ph-cloud-rain
+  "cloud-snow": 0xe1b8, // ph-cloud-snow
+  "cloud-lightning": 0xe1b2, // ph-cloud-lightning (thunderstorm)
+  "cloud-fog": 0xe53c, // ph-cloud-fog
+  "cloud-slash": 0xe1b6, // ph-cloud-slash (weather fetch failed)
+  drop: 0xe210, // ph-drop (humidity / precipitation)
+  wind: 0xe5d2, // ph-wind
+  "map-pin": 0xe316, // ph-map-pin (location)
+  "arrow-clockwise": 0xe036, // ph-arrow-clockwise (refresh)
+  plus: 0xe3d4, // ph-plus (new kanban card)
+  "pencil-simple": 0xe3b4, // ph-pencil-simple (edit card)
 };
 
 function icon(name) {
