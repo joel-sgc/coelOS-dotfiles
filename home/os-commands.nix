@@ -210,12 +210,12 @@ in
     fingerprintMenu
   ];
 
-  # Points xdg-desktop-portal-hyprland at the Quickshell picker. `force`
-  # because a hand-written copy of this file was used while developing it.
-  # Restart the portal after a rebuild:
-  #   systemctl --user restart xdg-desktop-portal-hyprland
+  # Points xdg-desktop-portal-hyprland at the Quickshell picker. The portal
+  # only reads this at startup, so a changed file restarts it (onChange runs
+  # during activation; `|| true` because the user manager may not be up yet,
+  # e.g. on the first rebuild before any login).
   xdg.configFile."hypr/xdph.conf" = {
-    force = true;
+    onChange = "systemctl --user restart xdg-desktop-portal-hyprland.service || true";
     text = ''
       screencopy {
           custom_picker_binary = ${sharePicker}/bin/coel-share-picker

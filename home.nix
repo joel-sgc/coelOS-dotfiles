@@ -54,6 +54,7 @@
 
     # Services / integrations
     ./home/globalprotect.nix
+    ./home/keyring.nix
     ./home/flatpak.nix
     inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
