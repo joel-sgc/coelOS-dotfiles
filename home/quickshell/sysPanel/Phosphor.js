@@ -160,6 +160,11 @@ const codepoints = {
   "arrow-clockwise": 0xe036, // ph-arrow-clockwise (refresh)
   plus: 0xe3d4, // ph-plus (new kanban card)
   "pencil-simple": 0xe3b4, // ph-pencil-simple (edit card)
+
+  // polkit/ -- authentication dialog + result toast
+  package: 0xe390, // ph-package (pkexec requests)
+  "x-circle": 0xe4f8, // ph-x-circle (dismissed toast)
+  "gear-six": 0xe272, // ph-gear-six (systemd / system settings requests)
 };
 
 function icon(name) {

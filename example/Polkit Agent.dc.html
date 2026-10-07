@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/styles.css">
+<script src="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>body{margin:0;background:#1e2127;} a{color:#61afef;} a:hover{color:#abb2bf;} button{font:inherit;} input::placeholder{color:#5c6370;}</style>
+</helmet>
+<div data-screen-label="Polkit agent" style="position:relative;min-height:100vh;overflow:hidden;background:radial-gradient(120% 90% at 30% 20%, #2c313c 0%, #1e2127 60%, #1a1d23 100%);font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55;color:#abb2bf;">
+
+  <sc-if value="{{ closed }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5c6370;">
+      <span>no pending requests · <span style="color:#e5c07b;">r</span> replay</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast.show }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;top:16px;right:16px;z-index:6;width:min(320px,calc(100% - 32px));box-sizing:border-box;background:#282c34;border:1px solid #404754;border-radius:16px;padding:10px 12px 10px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;">
+      <i class="{{ toast.icon }}" style="font-size:18px;color:{{ toast.color }};"></i>
+      <div style="display:flex;flex-direction:column;min-width:0;line-height:1.4;">
+        <span style="color:{{ toast.color }};">{{ toast.title }}</span>
+        <span style="color:#5c6370;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">polkit · {{ toast.sub }}</span>
+      </div>
+      <button onClick="{{ replay }}" title="Replay (r)" style="border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#abb2bf;background:#404754;">[↻]</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;background:rgba(24,26,31,0.62);backdrop-filter:blur(3px);"></div>
+    <div style="position:absolute;inset:0;overflow:auto;display:flex;align-items:safe center;justify-content:center;padding:24px 16px {{ dlgPadBottom }};box-sizing:border-box;">
+      <div data-screen-label="Polkit dialog" style="width:min(460px,100%);box-sizing:border-box;background:#282c34;border:1px solid {{ dlg.edge }};border-radius:16px;padding:6px 16px 14px;box-shadow:0 24px 48px -12px rgba(0,0,0,0.6);transform:translateX({{ dlg.shake }}px);transition:transform 45ms linear, border-color .2s;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+            <i class="{{ dlg.icon }}" style="font-size:15px;color:{{ dlg.iconColor }};"></i>
+            <span style="color:#61afef;font-weight:500;">authenticate</span>
+            <span style="color:#5c6370;white-space:nowrap;">─ polkit ─</span>
+          </div>
+          <button onClick="{{ cancel }}" title="Cancel (esc)" style="border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+        </div>
+
+        <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 10px 10px;margin-top:8px;">
+          <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#5c6370;">request</span>
+          <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ req.color }};">{{ req.via }}</span>
+          <div style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:start;">
+            <div style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:#2f343e;color:{{ req.color }};font-size:20px;"><i class="{{ req.icon }}"></i></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+              <span style="text-wrap:pretty;overflow-wrap:anywhere;">{{ req.lead }}<span style="color:{{ req.color }};">{{ req.subject }}</span>{{ req.tail }}</span>
+              <span style="color:#5c6370;">{{ req.app }}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;margin-top:10px;align-items:baseline;">
+            <span style="color:#5c6370;">as</span>
+            <span><button onClick="{{ cycleUser }}" title="Switch identity (alt u)" style="border:0;border-radius:2px;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;margin-left:-6px;" style-hover="background:#404754;"><span style="color:#e5c07b;">{{ user.name }}</span> <span style="color:#5c6370;">{{ user.note }}</span> <span style="color:#5c6370;">⇅</span></button></span>
+            <span style="color:#5c6370;">action</span>
+            <span style="color:#7f848e;overflow-wrap:anywhere;">{{ req.action }}</span>
+          </div>
+          <button onClick="{{ toggleDetails }}" style="border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;margin:4px 0 0 -6px;" style-hover="color:#abb2bf;background:#404754;">{{ detailsArrow }} details</button>
+          <sc-if value="{{ details }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:4px;padding:6px 8px;background:#1e2127;border-radius:2px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 10px;font-size:11.5px;">
+              <sc-for list="{{ req.details }}" as="d" hint-placeholder-count="3">
+                <span style="color:#5c6370;">{{ d.k }}</span>
+                <span style="overflow-wrap:anywhere;">{{ d.v }}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ fp.big }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;border:1px solid {{ fp.border }};border-radius:2px;padding:20px 10px 16px;margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:10px;transition:border-color .2s;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ fp.legend }};">fingerprint</span>
+            <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ fp.metaColor }};">{{ fp.meta }}</span>
+            <button onClick="{{ fp.touch }}" title="Touch the sensor" style="position:relative;width:84px;height:84px;border:0;padding:0;border-radius:50%;background:{{ fp.ringBg }};box-shadow:{{ fp.glow }};cursor:{{ fp.cursor }};display:grid;place-items:center;">
+              <span style="position:absolute;inset:3px;border-radius:50%;background:#282c34;"></span>
+              <i class="ph ph-fingerprint" style="position:relative;font-size:40px;color:{{ fp.iconColor }};transition:color .2s;"></i>
+            </button>
+            <div style="display:flex;flex-direction:column;align-items:center;line-height:1.4;">
+              <span style="color:{{ fp.statusColor }};">{{ fp.status }}</span>
+              <span style="color:#5c6370;">{{ fp.sub }}</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ pw.show }}" hint-placeholder-val="{{ true }}">
+          <div style="position:relative;border:1px solid {{ pw.border }};border-radius:2px;padding:14px 10px 10px;margin-top:16px;transition:border-color .2s;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ pw.legend }};">password</span>
+            <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ pw.metaColor }};">{{ pw.meta }}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:{{ pw.promptColor }};">❯</span>
+              <input ref="{{ pw.ref }}" type="{{ pw.type }}" value="{{ pw.value }}" onChange="{{ pw.onChange }}" onKeyDown="{{ pw.onKey }}" disabled="{{ pw.disabled }}" placeholder="{{ pw.placeholder }}" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:4px 8px;outline:none;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+              <button onClick="{{ pw.toggleShow }}" title="{{ pw.eyeTitle }}" style="width:24px;height:24px;display:grid;place-items:center;border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0;font-size:14px;" style-hover="color:#abb2bf;background:#404754;"><i class="{{ pw.eye }}"></i></button>
+            </div>
+            <sc-if value="{{ pw.msg }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:6px;color:{{ pw.msgColor }};">{{ pw.msg }}</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ fp.compact }}" hint-placeholder-val="{{ true }}">
+          <div style="position:relative;border:1px solid {{ fp.border }};border-radius:2px;padding:14px 10px 10px;margin-top:16px;display:flex;align-items:center;gap:12px;transition:border-color .2s;">
+            <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:{{ fp.legend }};">fingerprint</span>
+            <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ fp.metaColor }};">{{ fp.meta }}</span>
+            <button onClick="{{ fp.touch }}" title="Touch the sensor" style="position:relative;flex:none;width:46px;height:46px;border:0;padding:0;border-radius:50%;background:{{ fp.ringBg }};box-shadow:{{ fp.glow }};cursor:{{ fp.cursor }};display:grid;place-items:center;">
+              <span style="position:absolute;inset:2px;border-radius:50%;background:#282c34;"></span>
+              <i class="ph ph-fingerprint" style="position:relative;font-size:24px;color:{{ fp.iconColor }};transition:color .2s;"></i>
+            </button>
+            <div style="display:flex;flex-direction:column;min-width:0;line-height:1.4;">
+              <span style="color:{{ fp.statusColor }};">{{ fp.status }}</span>
+              <span style="color:#5c6370;">{{ fp.sub }}</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap;">
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;color:#5c6370;">
+            <sc-for list="{{ hints }}" as="h" hint-placeholder-count="3">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onClick="{{ cancel }}" style="border:0;border-radius:2px;background:transparent;color:#7f848e;cursor:pointer;padding:1px 10px;" style-hover="color:#abb2bf;background:#404754;">&lt; cancel &gt;</button>
+            <sc-if value="{{ auth.show }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ auth.submit }}" style="border:0;border-radius:2px;background:{{ auth.bg }};color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;opacity:{{ auth.opacity }};transition:background .2s;">&lt; {{ auth.label }} &gt;</button>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showDemo }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ demoCollapsed }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ toggleDemo }}" style="position:absolute;left:16px;bottom:16px;z-index:5;border:1px solid #3e4451;border-radius:16px;background:#21252b;color:#7f848e;cursor:pointer;padding:4px 14px;" style-hover="color:#abb2bf;border-color:#5c6370;">demo ▸</button>
+    </sc-if>
+    <sc-if value="{{ demoOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Demo controls" style="position:absolute;left:16px;bottom:16px;z-index:5;width:min(300px,calc(100% - 32px));box-sizing:border-box;background:#21252b;border:1px solid #3e4451;border-radius:16px;padding:6px 14px 12px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0 8px;">
+        <span style="color:#7f848e;font-weight:500;">demo</span>
+        <span style="color:#5c6370;">─ simulated ─</span>
+        <button onClick="{{ toggleDemo }}" title="Collapse" style="margin-left:auto;border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#abb2bf;background:#404754;">[◂]</button>
+      </div>
+      <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:6px;">
+        <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#21252b;color:#5c6370;">method</span>
+        <div style="display:flex;flex-wrap:wrap;gap:2px 6px;">
+          <sc-for list="{{ demo.modes }}" as="m" hint-placeholder-count="3">
+            <button onClick="{{ m.pick }}" style="border:0;border-radius:2px;background:{{ m.bg }};color:{{ m.color }};cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;"><span style="color:{{ m.dot }};">{{ m.radio }}</span> {{ m.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:14px;">
+        <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#21252b;color:#5c6370;">sensor</span>
+        <div style="display:flex;flex-wrap:wrap;gap:2px 6px;opacity:{{ demo.touchOpacity }};">
+          <button onClick="{{ demo.touchOk }}" style="border:0;border-radius:2px;background:transparent;color:#89ca78;cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;">[touch ✓]</button>
+          <button onClick="{{ demo.touchBad }}" style="border:0;border-radius:2px;background:transparent;color:#ef596f;cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;">[wrong finger ✗]</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;">
+        <span style="color:#5c6370;">password <span style="color:#abb2bf;">{{ demo.password }}</span></span>
+        <button onClick="{{ demo.nextReq }}" style="border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#abb2bf;background:#404754;">next request ›</button>
+      </div>
+    </div>
+    </sc-if>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;password&quot;,&quot;fingerprint&quot;,&quot;either&quot;],&quot;default&quot;:&quot;either&quot;,&quot;tsType&quot;:&quot;'password'|'fingerprint'|'either'&quot;},&quot;request&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;network&quot;,&quot;package&quot;,&quot;disk&quot;],&quot;default&quot;:&quot;package&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  pwRef = React.createRef();
+  timers = [];
+  static SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+  static USERS = [{ name: 'kai', note: '(you)', fp: true }, { name: 'root', note: '', fp: false }];
+  static REQS = [
+    { key: 'network', icon: 'ph ph-wifi-high', color: '#61afef', via: 'NetworkManager', lead: 'System policy prevents modification of network settings for ', subject: 'all users', tail: '.', app: 'nm-connection-editor', short: 'network settings',
+      action: 'org.freedesktop.NetworkManager.settings.modify.system', details: [['vendor', 'NetworkManager'], ['caller', 'nm-connection-editor · pid 4127'], ['subject', 'unix-session:2'], ['implicit', 'auth_admin_keep']] },
+    { key: 'package', icon: 'ph ph-package', color: '#e5c07b', via: 'pkexec', lead: 'Authentication is needed to run ', subject: '/usr/bin/pacman -Syu', tail: ' as the super user.', app: 'kitty · zsh', short: 'pacman -Syu',
+      action: 'org.freedesktop.policykit.exec', details: [['program', '/usr/bin/pacman'], ['args', '-Syu'], ['caller', 'zsh · pid 5530'], ['cwd', '/home/kai']] },
+    { key: 'disk', icon: 'ph ph-hard-drives', color: '#89ca78', via: 'udisksd', lead: 'Authentication is required to mount ', subject: 'Samsung T7 (/dev/sda1)', tail: '.', app: 'thunar', short: 'mount Samsung T7',
+      action: 'org.freedesktop.udisks2.filesystem-mount-other-seat', details: [['device', '/dev/sda1'], ['filesystem', 'exfat · 931 GB'], ['caller', 'thunar · pid 3891']] },
+  ];
+  fresh() { return { open: true, phase: 'input', user: 0, pw: '', show: false, pwLeft: 3, pwErr: '', fpState: 'listening', fpLeft: 3, fpPct: 0, details: false, shake: 0, toast: null }; }
+  state = { ...this.fresh(), caps: false, spin: 0, modeOv: null, reqOv: null, demoOpen: false };
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; this.stopSpin(); clearInterval(this._fpI); }
+  startSpin() { if (!this._spin) this._spin = setInterval(() => this.setState(s => ({ spin: s.spin + 1 })), 80); }
+  stopSpin() { clearInterval(this._spin); this._spin = null; }
+  focusPw() { setTimeout(() => this.pwRef.current && this.pwRef.current.focus(), 30); }
+  componentDidMount() { this._k = e => this.onKey(e); window.addEventListener('keydown', this._k); window.addEventListener('keyup', this._k); this.focusPw(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._k); window.removeEventListener('keyup', this._k); this.clearTimers(); }
+  mode() { return this.state.modeOv || this.props.mode || 'either'; }
+  reqIdx() { if (this.state.reqOv != null) return this.state.reqOv; const i = Component.REQS.findIndex(r => r.key === this.props.request); return i < 0 ? 1 : i; }
+  pass() { return this.props.demoPassword || 'nocturne'; }
+  fpAvail(s = this.state) { return Component.USERS[s.user].fp && s.fpLeft > 0; }
+  showPw(s = this.state) { return this.mode() !== 'fingerprint' || !this.fpAvail(s); }
+  reset() { this.clearTimers(); this.setState(this.fresh()); this.focusPw(); }
+  doShake() { [-8, 8, -6, 6, -3, 0].forEach((x, i) => this.later(() => this.setState({ shake: x }), i * 45)); }
+  close(kind, title, sub) { this.clearTimers(); this.setState({ open: false, toast: { kind, title, sub } }); }
+  succeed() {
+    const r = Component.REQS[this.reqIdx()];
+    this.stopSpin(); this.setState({ phase: 'success' });
+    this.later(() => { this.timers = []; this.setState({ open: false, toast: { kind: 'ok', title: 'authorized', sub: r.short } }); }, 850);
+  }
+  submitPw() {
+    const s = this.state;
+    if (!s.open || s.phase !== 'input' || !s.pw || !this.showPw()) return;
+    this.setState({ phase: 'verifying', pwErr: '' }); this.startSpin();
+    this.later(() => {
+      if (this.state.pw === this.pass()) return this.succeed();
+      this.stopSpin();
+      const left = this.state.pwLeft - 1;
+      if (left <= 0) return this.close('fail', 'authentication failed', '3 incorrect password attempts');
+      this.setState({ phase: 'input', pw: '', pwLeft: left, pwErr: 'sorry, try again.' }); this.doShake(); this.focusPw();
+    }, 900);
+  }
+  touch(match) {
+    const s = this.state;
+    if (!s.open || s.phase !== 'input' || this.mode() === 'password' || !this.fpAvail() || s.fpState === 'reading') return;
+    clearInterval(this._fpI); this.setState({ fpState: 'reading', fpPct: 0 }); this.startSpin();
+    this._fpI = setInterval(() => {
+      const p = Math.min(100, this.state.fpPct + 9); this.setState({ fpPct: p });
+      if (p >= 100) { clearInterval(this._fpI); this.later(() => this.fpResult(match), 120); }
+    }, 30);
+  }
+  fpResult(match) {
+    if (match) { this.setState({ fpState: 'match' }); return this.succeed(); }
+    if (this.state.phase !== 'verifying') this.stopSpin();
+    const left = this.state.fpLeft - 1;
+    this.setState({ fpState: 'nomatch', fpLeft: left }); this.doShake();
+    this.later(() => { if (this.state.fpState !== 'nomatch') return; this.setState({ fpState: 'listening', fpPct: 0 }); if (left <= 0) this.focusPw(); }, 1300);
+  }
+  cycleUser() {
+    if (this.state.phase !== 'input') return;
+    this.clearTimers();
+    this.setState(s => ({ user: (s.user + 1) % Component.USERS.length, pw: '', pwErr: '', pwLeft: 3, fpState: 'listening', fpPct: 0, fpLeft: 3 }));
+    this.focusPw();
+  }
+  cancel() { if (this.state.open) this.close('cancel', 'request dismissed', Component.REQS[this.reqIdx()].app); }
+  onKey(e) {
+    if (e.getModifierState) { const c = e.getModifierState('CapsLock'); if (c !== this.state.caps) this.setState({ caps: c }); }
+    if (e.type !== 'keydown') return;
+    const s = this.state, tag = (e.target.tagName || '').toLowerCase();
+    if (e.key === 'Escape' && s.open) { e.preventDefault(); this.cancel(); return; }
+    if (e.altKey && e.code === 'KeyU' && s.open) { e.preventDefault(); this.cycleUser(); return; }
+    if (!s.open && tag !== 'input' && e.key === 'r' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); this.reset(); }
+  }
+  renderVals() {
+    const s = this.state, user = Component.USERS[s.user], r = Component.REQS[this.reqIdx()], mode = this.mode();
+    const spin = Component.SPIN[s.spin % 10];
+    const showPw = this.showPw(), fpOn = mode !== 'password', fpBig = mode === 'fingerprint' && !showPw;
+    const fst = !user.fp ? 'none' : (s.fpLeft <= 0 && s.fpState !== 'nomatch') ? 'out' : s.fpState;
+    const FP = {
+      listening: ['#61afef', '#7f848e', 'touch the sensor', '#404754'],
+      reading: ['#61afef', '#61afef', `reading ${spin}`, '#61afef'],
+      nomatch: ['#ef596f', '#ef596f', 'not recognised · try again', '#ef596f'],
+      match: ['#89ca78', '#89ca78', 'recognised', '#89ca78'],
+      none: ['#3e4451', '#404754', `no fingerprints enrolled for ${user.name}`, '#404754'],
+      out: ['#3e4451', '#404754', 'too many attempts · use your password', '#404754'],
+    }[fst];
+    const pct = fst === 'reading' ? s.fpPct : (fst === 'nomatch' || fst === 'match') ? 100 : 0;
+    const canTouch = s.open && s.phase === 'input' && fpOn && (fst === 'listening' || fst === 'nomatch');
+    const fp = {
+      big: fpOn && fpBig, compact: fpOn && !fpBig,
+      ringBg: `conic-gradient(${FP[0]} ${pct}%, #3e4451 0)`, iconColor: FP[1], status: FP[2],
+      statusColor: fst === 'listening' ? '#abb2bf' : FP[1], border: FP[3], legend: FP[3] === '#404754' ? '#5c6370' : FP[3],
+      meta: !user.fp ? 'unavailable' : s.fpLeft < 3 ? `${s.fpLeft} ${s.fpLeft === 1 ? 'try' : 'tries'} left` : 'fprintd',
+      metaColor: user.fp && s.fpLeft < 3 ? '#d19a66' : '#5c6370',
+      glow: fst === 'listening' ? '0 0 0 6px rgba(97,175,239,0.08)' : 'none',
+      sub: fpBig ? `${user.name} · right index finger` : (fst === 'none' || fst === 'out') ? '' : 'or type your password above',
+      cursor: canTouch ? 'pointer' : 'default', touch: () => this.touch(true),
+    };
+    const busy = s.phase !== 'input';
+    const fallback = mode === 'fingerprint' && showPw;
+    const pw = {
+      show: showPw, ref: this.pwRef, value: s.pw, type: s.show ? 'text' : 'password', disabled: busy,
+      placeholder: `password for ${user.name}`,
+      border: s.pwErr ? '#ef596f' : '#404754', legend: s.pwErr ? '#ef596f' : '#5c6370',
+      meta: s.caps ? 'caps lock on' : s.pwLeft < 3 ? `${s.pwLeft} attempt${s.pwLeft === 1 ? '' : 's'} left` : `for ${user.name}`,
+      metaColor: s.caps ? '#e5c07b' : s.pwLeft < 3 ? '#d19a66' : '#5c6370',
+      promptColor: s.phase === 'verifying' ? '#e5c07b' : s.phase === 'success' ? '#89ca78' : '#61afef',
+      msg: s.pwErr || (fallback ? 'fingerprint unavailable — password required' : ''),
+      msgColor: s.pwErr ? '#ef596f' : '#e5c07b',
+      eye: s.show ? 'ph ph-eye-slash' : 'ph ph-eye', eyeTitle: s.show ? 'Hide password' : 'Show password',
+      toggleShow: () => { this.setState(st => ({ show: !st.show })); this.focusPw(); },
+      onChange: e => this.setState({ pw: e.target.value, pwErr: '' }),
+      onKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.submitPw(); } },
+    };
+    const auth = {
+      show: showPw, submit: () => this.submitPw(),
+      label: s.phase === 'verifying' ? `verifying ${spin}` : s.phase === 'success' ? 'authorized ✓' : 'authenticate',
+      bg: s.phase === 'success' ? '#89ca78' : s.phase === 'verifying' ? '#e5c07b' : s.pw ? '#61afef' : '#5c6370',
+      opacity: s.pw || busy ? 1 : 0.5,
+    };
+    const hints = (showPw ? [['⏎', 'authenticate']] : [['touch', 'sensor']]).concat([['alt u', 'switch user'], ['esc', 'cancel']]).map(([k, l]) => ({ k, l }));
+    const T = s.toast;
+    const toast = T ? { show: true, title: T.title, sub: T.sub,
+      icon: T.kind === 'ok' ? 'ph ph-lock-simple-open' : T.kind === 'fail' ? 'ph ph-warning' : 'ph ph-x-circle',
+      color: T.kind === 'ok' ? '#89ca78' : T.kind === 'fail' ? '#ef596f' : '#7f848e' } : { show: false };
+    const demo = {
+      password: this.pass(), touchOpacity: canTouch ? 1 : 0.4,
+      touchOk: () => this.touch(true), touchBad: () => this.touch(false),
+      nextReq: () => { this.setState({ reqOv: (this.reqIdx() + 1) % Component.REQS.length }); this.reset(); },
+      modes: ['password', 'fingerprint', 'either'].map(m => ({ label: m, radio: mode === m ? '(•)' : '( )', dot: mode === m ? '#61afef' : '#5c6370',
+        color: mode === m ? '#abb2bf' : '#7f848e', bg: mode === m ? '#2f343e' : 'transparent',
+        pick: () => { this.setState({ modeOv: m }); this.reset(); } })),
+    };
+    return {
+      open: s.open, closed: !s.open && !T, toast, replay: () => this.reset(), cancel: () => this.cancel(),
+      dlg: { edge: s.phase === 'success' ? '#89ca78' : '#404754', shake: s.shake,
+        icon: s.phase === 'success' ? 'ph ph-lock-simple-open' : 'ph ph-lock-simple', iconColor: s.phase === 'success' ? '#89ca78' : '#61afef' },
+      req: { ...r, details: r.details.map(([k, v]) => ({ k, v: k === 'cwd' ? `/home/${user.name === 'root' ? 'kai' : user.name}` : v })) },
+      user, cycleUser: () => this.cycleUser(),
+      details: s.details, detailsArrow: s.details ? '▾' : '▸', toggleDetails: () => this.setState(st => ({ details: !st.details })),
+      fp, pw, auth, hints, demo, showDemo: this.props.showDemo ?? true,
+      demoOpen: s.demoOpen, demoCollapsed: !s.demoOpen, toggleDemo: () => this.setState(st => ({ demoOpen: !st.demoOpen })),
+      dlgPadBottom: (this.props.showDemo ?? true) ? '64px' : '24px',
+    };
+  }
+}
+</script>
+</body>
+</html>

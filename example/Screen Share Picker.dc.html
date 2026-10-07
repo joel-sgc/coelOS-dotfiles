@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/styles.css">
+<script src="_ds/nocturne-c70e6f73-8394-4d9c-8a05-80309ce0526a/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>body{margin:0;background:#1e2127;} a{color:#61afef;} a:hover{color:#abb2bf;} button{font:inherit;} input::placeholder{color:#5c6370;} button:focus-visible{outline:2px solid #61afef;outline-offset:2px;}</style>
+</helmet>
+<div data-screen-label="Screen share" style="position:relative;min-height:100vh;overflow:hidden;background:radial-gradient(120% 90% at 30% 20%, #2c313c 0%, #1e2127 60%, #1a1d23 100%);font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55;color:#abb2bf;">
+
+  <sc-if value="{{ idle }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5c6370;">
+      <span>no active casts · <span style="color:#e5c07b;">r</span> replay request</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ live.show }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Sharing indicator" style="position:absolute;top:16px;right:16px;z-index:6;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px);box-sizing:border-box;background:#282c34;border:1px solid #404754;border-radius:16px;padding:6px 8px 6px 14px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+      <span style="width:8px;height:8px;border-radius:50%;background:#ef596f;box-shadow:0 0 8px rgba(239,89,111,0.6);opacity:{{ live.blink }};transition:opacity .3s;"></span>
+      <i class="{{ live.icon }}" style="color:{{ live.color }};font-size:15px;"></i>
+      <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">{{ live.app }} <span style="color:#5c6370;">is sharing</span> {{ live.what }}</span>
+      <span style="color:#7f848e;font-variant-numeric:tabular-nums;">{{ live.time }}</span>
+      <button onClick="{{ stop }}" title="Stop sharing" style="border:0;border-radius:2px;background:transparent;color:#ef596f;cursor:pointer;padding:0 6px;" style-hover="background:#404754;">[■ stop]</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;background:rgba(24,26,31,0.62);backdrop-filter:blur(3px);"></div>
+    <div style="position:absolute;inset:0;overflow:auto;display:flex;align-items:safe center;justify-content:center;padding:24px 16px {{ padBottom }};box-sizing:border-box;">
+      <div data-screen-label="Picker dialog" style="width:min(680px,100%);box-sizing:border-box;background:#282c34;border:1px solid #404754;border-radius:16px;padding:6px 16px 14px;box-shadow:0 24px 48px -12px rgba(0,0,0,0.6);">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 8px;">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+            <i class="ph ph-screencast" style="font-size:15px;color:#61afef;"></i>
+            <span style="color:#61afef;font-weight:500;">share screen</span>
+            <span style="color:#5c6370;white-space:nowrap;">─ portal ─</span>
+          </div>
+          <button onClick="{{ cancel }}" title="Cancel (esc)" style="border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#ef596f;">[×]</button>
+        </div>
+
+        <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 10px 10px;margin-top:8px;">
+          <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#5c6370;">request</span>
+          <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:{{ req.color }};">{{ req.mode }}</span>
+          <div style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center;">
+            <div style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:#2f343e;color:{{ req.color }};font-size:20px;"><i class="{{ req.icon }}"></i></div>
+            <div style="display:flex;flex-direction:column;gap:1px;min-width:0;">
+              <span style="text-wrap:pretty;"><span style="color:{{ req.color }};">{{ req.app }}</span> wants to share your screen</span>
+              <span style="color:#5c6370;overflow-wrap:anywhere;">{{ req.origin }} · xdg-desktop-portal-hyprland</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:2px 6px;margin-top:14px;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+            <button onClick="{{ t.pick }}" disabled="{{ t.disabled }}" style="display:flex;align-items:center;gap:6px;border:1px solid {{ t.border }};border-radius:2px;background:{{ t.bg }};color:{{ t.color }};cursor:pointer;padding:1px 10px;opacity:{{ t.opacity }};" style-hover="background:#2f343e;">
+              <span style="color:#e5c07b;">{{ t.key }}</span><i class="{{ t.icon }}"></i>{{ t.label }}<span style="color:#5c6370;">{{ t.count }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:14px 10px 10px;margin-top:14px;">
+          <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#61afef;">{{ pane.legend }}</span>
+          <span style="position:absolute;top:-9px;right:8px;padding:0 6px;background:#282c34;color:#5c6370;">{{ pane.meta }}</span>
+
+          <sc-if value="{{ pane.screens }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
+              <sc-for list="{{ mons }}" as="m" hint-placeholder-count="3">
+                <button onClick="{{ m.pick }}" onDoubleClick="{{ m.share }}" style="display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid {{ m.border }};border-radius:8px;background:{{ m.bg }};cursor:pointer;text-align:left;color:inherit;" style-hover="border-color:#5c6370;">
+                  <div style="position:relative;width:100%;aspect-ratio:{{ m.ratio }};border-radius:4px;background:#1e2127;overflow:hidden;box-shadow:inset 0 0 0 1px #3e4451;">
+                    <sc-for list="{{ m.wins }}" as="w" hint-placeholder-count="2">
+                      <span style="position:absolute;left:{{ w.l }};top:{{ w.t }};width:{{ w.w }};height:{{ w.h }};box-sizing:border-box;border-radius:2px;background:#2f343e;border-top:2px solid {{ w.c }};"></span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="color:{{ m.markColor }};">{{ m.mark }}</span>
+                    <span style="color:{{ m.nameColor }};">{{ m.id }}</span>
+                    <sc-if value="{{ m.primary }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;color:#5c6370;font-size:11px;">primary</span></sc-if>
+                  </div>
+                  <span style="color:#5c6370;font-size:11px;line-height:1.35;">{{ m.spec }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ pane.windows }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span style="color:#61afef;">/</span>
+              <input ref="{{ qRef }}" value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onQKey }}" placeholder="filter by title or class" spellcheck="false" style="flex:1;min-width:0;background:#1e2127;border:0;border-bottom:1px solid #404754;color:#abb2bf;font:inherit;padding:3px 8px;outline:none;" style-focus="border-bottom-color:#61afef;background:#2c313c;"></input>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:300px;overflow:auto;">
+              <sc-for list="{{ wins }}" as="w" hint-placeholder-count="6">
+                <button onClick="{{ w.pick }}" onDoubleClick="{{ w.share }}" style="display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid {{ w.border }};border-radius:8px;background:{{ w.bg }};cursor:pointer;text-align:left;color:inherit;min-width:0;" style-hover="border-color:#5c6370;">
+                  <div style="position:relative;width:100%;aspect-ratio:16/10;border-radius:4px;background:#1e2127;overflow:hidden;box-shadow:inset 0 0 0 1px #3e4451;display:grid;place-items:center;">
+                    <span style="position:absolute;left:0;right:0;top:0;height:8px;background:#2f343e;border-top:2px solid {{ w.color }};box-sizing:border-box;"></span>
+                    <i class="{{ w.icon }}" style="font-size:26px;color:{{ w.color }};opacity:0.85;"></i>
+                    <span style="position:absolute;right:5px;bottom:3px;color:#5c6370;font-size:10px;">ws {{ w.ws }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                    <span style="color:{{ w.markColor }};flex:none;">{{ w.mark }}</span>
+                    <span style="color:{{ w.nameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ w.cls }}</span>
+                  </div>
+                  <span style="color:#5c6370;font-size:11px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ w.title }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ noWins }}" hint-placeholder-val="{{ false }}">
+              <div style="color:#5c6370;padding:16px 0;text-align:center;">no windows match “{{ q }}”</div>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ pane.region }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:10px;">
+              <span style="color:#5c6370;">on</span>
+              <sc-for list="{{ rg.mons }}" as="m" hint-placeholder-count="3">
+                <button onClick="{{ m.pick }}" style="border:0;border-radius:2px;background:{{ m.bg }};color:{{ m.color }};cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;"><span style="color:{{ m.dot }};">{{ m.radio }}</span> {{ m.id }}</button>
+              </sc-for>
+            </div>
+            <div onPointerDown="{{ rg.down }}" onPointerMove="{{ rg.move }}" onPointerUp="{{ rg.up }}" style="position:relative;width:100%;aspect-ratio:{{ rg.ratio }};max-height:300px;margin:0 auto;border-radius:4px;background:#1e2127;overflow:hidden;box-shadow:inset 0 0 0 1px #3e4451;cursor:crosshair;touch-action:none;user-select:none;">
+              <sc-for list="{{ rg.wins }}" as="w" hint-placeholder-count="2">
+                <span style="position:absolute;left:{{ w.l }};top:{{ w.t }};width:{{ w.w }};height:{{ w.h }};box-sizing:border-box;border-radius:2px;background:#2f343e;border-top:2px solid {{ w.c }};pointer-events:none;"></span>
+              </sc-for>
+              <div style="position:absolute;left:{{ rg.l }};top:{{ rg.t }};width:{{ rg.w }};height:{{ rg.h }};box-sizing:border-box;border:1px solid #61afef;box-shadow:0 0 0 9999px rgba(24,26,31,0.62), 0 0 12px rgba(97,175,239,0.35);pointer-events:none;">
+                <span style="position:absolute;left:-3px;top:-3px;width:5px;height:5px;background:#61afef;"></span>
+                <span style="position:absolute;right:-3px;top:-3px;width:5px;height:5px;background:#61afef;"></span>
+                <span style="position:absolute;left:-3px;bottom:-3px;width:5px;height:5px;background:#61afef;"></span>
+                <span style="position:absolute;right:-3px;bottom:-3px;width:5px;height:5px;background:#61afef;"></span>
+                <span style="position:absolute;left:4px;top:3px;padding:0 4px;background:#282c34;color:#61afef;font-size:11px;white-space:nowrap;">{{ rg.dims }}</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;margin-top:8px;">
+              <span style="color:#5c6370;">drag to draw · <span style="color:#7f848e;">{{ rg.origin }}</span></span>
+              <div style="display:flex;flex-wrap:wrap;gap:2px 4px;">
+                <sc-for list="{{ rg.presets }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.pick }}" style="border:0;border-radius:2px;background:transparent;color:#7f848e;cursor:pointer;padding:0 6px;" style-hover="color:#abb2bf;background:#404754;">[{{ p.label }}]</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 6px 6px;margin-top:16px;">
+          <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#282c34;color:#5c6370;">options</span>
+          <div style="display:flex;flex-wrap:wrap;gap:2px 16px;">
+            <button onClick="{{ opt.toggleCursor }}" style="border:0;border-radius:2px;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;"><span style="color:{{ opt.cursorColor }};">{{ opt.cursorBox }}</span> show cursor <span style="color:#5c6370;">c</span></button>
+            <button onClick="{{ opt.toggleRemember }}" style="border:0;border-radius:2px;background:transparent;color:#abb2bf;cursor:pointer;padding:0 6px;" style-hover="background:#2f343e;"><span style="color:{{ opt.rememberColor }};">{{ opt.rememberBox }}</span> remember for {{ req.app }} <span style="color:#5c6370;">alt r</span></button>
+          </div>
+          <sc-if value="{{ opt.rememberNote }}" hint-placeholder-val="{{ false }}">
+            <div style="margin:4px 6px 0;color:#5c6370;">{{ req.app }} can start sharing this source again without asking.</div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap;">
+          <div style="display:flex;flex-wrap:wrap;gap:2px 14px;color:#5c6370;">
+            <sc-for list="{{ hints }}" as="h" hint-placeholder-count="4">
+              <span><span style="color:#e5c07b;">{{ h.k }}</span> {{ h.l }}</span>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onClick="{{ cancel }}" style="border:0;border-radius:2px;background:transparent;color:#7f848e;cursor:pointer;padding:1px 10px;" style-hover="color:#abb2bf;background:#404754;">&lt; cancel &gt;</button>
+            <button onClick="{{ share }}" disabled="{{ cta.disabled }}" style="border:0;border-radius:2px;background:{{ cta.bg }};color:#282c34;cursor:pointer;padding:1px 10px;font-weight:500;opacity:{{ cta.opacity }};white-space:nowrap;">&lt; {{ cta.label }} &gt;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showDemo }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ demoCollapsed }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ toggleDemo }}" style="position:absolute;left:16px;bottom:16px;z-index:5;border:1px solid #3e4451;border-radius:16px;background:#21252b;color:#7f848e;cursor:pointer;padding:4px 14px;" style-hover="color:#abb2bf;border-color:#5c6370;">demo ▸</button>
+    </sc-if>
+    <sc-if value="{{ demoOpen }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Demo controls" style="position:absolute;left:16px;bottom:16px;z-index:5;width:min(300px,calc(100% - 32px));box-sizing:border-box;background:#21252b;border:1px solid #3e4451;border-radius:16px;padding:6px 14px 12px;box-shadow:0 18px 32px -12px rgba(0,0,0,0.5);">
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0 8px;">
+          <span style="color:#7f848e;font-weight:500;">demo</span>
+          <span style="color:#5c6370;">─ simulated ─</span>
+          <button onClick="{{ toggleDemo }}" title="Collapse" style="margin-left:auto;border:0;border-radius:2px;background:transparent;color:#5c6370;cursor:pointer;padding:0 6px;" style-hover="color:#abb2bf;background:#404754;">[◂]</button>
+        </div>
+        <div style="position:relative;border:1px solid #404754;border-radius:2px;padding:12px 4px 6px;margin-top:6px;">
+          <span style="position:absolute;top:-9px;left:8px;padding:0 6px;background:#21252b;color:#5c6370;">requesting app</span>
+          <div style="display:flex;flex-direction:column;gap:1px;">
+            <sc-for list="{{ demo.reqs }}" as="r" hint-placeholder-count="3">
+              <button onClick="{{ r.pick }}" style="border:0;border-radius:2px;background:{{ r.bg }};color:{{ r.color }};cursor:pointer;padding:0 6px;text-align:left;" style-hover="background:#2f343e;"><span style="color:{{ r.dot }};">{{ r.radio }}</span> {{ r.label }} <span style="color:#5c6370;">{{ r.note }}</span></button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;request&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;firefox&quot;,&quot;discord&quot;,&quot;obs&quot;],&quot;default&quot;:&quot;firefox&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  qRef = React.createRef();
+  static MONS = [
+    { id: 'DP-1', w: 2560, h: 1440, hz: 144, scale: 1, primary: true, model: 'LG 27GP850', wins: [[.01, .03, .485, .95, '#61afef'], [.505, .03, .485, .465, '#89ca78'], [.505, .515, .485, .465, '#d55fde']] },
+    { id: 'HDMI-A-1', w: 1920, h: 1080, hz: 60, scale: 1, model: 'Dell P2419H', wins: [[.01, .03, .98, .95, '#d19a66']] },
+    { id: 'eDP-1', w: 2880, h: 1800, hz: 120, scale: 1.5, model: 'built-in', wins: [[.01, .03, .6, .95, '#2bbac5'], [.625, .03, .365, .95, '#e5c07b']] },
+  ];
+  static WINS = [
+    { id: 1, cls: 'firefox', title: 'Meet — standup · Mozilla Firefox', ws: 2, icon: 'ph ph-globe', color: '#d19a66' },
+    { id: 2, cls: 'kitty', title: 'nvim ~/dots/shell/Bar.qml', ws: 1, icon: 'ph ph-terminal-window', color: '#89ca78' },
+    { id: 3, cls: 'dev.zed.Zed', title: 'NotificationPanel.qml — shell', ws: 1, icon: 'ph ph-code', color: '#61afef' },
+    { id: 4, cls: 'vesktop', title: 'Discord | #shell-dev', ws: 4, icon: 'ph ph-discord-logo', color: '#d55fde' },
+    { id: 5, cls: 'thunar', title: 'kai — Thunar', ws: 3, icon: 'ph ph-folder', color: '#e5c07b' },
+    { id: 6, cls: 'spotify', title: 'Spotify Premium', ws: 4, icon: 'ph ph-music-notes', color: '#2bbac5' },
+    { id: 7, cls: 'com.obsproject.Studio', title: 'OBS 30.2 — Profile: stream', ws: 5, icon: 'ph ph-record', color: '#ef596f' },
+  ];
+  static REQS = [
+    { key: 'firefox', app: 'Firefox', icon: 'ph ph-globe', color: '#d19a66', origin: 'meet.jit.si', multiple: false, types: ['screens', 'windows', 'region'] },
+    { key: 'discord', app: 'Vesktop', icon: 'ph ph-discord-logo', color: '#d55fde', origin: '#shell-dev voice', multiple: false, types: ['screens', 'windows', 'region'] },
+    { key: 'obs', app: 'OBS Studio', icon: 'ph ph-record', color: '#ef596f', origin: 'scene “desktop”', multiple: true, types: ['screens', 'windows'] },
+  ];
+  static TABS = [['screens', 'screens', 'ph ph-monitor'], ['windows', 'windows', 'ph ph-app-window'], ['region', 'region', 'ph ph-selection']];
+  fresh() { return { open: true, tab: 'screens', selS: [], selW: [], fi: 0, q: '', regMon: 'DP-1', reg: { x: .2, y: .18, w: .55, h: .55 }, cursor: true, remember: false }; }
+  state = { ...this.fresh(), live: null, now: Date.now(), reqOv: null, demoOpen: false };
+  componentDidMount() {
+    this._k = e => this.onKey(e); window.addEventListener('keydown', this._k);
+    this._t = setInterval(() => this.state.live && this.setState({ now: Date.now() }), 500);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this._k); clearInterval(this._t); }
+  req() { if (this.state.reqOv != null) return Component.REQS[this.state.reqOv]; return Component.REQS.find(r => r.key === this.props.request) || Component.REQS[0]; }
+  winsFiltered() { const q = this.state.q.trim().toLowerCase(); return Component.WINS.filter(w => !q || (w.cls + ' ' + w.title).toLowerCase().includes(q)); }
+  items() { const s = this.state; return s.tab === 'screens' ? Component.MONS.map(m => m.id) : s.tab === 'windows' ? this.winsFiltered().map(w => w.id) : []; }
+  toggle(kind, id) {
+    const multi = this.req().multiple, key = kind === 'screens' ? 'selS' : 'selW';
+    this.setState(s => {
+      const cur = s[key], has = cur.includes(id);
+      const next = multi ? (has ? cur.filter(x => x !== id) : [...cur, id]) : (has ? [] : [id]);
+      return multi ? { [key]: next } : { selS: kind === 'screens' ? next : [], selW: kind === 'windows' ? next : [] };
+    });
+  }
+  sources() {
+    const s = this.state, multi = this.req().multiple;
+    const S = s.selS.map(id => ({ kind: 'screen', label: id })), W = s.selW.map(id => ({ kind: 'window', label: Component.WINS.find(w => w.id === id).cls }));
+    if (s.tab === 'region') { const m = Component.MONS.find(x => x.id === s.regMon); return [{ kind: 'region', label: `${Math.round(s.reg.w * m.w)}×${Math.round(s.reg.h * m.h)} on ${m.id}` }]; }
+    if (multi) return [...S, ...W];
+    return s.tab === 'screens' ? S : W;
+  }
+  share() {
+    const src = this.sources(); if (!src.length) return;
+    const r = this.req();
+    this.setState({ open: false, live: { app: r.app, icon: r.icon, color: r.color, what: src.length > 1 ? `${src.length} sources` : src[0].label, start: Date.now() }, now: Date.now() });
+  }
+  cancel() { if (this.state.open) this.setState({ open: false }); }
+  setTab(t) { if (!this.req().types.includes(t)) return; this.setState({ tab: t, fi: 0 }); if (t === 'windows') setTimeout(() => this.qRef.current && this.qRef.current.focus(), 30); }
+  reset() { this.setState({ ...this.fresh(), live: null }); }
+  onKey(e) {
+    const s = this.state, tag = (e.target.tagName || '').toLowerCase(), inInput = tag === 'input';
+    if (!s.open) { if (!inInput && e.key === 'r' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); this.reset(); } return; }
+    if (e.key === 'Escape') { e.preventDefault(); if (inInput && s.q) this.setState({ q: '' }); else if (inInput) e.target.blur(); else this.cancel(); return; }
+    if (e.altKey && e.code === 'KeyR') { e.preventDefault(); this.setState(st => ({ remember: !st.remember })); return; }
+    if (inInput) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key, items = this.items(), cols = s.tab === 'screens' ? 3 : 4;
+    let used = true;
+    if (k === '1' || k === '2' || k === '3') this.setTab(Component.TABS[Number(k) - 1][0]);
+    else if (k === 'Tab') { const types = this.req().types, i = types.indexOf(s.tab); this.setTab(types[(i + (e.shiftKey ? types.length - 1 : 1)) % types.length]); }
+    else if (k === 'c') this.setState(st => ({ cursor: !st.cursor }));
+    else if (k === '/' && s.tab === 'windows') setTimeout(() => this.qRef.current && this.qRef.current.focus(), 0);
+    else if (k === 'Enter') { if (!this.sources().length && items[s.fi] != null) this.toggle(s.tab, items[s.fi]); setTimeout(() => this.share(), 0); }
+    else if (k === ' ' && items[s.fi] != null) this.toggle(s.tab, items[s.fi]);
+    else if (items.length && (k === 'l' || k === 'ArrowRight')) this.setState({ fi: Math.min(items.length - 1, s.fi + 1) });
+    else if (items.length && (k === 'h' || k === 'ArrowLeft')) this.setState({ fi: Math.max(0, s.fi - 1) });
+    else if (items.length && (k === 'j' || k === 'ArrowDown')) this.setState({ fi: Math.min(items.length - 1, s.fi + cols) });
+    else if (items.length && (k === 'k' || k === 'ArrowUp')) this.setState({ fi: Math.max(0, s.fi - cols) });
+    else used = false;
+    if (used) e.preventDefault();
+  }
+  frac(e) { const r = e.currentTarget.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) }; }
+  renderVals() {
+    const s = this.state, r = this.req(), multi = r.multiple;
+    const pct = v => (v * 100).toFixed(2) + '%';
+    const winRects = m => m.wins.map(([l, t, w, h, c]) => ({ l: pct(l), t: pct(t), w: pct(w), h: pct(h), c }));
+    const mark = on => multi ? (on ? '[x]' : '[ ]') : (on ? '(•)' : '( )');
+    const cardStyle = (sel, foc) => ({ border: sel ? '#61afef' : foc ? '#5c6370' : '#3e4451', bg: sel ? '#2f343e' : 'transparent', markColor: sel ? '#61afef' : '#5c6370', nameColor: sel ? '#abb2bf' : '#7f848e' });
+    const mons = Component.MONS.map((m, i) => {
+      const sel = s.selS.includes(m.id), cs = cardStyle(sel, s.tab === 'screens' && s.fi === i);
+      return { ...cs, id: m.id, primary: !!m.primary, ratio: `${m.w}/${m.h}`, wins: winRects(m), mark: mark(sel),
+        spec: `${m.w}×${m.h} @ ${m.hz}hz${m.scale !== 1 ? ' · ' + m.scale + '×' : ''} · ${m.model}`,
+        pick: () => { this.setState({ fi: i }); this.toggle('screens', m.id); },
+        share: () => { this.setState({ selS: [m.id], selW: multi ? s.selW : [] }); setTimeout(() => this.share(), 0); } };
+    });
+    const wf = this.winsFiltered();
+    const wins = wf.map((w, i) => {
+      const sel = s.selW.includes(w.id), cs = cardStyle(sel, s.tab === 'windows' && s.fi === i);
+      return { ...cs, cls: w.cls, title: w.title, ws: w.ws, icon: w.icon, color: w.color, mark: mark(sel),
+        pick: () => { this.setState({ fi: i }); this.toggle('windows', w.id); },
+        share: () => { this.setState({ selW: [w.id], selS: multi ? s.selS : [] }); setTimeout(() => this.share(), 0); } };
+    });
+    const rm = Component.MONS.find(m => m.id === s.regMon), g = s.reg;
+    const setReg = reg => this.setState({ reg });
+    const rg = {
+      ratio: `${rm.w}/${rm.h}`, wins: winRects(rm), l: pct(g.x), t: pct(g.y), w: pct(g.w), h: pct(g.h),
+      dims: `${Math.round(g.w * rm.w)} × ${Math.round(g.h * rm.h)}`, origin: `at ${Math.round(g.x * rm.w)}, ${Math.round(g.y * rm.h)}`,
+      mons: Component.MONS.map(m => ({ id: m.id, radio: m.id === s.regMon ? '(•)' : '( )', dot: m.id === s.regMon ? '#61afef' : '#5c6370', color: m.id === s.regMon ? '#abb2bf' : '#7f848e', bg: m.id === s.regMon ? '#2f343e' : 'transparent', pick: () => this.setState({ regMon: m.id }) })),
+      presets: [
+        { label: 'full', pick: () => setReg({ x: 0, y: 0, w: 1, h: 1 }) },
+        { label: '16:9', pick: () => { const w = .6, h = Math.min(1, w * (rm.w / rm.h) * 9 / 16); setReg({ x: (1 - w) / 2, y: (1 - h) / 2, w, h }); } },
+        { label: '1080p', pick: () => { const w = Math.min(1, 1920 / rm.w), h = Math.min(1, 1080 / rm.h); setReg({ x: (1 - w) / 2, y: (1 - h) / 2, w, h }); } },
+      ],
+      down: e => { e.currentTarget.setPointerCapture(e.pointerId); this._d = this.frac(e); },
+      move: e => { if (!this._d) return; const p = this.frac(e), a = this._d; const w = Math.abs(p.x - a.x), h = Math.abs(p.y - a.y); if (w < .015 && h < .015) return; setReg({ x: Math.min(a.x, p.x), y: Math.min(a.y, p.y), w, h }); },
+      up: () => { this._d = null; },
+    };
+    const counts = { screens: s.selS.length, windows: s.selW.length, region: 0 };
+    const tabs = Component.TABS.map(([id, label, icon], i) => {
+      const on = s.tab === id, ok = r.types.includes(id);
+      return { key: String(i + 1), label, icon, count: counts[id] ? `·${counts[id]}` : '', disabled: !ok, opacity: ok ? 1 : 0.4,
+        border: on ? '#61afef' : 'transparent', bg: on ? '#2f343e' : 'transparent', color: on ? '#abb2bf' : '#7f848e', pick: () => this.setTab(id) };
+    });
+    const src = this.sources();
+    const pane = { screens: s.tab === 'screens', windows: s.tab === 'windows', region: s.tab === 'region',
+      legend: s.tab === 'screens' ? 'outputs' : s.tab === 'windows' ? 'toplevels' : 'area',
+      meta: s.tab === 'screens' ? `${Component.MONS.length} connected` : s.tab === 'windows' ? `${wf.length} of ${Component.WINS.length}` : rm.id };
+    const cta = { disabled: !src.length, opacity: src.length ? 1 : 0.45, bg: src.length ? '#89ca78' : '#5c6370',
+      label: !src.length ? 'share' : src.length > 1 ? `share ${src.length} sources` : `share ${src[0].kind === 'region' ? 'region' : src[0].label}` };
+    const hints = [['1-3', 'source'], s.tab === 'region' ? ['drag', 'select'] : ['hjkl', 'move'], ...(s.tab === 'region' ? [] : [['space', multi ? 'toggle' : 'pick']]), ['⏎', 'share'], ['esc', 'cancel']].map(([k, l]) => ({ k, l }));
+    const L = s.live;
+    let live = { show: false };
+    if (L) { const sec = Math.floor((s.now - L.start) / 1000); live = { show: true, app: L.app, icon: L.icon, color: L.color, what: L.what, time: `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`, blink: Math.floor(s.now / 1000) % 2 ? 0.45 : 1 }; }
+    const showDemo = this.props.showDemo ?? true;
+    return {
+      open: s.open, idle: !s.open && !L, live, stop: () => this.setState({ live: null }),
+      req: { ...r, mode: multi ? 'multiple sources' : 'single source' },
+      tabs, pane, mons, wins, noWins: s.tab === 'windows' && !wf.length, q: s.q, qRef: this.qRef,
+      onQ: e => this.setState({ q: e.target.value, fi: 0 }),
+      onQKey: e => { if (e.key === 'Enter') { e.preventDefault(); const f = this.winsFiltered()[0]; if (f && !s.selW.length) this.toggle('windows', f.id); e.target.blur(); } if (e.key === 'ArrowDown') { e.preventDefault(); e.target.blur(); } },
+      rg, cta, hints, share: () => this.share(), cancel: () => this.cancel(),
+      opt: { cursorBox: s.cursor ? '[x]' : '[ ]', cursorColor: s.cursor ? '#89ca78' : '#5c6370', rememberBox: s.remember ? '[x]' : '[ ]', rememberColor: s.remember ? '#89ca78' : '#5c6370', rememberNote: s.remember,
+        toggleCursor: () => this.setState(st => ({ cursor: !st.cursor })), toggleRemember: () => this.setState(st => ({ remember: !st.remember })) },
+      showDemo, demoOpen: s.demoOpen, demoCollapsed: !s.demoOpen, toggleDemo: () => this.setState(st => ({ demoOpen: !st.demoOpen })),
+      padBottom: showDemo ? '64px' : '24px',
+      demo: { reqs: Component.REQS.map((q, i) => { const on = q.key === r.key; return { label: q.app, note: q.multiple ? 'multi' : '', radio: on ? '(•)' : '( )', dot: on ? '#61afef' : '#5c6370', color: on ? '#abb2bf' : '#7f848e', bg: on ? '#2f343e' : 'transparent', pick: () => this.setState({ ...this.fresh(), live: null, reqOv: i }) }; }) },
+    };
+  }
+}
+</script>
+</body>
+</html>

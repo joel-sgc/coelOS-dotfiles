@@ -110,6 +110,9 @@ ShellRoot {
     barHeight: root.barHeight
   }
 
+  // Polkit authentication agent (replaces polkit-kde-agent) -- see Polkit.qml
+  Polkit {}
+
   // Notification toast stack + global toggle keybind -- see Notifications.qml
   Notifications {
     id: notifications

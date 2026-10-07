@@ -179,7 +179,10 @@ in
 
       exec-once = [
         "systemctl --user start hyprland-session.target"
-        "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
+        # polkit-kde-authentication-agent-1 retired -- Quickshell's own
+        # Polkit.qml is the authentication agent now (only one agent can
+        # register per session, so don't start both). Plasma sessions keep
+        # their own agent; this list is Hyprland-only.
         # mako retired -- Quickshell's own NotificationsBackend.qml is now
         # the real org.freedesktop.Notifications server (see
         # home/quickshell/notifications/).

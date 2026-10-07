@@ -1348,3 +1348,26 @@ required for the singleton).
 - IPC: `quickshell ipc -p ~/.nixos/home/quickshell call widgets toggle|newcard`.
 - Testing without touching the session: headless sway + a virtual
   pointer/keyboard client (wlr-virtual-pointer) worked for click/drag/key tests.
+
+## Polkit agent (2026-10-06)
+
+`Polkit.qml` (instantiated from `shell.qml`) is a real polkit authentication
+agent via `Quickshell.Services.Polkit`, with the UI in `polkit/` (dialog,
+fingerprint ring, result toast) ported from `example/Polkit Agent.dc.html`
+and built from the `widgets/` primitives.
+
+- **Retired the KDE agent for Hyprland** (`home/hyprland.nix` exec-once). Only
+  one agent can register per login session: with both running, Quickshell logs
+  "An authentication agent already exists" and stays inert. Takes effect after
+  a rebuild + re-login. Plasma sessions keep their own agent.
+- API limits: no caller app/pid, no detail dict -- so the mockup's "app" line
+  isn't shown. `displayName` is the capitalised full name; `string` is the login.
+- fprintd arrives as PAM info/error text (recognised by "finger"). PAM asks for
+  the password only after the sensor attempt ends (30s timeout), so the flow is
+  big sensor view -> password box with a compact sensor. A wrong password
+  restarts the whole conversation at the sensor; the error line is shown there.
+- Tested for real against polkitd in headless sway (swap agents, `pkcheck -a
+  org.freedesktop.systemd1.manage-units --process $$ --allow-user-interaction`;
+  `pkexec` doesn't work from inside the sandbox -- no_new_privs). Verified:
+  registration, request display, fprintd view, timeout -> password prompt,
+  wrong password, Esc cancel + toast. NOT verified: a successful auth.
