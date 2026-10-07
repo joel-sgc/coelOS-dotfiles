@@ -48,6 +48,7 @@ Scope {
     screen: root.screen
     shown: root.shown
     marginTop: root.top
-    marginLeft: root.left + weather.cardWidth + root.gap
+    anchorRight: true
+    marginRight: root.left
   }
 }

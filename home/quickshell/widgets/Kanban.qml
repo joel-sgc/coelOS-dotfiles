@@ -22,6 +22,8 @@ Scope {
   property alias shown: board.shown
   property alias marginTop: board.marginTop
   property alias marginLeft: board.marginLeft
+  property alias marginRight: board.marginRight
+  property alias anchorRight: board.anchorRight
   property bool showHints: true
   readonly property bool focused: board.focused
 
