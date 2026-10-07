@@ -202,9 +202,13 @@
   security.pam.services.quickshell-lock.fprintAuth = false;
   security.pam.services.quickshell-lock-fp.unixAuth = false;
 
-  # Grants the `video` group write access to /sys/class/backlight so swayosd
-  # (Hyprland session's volume/brightness OSD) can adjust brightness without
-  # running as root.
+  # Grants the `video` group write access to /sys/class/backlight -- the
+  # swayosd-server binary itself is gone (replaced by
+  # home/quickshell/Osd.qml), but this udev rule is still what
+  # PowerDropdown.qml's brightness slider and Osd.qml's own brightness
+  # control both rely on to write there without running as root. Keeping
+  # `pkgs.swayosd` here only as the source of that rule file, not because
+  # anything actually runs it anymore.
   services.udev.packages = [ pkgs.swayosd ];
 
   # Per-desktop portal backend selection (matched against

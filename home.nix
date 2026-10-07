@@ -37,7 +37,6 @@
     ./home/wallpaper.nix
     ./home/theme.nix
     ./home/fastfetch.nix
-    ./home/swayosd.nix
     ./home/clipboard.nix
     ./home/os-commands.nix
     ./home/desktop-entries.nix

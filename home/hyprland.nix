@@ -247,11 +247,13 @@ in
         # "ctrl shift n") to match every other bind here and avoid shadowing
         # some app's own ctrl+shift+n.
         "$mainMod CTRL SHIFT, N, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call notifications toggle"
-        ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume raise"
-        ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume lower"
-        ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"
-        ", XF86MonBrightnessUp, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness raise"
-        ", XF86MonBrightnessDown, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness lower"
+        # Osd.qml's own IpcHandler -- real volume/brightness changes plus
+        # the real OSD popup, replacing swayosd-client entirely.
+        ", XF86AudioRaiseVolume, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeUp"
+        ", XF86AudioLowerVolume, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeDown"
+        ", XF86AudioMute, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeMuteToggle"
+        ", XF86MonBrightnessUp, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd brightnessUp"
+        ", XF86MonBrightnessDown, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd brightnessDown"
         ", Print, exec, coel-screenshot"
         ", XF86PowerOff, exec, coel-power-menu"
       ]
@@ -276,10 +278,13 @@ in
       ];
 
       bindl = [
-        ", XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous && ${pkgs.libnotify}/bin/notify-send -a swayosd -h string:x-canonical-private-synchronous:track-controls 'Previous Track'"
-        ", XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next && ${pkgs.libnotify}/bin/notify-send -a swayosd -h string:x-canonical-private-synchronous:track-controls 'Next Track'"
-        ", XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause && ${pkgs.libnotify}/bin/notify-send -a swayosd -h string:x-canonical-private-synchronous:track-controls 'Play/Pause'"
-        ", XF86AudioPause, exec, ${pkgs.playerctl}/bin/playerctl play-pause && ${pkgs.libnotify}/bin/notify-send -a swayosd -h string:x-canonical-private-synchronous:track-controls 'Play/Pause'"
+        # Real MPRIS control via Osd.qml now, not a playerctl subprocess +
+        # a fake notify-send toast (there was never a real media OSD
+        # before this -- that notify-send was standing in for one).
+        ", XF86AudioPrev, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPrevious"
+        ", XF86AudioNext, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaNext"
+        ", XF86AudioPlay, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
+        ", XF86AudioPause, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
       ];
     };
   };

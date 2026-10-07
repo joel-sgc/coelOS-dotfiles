@@ -113,6 +113,9 @@ ShellRoot {
   // Polkit authentication agent (replaces polkit-kde-agent) -- see Polkit.qml
   Polkit {}
 
+  // Volume/brightness/media OSD (replaces swayosd) -- see Osd.qml
+  Osd {}
+
   // Notification toast stack + global toggle keybind -- see Notifications.qml
   Notifications {
     id: notifications
