@@ -42,6 +42,17 @@ let
     '';
   };
 
+  # Screen share picker -- xdg-desktop-portal-hyprland runs this (see the
+  # xdph.conf entry at the bottom) instead of its stock hyprland-share-picker.
+  # The script lives in the repo so its comments sit next to the Quickshell
+  # side of the contract (home/quickshell/screenshare/SharePicker.qml); like
+  # coel-power-menu it launches the live repo copy of the QML.
+  sharePicker = pkgs.writeShellApplication {
+    name = "coel-share-picker";
+    runtimeInputs = [ pkgs.quickshell pkgs.coreutils pkgs.gnugrep ];
+    text = builtins.readFile ./quickshell/screenshare/picker.sh;
+  };
+
   rebuild = pkgs.writeShellApplication {
     name = "coel-rebuild";
     runtimeInputs = [ showDone ];
@@ -187,6 +198,7 @@ in
   home.packages = [
     purge
     powerMenu
+    sharePicker
     rebuild
     update
     screenshot
@@ -197,4 +209,17 @@ in
     fingerprintDelete
     fingerprintMenu
   ];
+
+  # Points xdg-desktop-portal-hyprland at the Quickshell picker. `force`
+  # because a hand-written copy of this file was used while developing it.
+  # Restart the portal after a rebuild:
+  #   systemctl --user restart xdg-desktop-portal-hyprland
+  xdg.configFile."hypr/xdph.conf" = {
+    force = true;
+    text = ''
+      screencopy {
+          custom_picker_binary = ${sharePicker}/bin/coel-share-picker
+      }
+    '';
+  };
 }

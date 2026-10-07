@@ -165,6 +165,9 @@ const codepoints = {
   package: 0xe390, // ph-package (pkexec requests)
   "x-circle": 0xe4f8, // ph-x-circle (dismissed toast)
   "gear-six": 0xe272, // ph-gear-six (systemd / system settings requests)
+
+  // screenshare/ -- screen share picker
+  screencast: 0xe404, // ph-screencast (picker header / requester tile)
 };
 
 function icon(name) {

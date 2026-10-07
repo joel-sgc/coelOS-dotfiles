@@ -1371,3 +1371,32 @@ and built from the `widgets/` primitives.
   `pkexec` doesn't work from inside the sandbox -- no_new_privs). Verified:
   registration, request display, fprintd view, timeout -> password prompt,
   wrong password, Esc cancel + toast. NOT verified: a successful auth.
+
+## Screen share picker (2026-10-07)
+
+Replaces `hyprland-share-picker`, ported from `example/Screen Share Picker.dc.html`.
+`screenshare-shell.qml` + `screenshare/` (dialog, cards, live thumbnails) is a
+short-lived standalone Quickshell process; `screenshare/picker.sh` (built into
+`coel-share-picker` by `home/os-commands.nix`, wired up via an `xdph.conf`
+there too) is what xdg-desktop-portal-hyprland actually runs.
+
+The portal contract, verified against xdph 1.3.12 on this machine (details in
+`SharePicker.qml`'s header) -- read it before changing the output:
+- stdout must be `[SELECTION]<r?>/screen:NAME|window:ID|region:NAME@x,y,w,h`
+  **plus a trailing newline**; without the newline the portal hangs forever.
+  Empty output = cancelled.
+- window IDs are per-portal-process handles taken from `XDPH_WINDOW_SHARING_LIST`;
+  answering with an ID that isn't in the list also hangs the portal.
+- `--allow-token` is only passed if `allow_token_by_default` is on; the stock
+  picker uses it to pre-tick its always-visible "restore token" checkbox.
+- Quickshell can't print its own stdout cleanly, hence the temp-file handoff.
+
+Dropped from the mockup on purpose: multi-select and the cursor checkbox (the
+portal can't carry them), the requesting-app/origin line (not provided --
+the request box is generic), and the sharing indicator (separate feature).
+
+Testing without a real app: call the ScreenCast portal over D-Bus yourself
+(CreateSession/SelectSources/Start; `dbus-next` + raw messages, don't
+introspect the portal object -- it has an interface dbus-next chokes on).
+`pkexec`-style tricks don't apply here. Needs `git add` of new files before a
+rebuild: flakes only see tracked files, and `picker.sh` is read at eval time.
