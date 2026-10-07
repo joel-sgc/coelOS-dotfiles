@@ -161,11 +161,13 @@ Item {
     Greetd.createSession(selectedUser);
   }
 
-  // fprintd is listed `sufficient`-and-first in the greetd PAM stack
-  // (modules/greeter.nix), so a successful fingerprint scan alone
-  // completes auth; a failed/timed-out scan falls through to pam_unix's
-  // own password prompt, which is what `responseRequired` below answers.
-  // Only one such prompt is expected per attempt for this stack.
+  // The greetd PAM stack (modules/greeter.nix) asks for the password FIRST
+  // (so pam_gnome_keyring can unlock the keyring with it), then requires a
+  // fingerprint as well when one is enrolled. `responseRequired` below
+  // answers that single password prompt; the fingerprint step then arrives
+  // as plain info text ("place your finger...") shown as a status line.
+  // A wrong password re-prompts once more (pam_unix try_first_pass), which
+  // gets the already-cleared empty _pendingPw and fails -- by design.
   Connections {
     target: Greetd
     enabled: !root.mock

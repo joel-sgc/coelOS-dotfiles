@@ -139,9 +139,29 @@ in
     # starts the session.
     security.pam.services.greetd.enableGnomeKeyring = true;
 
-    # fprintAuth left at its default (enabled): greetd's PAM stack tries
-    # fprintd before unix auth, and GreeterBackend.qml now surfaces that as
-    # real status text (matching the lock screen's fingerprint indicator)
-    # instead of leaving password looking silently stuck behind it.
+    # Password FIRST, then fingerprint as a second required factor.
+    #
+    # fprintd used to be `sufficient` and first in this stack, so a good scan
+    # ended authentication before pam_unix ever saw the password -- and
+    # pam_gnome_keyring (which unlocks the login keyring from that password)
+    # never got it, leaving the keyring locked on every fingerprint login.
+    # Now pam_unix (the "unix-early" rule) takes the password first,
+    # gnome_keyring uses it, then fprintd must also pass, then the final
+    # pam_unix (try_first_pass) actually verifies the password. A wrong
+    # password still fails (that last pam_unix, then pam_deny), just after the
+    # fingerprint step.
+    #
+    # The control value: success/unavailable fall through, anything else marks
+    # the stack failed but keeps going (so the failure isn't skipped over by
+    # the later `sufficient` pam_unix). authinfo_unavail=ignore means an
+    # account with no enrolled finger (or fprintd down) still logs in with
+    # just its password instead of being locked out.
+    #
+    # GreeterBackend.qml answers the one password prompt, then shows
+    # fprintd's "place your finger" text as a status line.
+    security.pam.services.greetd.rules.auth.fprintd = {
+      order = config.security.pam.services.greetd.rules.auth.gnome_keyring.order + 10;
+      control = lib.mkForce "[success=ok authinfo_unavail=ignore default=bad]";
+    };
   };
 }

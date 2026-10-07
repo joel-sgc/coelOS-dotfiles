@@ -1400,3 +1400,20 @@ Testing without a real app: call the ScreenCast portal over D-Bus yourself
 introspect the portal object -- it has an interface dbus-next chokes on).
 `pkexec`-style tricks don't apply here. Needs `git add` of new files before a
 rebuild: flakes only see tracked files, and `picker.sh` is read at eval time.
+
+## Keyring unlock at login (2026-10-07)
+
+Symptom: a keyring unlock prompt kept appearing. Two causes, both fixed:
+1. The greetd PAM stack had `pam_fprintd` first and `sufficient`, so a good
+   fingerprint scan ended auth before the password reached `pam_gnome_keyring`
+   (it unlocks the login keyring FROM the password). `modules/greeter.nix` now
+   orders it password -> keyring -> fingerprint (required, but skipped via
+   `authinfo_unavail=ignore` if the account has no enrolled finger / fprintd
+   is down). Recovery if the greeter ever refuses a good login: a TTY
+   (`login` PAM service is untouched) or boot the previous NixOS generation.
+2. Apps use the keyring behind the `default` alias, and that was a separate
+   locked "Default keyring" PAM never unlocks (it only unlocks `login`). The
+   alias now points at `login` (`SetAlias default` over D-Bus; persisted in
+   ~/.local/share/keyrings/default). The old Default_keyring.keyring is left
+   untouched on disk -- items in it (e.g. the GlobalProtect password) are not
+   visible through the default alias; re-store them (`coel-vpn-set-password`).
