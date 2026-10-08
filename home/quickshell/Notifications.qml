@@ -35,7 +35,7 @@ Scope {
       notifScope.nowTick = new Date();
       for (const t of notifScope.backend.toasts) {
         if (t.until !== null && notifScope.nowTick.getTime() >= t.until) {
-          notifScope.backend.dismissToast(t.id, true);
+          notifScope.backend.fadeToast(t.id);
         }
       }
     }
@@ -209,7 +209,7 @@ Scope {
                   anchors.fill: parent
                   anchors.margins: -4
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: notifScope.backend.dismissToast(toastCard.modelData.id, false)
+                  onClicked: notifScope.backend.dismissToast(toastCard.modelData.id)
                 }
               }
               Text {

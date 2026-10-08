@@ -67,10 +67,22 @@ Item {
   readonly property var mutedApps: backend ? backend.mutedApps : []
   // Cancels any active reply the moment selection moves to a different
   // notification -- replying is tied to a specific id (replyingId), not to
-  // `sel`, so without this a reply box could keep sitting open on a row
+  // `selId`, so without this a reply box could keep sitting open on a row
   // that's no longer even selected once j/k (or a click) moves elsewhere.
-  property int sel: 0
-  onSelChanged: { replyingId = -1; replyText = ""; }
+  //
+  // Tracks the selected notification by id, not by its position in
+  // `flatFiltered` -- history is newest-first and a new notification
+  // arriving prepends to it, shifting every existing row's index down by
+  // one. An index-based `sel` silently ends up pointing at a *different*
+  // notification the instant that happens, which is exactly what made
+  // "some notifications work, some don't" on reply: whichever one was
+  // selected when a fresh notification landed got swapped out from under
+  // the detail pane/reply box without any visible sign of it (confirmed
+  // live -- startReply() was firing with the id the user actually clicked,
+  // but `current` had already silently drifted to a different notification
+  // by the time the isReplying binding re-evaluated).
+  property int selId: -1
+  onSelIdChanged: { replyingId = -1; replyText = ""; }
   property int replyingId: -1
   // Returns keyboard focus to dropdownRoot whenever reply mode ends
   // (sent, cancelled via Escape, or cancelled by the onSelChanged above) --
@@ -225,8 +237,9 @@ Item {
   readonly property color statusColor: unreadCount > 0 ? colors[2] : colors[3]
 
   readonly property var current: {
-    const i = Math.min(sel, flatFiltered.length - 1);
-    return i >= 0 ? flatFiltered[i] : null;
+    const found = flatFiltered.find(n => n.id === selId);
+    if (found) return found;
+    return flatFiltered.length > 0 ? flatFiltered[0] : null;
   }
   readonly property var currentRows: current ? [
     { k: "app", v: current.app, c: fgColor },
@@ -235,7 +248,7 @@ Item {
     { k: "id", v: "#" + current.id + " · org.freedesktop.Notifications", c: mutedColor },
   ] : []
 
-  function selectId(id) { sel = Math.max(0, flatFiltered.findIndex(n => n.id === id)); }
+  function selectId(id) { selId = id; }
   function dismiss(id) {
     if (backend) backend.dismiss(id);
     if (replyingId === id) { replyingId = -1; replyText = ""; }
@@ -279,7 +292,17 @@ Item {
     say("→ " + a.label);
     if (backend) backend.invokeAction(n.id, a.id);
   }
-  function startReply(n) { replyingId = n.id; replyText = ""; }
+  // Also pins `selId` to this exact notification -- `current` falls back
+  // to "newest" whenever selId doesn't match anything (the default state
+  // before the user has explicitly clicked a row), so replying to
+  // whatever's currently on display without first clicking it left the
+  // detail pane still silently following new arrivals: a message landing
+  // mid-reply swapped `current` out from under the open reply box, same
+  // bug class as the index-based `sel` this replaced, just reached via a
+  // different path (confirmed live -- startReply fired with the right id,
+  // but the next notification's arrival moved `current` again since
+  // nothing had actually pinned selection to it).
+  function startReply(n) { selId = n.id; replyingId = n.id; replyText = ""; }
   function sendReply() {
     if (replyingId < 0 || !replyText.trim()) return;
     if (backend) backend.sendReply(replyingId, replyText);
@@ -314,11 +337,12 @@ Item {
     if (event.key === Qt.Key_C && (event.modifiers & Qt.ShiftModifier)) { clearAll(); event.accepted = true; return; }
     const list = flatFiltered;
     if (list.length === 0) { event.accepted = false; return; }
-    const i = Math.min(sel, list.length - 1);
+    let i = list.findIndex(x => x.id === selId);
+    if (i < 0) i = 0;
     const n = list[i];
     switch (event.key) {
-      case Qt.Key_J: case Qt.Key_Down: sel = Math.min(list.length - 1, i + 1); event.accepted = true; break;
-      case Qt.Key_K: case Qt.Key_Up: sel = Math.max(0, i - 1); event.accepted = true; break;
+      case Qt.Key_J: case Qt.Key_Down: selId = list[Math.min(list.length - 1, i + 1)].id; event.accepted = true; break;
+      case Qt.Key_K: case Qt.Key_Up: selId = list[Math.max(0, i - 1)].id; event.accepted = true; break;
       case Qt.Key_Return: case Qt.Key_Enter: openApp(n); event.accepted = true; break;
       // No canExpand guard here -- whether a body is actually truncated is
       // computed per-row (Text.truncated) inside NotificationRow.qml/

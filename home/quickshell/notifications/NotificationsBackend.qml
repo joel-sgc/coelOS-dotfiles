@@ -83,10 +83,22 @@ Item {
 
     let histId = -1;
     db.transaction(function (tx) {
-      histId = tx.executeSql(
+      // Number(...) -- LocalStorage's insertId comes back as a string, not
+      // a JS number. Every other row id in this file (loadHistory's own
+      // r.hist_id, the IPC debug path's parseInt(histId)) is a real
+      // number, and replyingId/selId are both declared `property int`
+      // (QML forces those to real numbers) -- a string id looks identical
+      // in every console.log and even renders/selects fine (string id ===
+      // string modelData.id both coming from the same row), but silently
+      // fails the one comparison that matters against a real number:
+      // `nRoot.replyingId === n.id` in NotificationDetail.qml's
+      // isReplying, confirmed live as the actual reason reply looked like
+      // it was doing nothing at all -- no error, isReplying just never
+      // became true because "240" !== 240.
+      histId = Number(tx.executeSql(
         "INSERT INTO history (dbus_id, app_name, app_icon, summary, body, urgency, image, received_at, read, close_reason, desktop_entry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)",
         [n.id, n.appName, n.appIcon, n.summary, n.body, n.urgency, n.image || "", receivedAt, n.desktopEntry || ""]
-      ).insertId;
+      ).insertId);
     });
     pruneHistory();
 
@@ -122,7 +134,7 @@ Item {
   // Capped at 3 simultaneous, newest last (matches the mock's own
   // `.slice(0, 3)`). `until` is null for critical (stays until manually
   // dismissed); Notifications.qml's own Timer ticks `pct` down from it and
-  // calls dismissToast() when it runs out.
+  // calls fadeToast() when it runs out.
   readonly property int toastSeconds: 5
   property var toasts: []
   function pushToast(row, n) {
@@ -135,16 +147,27 @@ Item {
     };
     toasts = [toast].concat(toasts).slice(0, 3);
   }
-  // `expired` distinguishes a toast timing out on its own (real
-  // CloseReason.Expired, matching what a timed-out popup means on any
-  // other notification daemon) from the user clicking its own [×]
-  // (CloseReason.Dismissed) -- both just drop it from the toast queue
-  // either way, but the underlying Notification gets closed for real with
-  // the correct reason if it's still live.
-  function dismissToast(dbusId, expired) {
+  // The popup timing out on its own is purely a display decision (how
+  // long to show the toast) -- it used to also call n.expire() on the
+  // real Notification, which closes it server-side for real and drops it
+  // from `liveMap`. That made the dropdown's reply/action affordances
+  // (canReply/actionsFor, both liveMap-gated) disappear the moment a
+  // toast's 5s popup timer ran out, even though the notification itself
+  // was still perfectly live and sitting in the dropdown -- confirmed
+  // live as the cause of "the reply button goes away after a few
+  // seconds". Only drops the visual toast; the real notification stays
+  // open until the user actually dismisses it (below) or the sender
+  // closes it.
+  function fadeToast(dbusId) {
+    toasts = toasts.filter(t => t.id !== dbusId);
+  }
+  // The user clicking a toast's own [×] -- this one really does close
+  // the underlying Notification (CloseReason.Dismissed), same as
+  // dismissing it from the dropdown.
+  function dismissToast(dbusId) {
     toasts = toasts.filter(t => t.id !== dbusId);
     const n = liveMap[String(dbusId)];
-    if (n) { if (expired) n.expire(); else n.dismiss(); }
+    if (n) n.dismiss();
   }
 
   // ----- actions called from the dropdown -----
@@ -204,12 +227,27 @@ Item {
   // Real actions/reply only exist while the underlying Notification is
   // still live -- a closed one can only be browsed, per the D-Bus spec
   // (there's nothing left server-side to invoke or reply to).
+  // Filters out the sender's own "mark as read"-style action -- KDE
+  // Connect's messaging notifications carry one of these as a real action
+  // (identifier "1" in practice, label "Mark as read") alongside
+  // "inline-reply". Invoking it for real (action.invoke(), same as any
+  // other action here) tells the sender the notification's been acted on,
+  // and kdeconnected's own response to that is to close it server-side --
+  // same consequence as the toast-timeout bug this replaced, just reached
+  // by the user clicking what looks like an inert "mark read" chip instead
+  // of a timer. We already have our own non-destructive local read flag
+  // (dropdownRoot's own "[mark read]", markRead()/markAllRead() below) that
+  // covers the same apparent purpose without closing anything, so the
+  // sender's real version is redundant and only harmful here -- dropped
+  // the same way "inline-reply" itself is already excluded from this list.
   function actionsFor(histId) {
     const row = history.find(r => r.id === histId);
     if (!row) return [];
     const n = liveMap[String(row.dbusId)];
     if (!n) return [];
-    return n.actions.map(a => ({ id: a.identifier, label: a.text }));
+    return n.actions
+      .filter(a => a.text.trim().toLowerCase() !== "mark as read")
+      .map(a => ({ id: a.identifier, label: a.text }));
   }
   function canReply(histId) {
     const row = history.find(r => r.id === histId);
@@ -247,7 +285,7 @@ Item {
       for (let i = 0; i < rs.rows.length; i++) {
         const r = rs.rows.item(i);
         out.push({
-          id: r.hist_id, dbusId: r.dbus_id, app: r.app_name, icon: "app-window", image: r.image || "",
+          id: Number(r.hist_id), dbusId: r.dbus_id, app: r.app_name, icon: "app-window", image: r.image || "",
           summary: r.summary, body: r.body || "", desktopEntry: r.desktop_entry || "",
           receivedAt: r.received_at, urgency: r.urgency === 2 ? "critical" : (r.urgency === 0 ? "low" : "normal"),
           read: r.read === 1,
