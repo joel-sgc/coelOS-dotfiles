@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -211,7 +212,7 @@ Item {
   property var ifaceDetails: ({})
   Process {
     id: ifaceDetailsProc
-    command: ["sh", "-c", "nmcli -t -f GENERAL.HWADDR,IP4.GATEWAY,IP4.DNS,IP6.ADDRESS device show '" + dropdownRoot.ifaceName + "' 2>/dev/null"]
+    command: ["sh", "-c", "nmcli -t -f GENERAL.HWADDR,IP4.ADDRESS,IP4.GATEWAY,IP4.DNS,IP6.ADDRESS device show '" + dropdownRoot.ifaceName + "' 2>/dev/null"]
     stdout: StdioCollector {
       onStreamFinished: {
         const d = { dns: [] };
@@ -220,6 +221,10 @@ Item {
           if (idx < 0) continue;
           const key = line.slice(0, idx), val = line.slice(idx + 1);
           if (key === "GENERAL.HWADDR") d.mac = val;
+          // IP4.ADDRESS[1] -- nmcli's own index suffix for multi-address
+          // interfaces; only the first/primary address is shown here,
+          // same as every other single-value field in this dropdown.
+          else if (key.startsWith("IP4.ADDRESS") && !d.ip) d.ip = val.split("/")[0];
           else if (key === "IP4.GATEWAY") d.gateway = val;
           else if (key.startsWith("IP4.DNS")) d.dns.push(val);
           else if (key.startsWith("IP6.ADDRESS")) d.ipv6 = val.split("/")[0];
@@ -234,41 +239,6 @@ Item {
     repeat: true
     triggeredOnStart: true
     onTriggered: ifaceDetailsProc.running = true
-  }
-
-  // ----- uptime: tracked locally, not from nmcli -- nmcli's own
-  // connection.timestamp is when the *profile* was last activated, which
-  // doesn't reliably reset across reconnects/roaming the way "how long
-  // has this session been up" should. Set once when currentEntry goes
-  // from disconnected to connected (or switches SSID), ticked forward
-  // every second purely in JS (no process spawn needed for a clock).
-  property double connectedSinceMs: 0
-  property string lastConnectedSsid: ""
-  onCurrentEntryChanged: {
-    const ssid = currentEntry ? currentEntry.ssid : "";
-    if (ssid !== lastConnectedSsid) {
-      connectedSinceMs = currentEntry ? Date.now() : 0;
-      lastConnectedSsid = ssid;
-    }
-  }
-  property int uptimeTick: 0
-  Timer {
-    interval: 1000
-    running: dropdownRoot.popupOpen && dropdownRoot.currentEntry !== null
-    repeat: true
-    onTriggered: dropdownRoot.uptimeTick++
-  }
-  function formatUptime(ms) {
-    if (ms <= 0) return "—";
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
-    if (h > 0) return h + "h " + m + "m";
-    if (m > 0) return m + "m " + s + "s";
-    return s + "s";
-  }
-  readonly property string uptimeText: {
-    uptimeTick; // referenced only to force this binding to re-evaluate every tick
-    return connectedSinceMs > 0 ? formatUptime(Date.now() - connectedSinceMs) : "—";
   }
 
   // ----- throughput: real interface byte counters from sysfs, sampled
@@ -949,7 +919,7 @@ Item {
       Rectangle {
         implicitWidth: wifiTabLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: (dropdownRoot.view === "main" || dropdownRoot.view === "edit") ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: wifiTabLabel
@@ -964,7 +934,7 @@ Item {
       Rectangle {
         implicitWidth: hsTabLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: dropdownRoot.view === "hotspot" ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: hsTabLabel
@@ -1023,7 +993,7 @@ Item {
           Rectangle {
             implicitWidth: editLabel.implicitWidth + 10
             implicitHeight: 18
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: editMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
             Text { id: editLabel; anchors.centerIn: parent; text: "[e]dit"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
             MouseArea { id: editMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.openEdit(dropdownRoot.currentEntry, "edit") }
@@ -1031,7 +1001,7 @@ Item {
           Rectangle {
             implicitWidth: discLabel.implicitWidth + 10
             implicitHeight: 18
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: discMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
             Text { id: discLabel; anchors.centerIn: parent; text: "[d]isconnect"; color: discMouse.containsMouse ? dropdownRoot.colors[1] : dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
             MouseArea { id: discMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.disconnectCurrent() }
@@ -1073,7 +1043,7 @@ Item {
               model: [
                 { k: "security", v: dropdownRoot.currentEntry ? dropdownRoot.currentEntry.sec : "" },
                 { k: "gateway", v: dropdownRoot.ifaceDetails.gateway || "—" },
-                { k: "uptime", v: dropdownRoot.uptimeText },
+                { k: "speed", v: "↓" + dropdownRoot.formatRate(dropdownRoot.rxRate) + " ↑" + dropdownRoot.formatRate(dropdownRoot.txRate) },
               ]
               delegate: RowLayout {
                 required property var modelData
@@ -1087,9 +1057,9 @@ Item {
             spacing: 1
             Repeater {
               model: [
+                { k: "ip", v: dropdownRoot.ifaceDetails.ip || "—" },
                 { k: "dns", v: (dropdownRoot.ifaceDetails.dns && dropdownRoot.ifaceDetails.dns.length > 0) ? dropdownRoot.ifaceDetails.dns[0] : "—" },
                 { k: "mac", v: dropdownRoot.ifaceDetails.mac || "—" },
-                { k: "speed", v: "↓" + dropdownRoot.formatRate(dropdownRoot.rxRate) + " ↑" + dropdownRoot.formatRate(dropdownRoot.txRate) },
               ]
               delegate: RowLayout {
                 required property var modelData
@@ -1146,7 +1116,7 @@ Item {
 
             width: parent.width
             height: 22
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: sel ? "#2f343e" : (netMouse.containsMouse ? "#2f343e" : "transparent")
 
             MouseArea {
@@ -1185,7 +1155,7 @@ Item {
                   visible: netRow.sel
                   implicitWidth: connLabel.implicitWidth + 8
                   implicitHeight: 18
-                  radius: 2
+                  radius: Globals.eyeCandyOff ? 0 : 2
                   color: connMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
                   Text { id: connLabel; anchors.centerIn: parent; text: "[⏎]"; color: dropdownRoot.colors[3]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
                   MouseArea { id: connMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.connect(netRow.modelData) }
@@ -1194,7 +1164,7 @@ Item {
                   visible: netRow.sel
                   implicitWidth: editRowLabel.implicitWidth + 8
                   implicitHeight: 18
-                  radius: 2
+                  radius: Globals.eyeCandyOff ? 0 : 2
                   color: editRowMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
                   Text { id: editRowLabel; anchors.centerIn: parent; text: "[e]"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
                   MouseArea { id: editRowMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.openEdit(netRow.modelData, "connect") }
@@ -1283,7 +1253,7 @@ Item {
         Rectangle {
           width: parent.width
           implicitHeight: gpRow.implicitHeight + 4
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: (dropdownRoot.section === "vpn" && dropdownRoot.vpnSel === 0) ? "#2f343e" : "transparent"
           RowLayout {
             id: gpRow
@@ -1311,7 +1281,7 @@ Item {
         Rectangle {
           width: parent.width
           implicitHeight: tsRow.implicitHeight + 4
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: (dropdownRoot.section === "vpn" && dropdownRoot.vpnSel === 1) ? "#2f343e" : "transparent"
           RowLayout {
             id: tsRow
@@ -1348,7 +1318,7 @@ Item {
       Rectangle {
         width: parent.width
         height: editCol.implicitHeight + 28
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: "transparent"
         border.width: 1
         border.color: dropdownRoot.hoverColor
@@ -1498,7 +1468,7 @@ Item {
             Rectangle {
               implicitWidth: saveLabel.implicitWidth + 20
               implicitHeight: 22
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: dropdownRoot.colors[0]
               Text { id: saveLabel; anchors.centerIn: parent; text: dropdownRoot.draft && dropdownRoot.draft.mode === "connect" ? "< connect >" : "< save >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
               MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.saveDraft() }
@@ -1506,7 +1476,7 @@ Item {
             Rectangle {
               implicitWidth: cancelLabel.implicitWidth + 20
               implicitHeight: 22
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text { id: cancelLabel; anchors.centerIn: parent; text: "< cancel >"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
               MouseArea { id: cancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.backMain() }
@@ -1515,7 +1485,7 @@ Item {
               visible: dropdownRoot.draft && dropdownRoot.draft.entry && dropdownRoot.draft.entry.known
               implicitWidth: forgetLabel.implicitWidth + 20
               implicitHeight: 22
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: forgetMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text { id: forgetLabel; anchors.centerIn: parent; text: "< forget >"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
               MouseArea { id: forgetMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.forgetDraft() }
@@ -1536,7 +1506,7 @@ Item {
       Rectangle {
         width: parent.width
         height: hsCol.implicitHeight + 28
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: "transparent"
         border.width: 1
         border.color: dropdownRoot.hoverColor
@@ -1665,7 +1635,7 @@ Item {
             Rectangle {
               implicitWidth: hsBtnLabel.implicitWidth + 20
               implicitHeight: 22
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               opacity: dropdownRoot.hs.busy ? 0.6 : 1
               color: dropdownRoot.hsOn ? dropdownRoot.colors[1] : "#d19a66"
               Text {
@@ -1819,7 +1789,7 @@ Item {
       width: Math.min(320, parent.width - 32)
       height: mfaModalCol.implicitHeight + 28
       color: "#282c34"
-      radius: 2
+      radius: Globals.eyeCandyOff ? 0 : 2
       border.width: 1
       border.color: dropdownRoot.colors[2]
 
@@ -1872,7 +1842,7 @@ Item {
           width: parent.width
           implicitHeight: 26
           color: "#1e2127"
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           border.width: 1
           border.color: mfaInput.activeFocus ? dropdownRoot.colors[2] : dropdownRoot.hoverColor
           TextInput {
@@ -1894,7 +1864,7 @@ Item {
           Rectangle {
             implicitWidth: mfaCancelLabel.implicitWidth + 20
             implicitHeight: 22
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
             Text {
               id: mfaCancelLabel

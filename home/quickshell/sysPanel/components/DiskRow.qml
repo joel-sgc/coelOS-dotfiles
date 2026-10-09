@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 
 // ===== DISK ROW =====
 // One mount entry in SystemDropdown.qml's disks section -- two lines,
@@ -61,13 +62,13 @@ Item {
     y: line1.implicitHeight + 1
     width: parent.width - diskRoot.rightColWidth - diskRoot.rightColGap
     height: 8
-    Rectangle { anchors.fill: parent; radius: 1; color: "#353b45" }
+    Rectangle { anchors.fill: parent; radius: Globals.eyeCandyOff ? 0 : 1; color: "#353b45" }
     Rectangle {
       anchors.left: parent.left
       anchors.top: parent.top
       anchors.bottom: parent.bottom
       width: parent.width * (diskRoot.pct / 100)
-      radius: 1
+      radius: Globals.eyeCandyOff ? 0 : 1
       color: diskRoot.barColor
     }
   }

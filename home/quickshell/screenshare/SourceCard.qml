@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 import "../widgets"
 
@@ -20,7 +21,7 @@ Rectangle {
   signal activated()
 
   implicitHeight: col.implicitHeight + 16
-  radius: 8
+  radius: Globals.eyeCandyOff ? 0 : 8
   color: selected ? Pal.edge : "transparent"
   border.width: 1
   border.color: selected ? Pal.blue : focusedCard ? Pal.muted : (area.containsMouse ? Pal.muted : "#3e4451")

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import "../.."
 
 // ----- real toggle backends (do not disturb, keep awake, mic mute,
 // monochrome, eye candy) -----
@@ -100,6 +101,11 @@ Item {
   property bool eyeCandyOff: false
   function setEyeCandy(off) {
     eyeCandyOff = off;
+    // Globals.eyeCandyOff drives every Quickshell-rendered radius
+    // directly (see Globals.qml) -- the hyprctl commands below only
+    // reach Hyprland's own window decoration, not anything Quickshell
+    // paints itself.
+    Globals.eyeCandyOff = off;
     const cmds = off
       ? ["animations:enabled 0", "decoration:blur:enabled 0", "decoration:rounding 0", 'general:col.active_border "rgba(5c6370ee)"']
       : ["animations:enabled 1", "decoration:blur:enabled 1", "decoration:rounding 8", 'general:col.active_border "rgba(61afefee) rgba(e5c07bee) 45deg"'];

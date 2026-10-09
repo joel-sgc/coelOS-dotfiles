@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -32,7 +33,7 @@ PanelWindow {
     id: card
     width: parent.width
     implicitHeight: row.implicitHeight + 20
-    radius: 16
+    radius: Globals.eyeCandyOff ? 0 : 16
     color: Pal.card
     border.width: 1
     border.color: Pal.faint

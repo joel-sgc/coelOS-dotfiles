@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -373,7 +374,7 @@ Item {
               anchors.fill: parent
               border.width: 1
               border.color: dropdownRoot.mutedColor
-              radius: 3
+              radius: Globals.eyeCandyOff ? 0 : 3
               color: "transparent"
             }
 
@@ -387,7 +388,7 @@ Item {
                   required property int index
                   width: 6
                   height: 18
-                  radius: 1
+                  radius: Globals.eyeCandyOff ? 0 : 1
                   color: index < dropdownRoot.litCells ? dropdownRoot.levelColor : "#353b45"
                 }
               }
@@ -396,7 +397,7 @@ Item {
           Rectangle {
             Layout.preferredWidth: 3
             Layout.preferredHeight: 10
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: dropdownRoot.mutedColor
           }
         }
@@ -470,7 +471,7 @@ Item {
               Layout.fillWidth: true
               Layout.preferredHeight: Math.max(2, Math.abs(modelData) / dropdownRoot.rateMax * parent.height)
               Layout.alignment: Qt.AlignBottom
-              radius: 1
+              radius: Globals.eyeCandyOff ? 0 : 1
               color: modelData >= 0 ? dropdownRoot.colors[3] : dropdownRoot.colors[2]
               opacity: 0.4 + Math.abs(modelData) / dropdownRoot.rateMax * 0.6
             }
@@ -598,7 +599,7 @@ Item {
 
           width: parent.width
           height: 24
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: sel ? "#2f343e" : (rowMouse.containsMouse ? "#2f343e" : "transparent")
 
           MouseArea {
@@ -774,7 +775,7 @@ Item {
 
             implicitWidth: actionRow.implicitWidth + 16
             implicitHeight: 22
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: actionMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
             border.width: 1
             border.color: armed ? dropdownRoot.colors[1] : dropdownRoot.hoverColor

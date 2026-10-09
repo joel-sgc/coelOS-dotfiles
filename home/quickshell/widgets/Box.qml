@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 
 // A bordered group with its title cut into the top edge ("legend"), like a
@@ -26,7 +27,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: 2
+    radius: Globals.eyeCandyOff ? 0 : 2
     color: box.fillColor
     border.width: 1
     border.color: box.borderColor

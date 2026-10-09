@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 
 // ===== SECTION =====
 // The bordered-box-with-a-floating-label pattern every dropdown in the
@@ -74,7 +75,7 @@ Item {
     color: "transparent"
     border.width: 1
     border.color: sectionRoot.borderColor
-    radius: 2
+    radius: Globals.eyeCandyOff ? 0 : 2
   }
 
   Column {

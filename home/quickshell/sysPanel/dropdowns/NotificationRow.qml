@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 
 import "../Phosphor.js" as Phosphor
@@ -51,7 +52,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: 6
+    radius: Globals.eyeCandyOff ? 0 : 6
     color: rowRoot.selected ? "#2f343e" : (mouseArea.containsMouse ? "#2f343e" : "transparent")
     border.width: 1
     // Critical always wins (red), regardless of selection; otherwise
@@ -137,7 +138,7 @@ Item {
         Item { Layout.fillWidth: true }
         Rectangle {
           visible: rowRoot.n.fresh
-          width: 6; height: 6; radius: 3
+          width: 6; height: 6; radius: Globals.eyeCandyOff ? 0 : 3
           color: nRoot.colors[0]
         }
         Text {
@@ -178,7 +179,7 @@ Item {
         visible: rowRoot.n.previewImage.length > 0
         width: parent.width
         height: 120
-        radius: 4
+        radius: Globals.eyeCandyOff ? 0 : 4
         color: "#21252b"
         border.width: 1
         border.color: nRoot.hoverColor
@@ -279,7 +280,7 @@ Item {
         visible: rowRoot.isReplying
         width: parent.width
         height: visible ? 28 : 0
-        radius: 6
+        radius: Globals.eyeCandyOff ? 0 : 6
         color: "transparent"
         border.width: 1
         border.color: nRoot.colors[0]

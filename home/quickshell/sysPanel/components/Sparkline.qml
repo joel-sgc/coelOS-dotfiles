@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 
 // ===== SPARKLINE =====
@@ -30,7 +31,7 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: Math.max(1, modelData * parent.height)
         Layout.alignment: Qt.AlignBottom
-        radius: 1
+        radius: Globals.eyeCandyOff ? 0 : 1
         color: sparkRoot.barColor
         opacity: sparkRoot.minOpacity + modelData * (sparkRoot.maxOpacity - sparkRoot.minOpacity)
       }

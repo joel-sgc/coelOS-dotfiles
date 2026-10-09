@@ -88,6 +88,7 @@ ShellRoot {
   // it. Border first, Panel second puts the bar back on top while both
   // stay correctly coverable by a fullscreen client.
   Border {
+    id: border
     borderColor: root.bgColor
     barHeight: root.barHeight
   }
@@ -102,6 +103,10 @@ ShellRoot {
     hoverColor: root.hoverColor
     barHeight: root.barHeight
     notifications: notifications.backend
+    // See Border.qml/Panel.qml's own readyScreens comments -- this is
+    // what makes Panel's per-screen window always get created after
+    // Border's for that same screen, instead of racing it.
+    readyScreens: border.readyScreens
     onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
   }
 

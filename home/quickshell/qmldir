@@ -1,0 +1,7 @@
+singleton Globals 1.0 Globals.qml
+Border 1.0 Border.qml
+Launcher 1.0 Launcher.qml
+Notifications 1.0 Notifications.qml
+Osd 1.0 Osd.qml
+Polkit 1.0 Polkit.qml
+Widgets 1.0 Widgets.qml

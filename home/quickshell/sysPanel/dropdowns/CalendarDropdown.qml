@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell.Io
 import QtQuick.LocalStorage
@@ -368,7 +369,7 @@ Item {
       Rectangle {
         implicitWidth: todayLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: todayMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: todayLabel
@@ -436,7 +437,7 @@ Item {
                       required property string modelData
                       width: 10
                       height: 10
-                      radius: 1
+                      radius: Globals.eyeCandyOff ? 0 : 1
                       color: modelData === "1" ? glyphCell.modelData.on : "transparent"
                     }
                   }
@@ -521,7 +522,7 @@ Item {
                 required property var modelData
                 width: dropdownRoot.dayCellWidth
                 height: 28
-                radius: 2
+                radius: Globals.eyeCandyOff ? 0 : 2
                 color: modelData.bg
                 border.width: 1
                 border.color: modelData.border
@@ -540,7 +541,7 @@ Item {
                   y: 20
                   width: 4
                   height: 4
-                  radius: 2
+                  radius: Globals.eyeCandyOff ? 0 : 2
                   color: dayCell.modelData.dot
                 }
                 MouseArea {
@@ -588,7 +589,7 @@ Item {
 
             Rectangle {
               anchors.fill: parent
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: todoRow.modelData.isSel ? "#2f343e" : (todoMouse.containsMouse ? "#2f343e" : "transparent")
             }
             MouseArea {

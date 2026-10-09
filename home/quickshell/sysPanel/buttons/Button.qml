@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 
@@ -46,7 +47,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: 5
+    radius: Globals.eyeCandyOff ? 0 : 5
     color: (buttonRoot.active || mouseArea.containsMouse) ? root.hoverColor : "transparent"
   }
 

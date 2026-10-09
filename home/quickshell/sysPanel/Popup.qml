@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -58,6 +59,22 @@ PanelWindow {
   // 470px, not something that reflows to fit its content.
   property int contentWidth: 0
 
+  // Set from Panel.qml's panelScope.screenshotting while a screenshot is
+  // in progress. HyprlandFocusGrab below fires `cleared` the instant
+  // coel-screenshot.sh's wayfreeze/slurp steal focus to do their job --
+  // without this, that closed whatever popup was open right as it was
+  // being screenshotted. While true, a close is deferred (closePending)
+  // instead of dropped outright, so the popup still closes normally the
+  // moment screenshotting ends if focus never came back to it.
+  property bool screenshotting: false
+  property bool closePending: false
+  onScreenshottingChanged: {
+    if (!screenshotting && closePending) {
+      closePending = false;
+      closeRequested();
+    }
+  }
+
   signal closeRequested()
 
   // Named "content", not "data" -- PanelWindow already has its own "data"
@@ -84,11 +101,21 @@ PanelWindow {
 
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+  // Named so home/hyprland.nix's "noanim" layerrule can target just this
+  // surface -- without it, Hyprland's default layer fade-in/out animates
+  // every open/close, including the instant close HyprlandFocusGrab fires
+  // when something else (e.g. the screenshot tool's wayfreeze/slurp
+  // overlay) steals focus. A screenshot taken in that window can land
+  // mid-fade, capturing the popup translucent instead of fully opaque.
+  WlrLayershell.namespace: "coel-sys-popup"
 
   HyprlandFocusGrab {
     windows: popupRoot.barWindow ? [ popupRoot, popupRoot.barWindow ] : [ popupRoot ]
     active: popupRoot.open
-    onCleared: popupRoot.closeRequested()
+    onCleared: {
+      if (popupRoot.screenshotting) popupRoot.closePending = true;
+      else popupRoot.closeRequested();
+    }
   }
 
   Rectangle {
@@ -102,7 +129,7 @@ PanelWindow {
     height: implicitHeight
 
     color: "#282c34"
-    radius: 12
+    radius: Globals.eyeCandyOff ? 0 : 12
     border.width: 1
     border.color: "#404754"
 

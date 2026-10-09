@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 
 // ===== WEATHER WIDGET =====
@@ -391,13 +392,13 @@ DesktopWidget {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 6
-          radius: 1
+          radius: Globals.eyeCandyOff ? 0 : 1
           color: Pal.track
           Rectangle {
             x: (modelData.loC - root.dailyRange.min) / root.dailyRange.span * parent.width
             width: Math.max(2, (modelData.hiC - modelData.loC) / root.dailyRange.span * parent.width)
             height: parent.height
-            radius: 1
+            radius: Globals.eyeCandyOff ? 0 : 1
             gradient: Gradient {
               orientation: Gradient.Horizontal
               GradientStop { position: 0; color: Pal.blue }

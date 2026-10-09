@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 
 // Flat text button: transparent, lights up #404754 on hover. Children (Mono
 // pieces, usually a yellow key letter then a label) sit in a Row.
@@ -13,7 +14,7 @@ Rectangle {
 
   implicitWidth: row.implicitWidth + hPad * 2
   implicitHeight: row.implicitHeight
-  radius: 2
+  radius: Globals.eyeCandyOff ? 0 : 2
   color: hovered ? hoverColor : "transparent"
 
   Row {

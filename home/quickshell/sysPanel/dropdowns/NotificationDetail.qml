@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 
 import "../Phosphor.js" as Phosphor
@@ -56,7 +57,7 @@ Item {
       spacing: 12
 
       Rectangle {
-        width: 38; height: 38; radius: 8
+        width: 38; height: 38; radius: Globals.eyeCandyOff ? 0 : 8
         color: "#21252b"
         border.width: 1
         border.color: nRoot.hoverColor
@@ -120,7 +121,7 @@ Item {
       visible: detailRoot.n && detailRoot.n.previewImage.length > 0
       Layout.fillWidth: true
       height: 160
-      radius: 4
+      radius: Globals.eyeCandyOff ? 0 : 4
       color: "#21252b"
       border.width: 1
       border.color: nRoot.hoverColor
@@ -208,7 +209,7 @@ Item {
       visible: detailRoot.isReplying
       Layout.fillWidth: true
       height: visible ? 28 : 0
-      radius: 6
+      radius: Globals.eyeCandyOff ? 0 : 6
       color: "transparent"
       border.width: 1
       border.color: nRoot.colors[0]

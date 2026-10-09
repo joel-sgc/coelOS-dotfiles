@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -290,6 +291,16 @@ Item {
     if (b >= 1e6) return (b / 1e6).toFixed(0) + " MB";
     return (b / 1e3).toFixed(0) + " KB";
   }
+  // The net section's status line (rightContent below) is one unbounded
+  // Text sized to its own content (Section.qml's rightSlot has no max
+  // width -- it just grows left from the panel's right edge), so a long
+  // SSID pushed the whole line past the panel's left edge instead of
+  // wrapping. Truncating just the SSID keeps the actually-live numbers
+  // (link rate, throughput) always fully visible, which matter more
+  // moment-to-moment than seeing the whole network name.
+  function elideSsid(s) {
+    return s.length > 14 ? s.slice(0, 13) + "…" : s;
+  }
   Process {
     id: netStatsProc
     command: ["sh", "-c", "cat '/sys/class/net/" + dropdownRoot.netIface + "/statistics/rx_bytes' '/sys/class/net/" + dropdownRoot.netIface + "/statistics/tx_bytes' 2>/dev/null"]
@@ -377,7 +388,16 @@ Item {
           if (selfSpawned.has(name)) continue;
           out.push({
             pid: parseInt(m[1]), name, user: m[3],
-            thr: parseInt(m[4]), memMb: rssKb / 1024, cpu: parseFloat(m[6]),
+            // ps's own pcpu is percent of ONE core (so a single-threaded
+            // process pegging a core reads 100% regardless of core
+            // count, and a multi-threaded one can read 300%+) -- dividing
+            // by the actual core count here matches the "total" figure
+            // at the top of the panel, which is already normalized
+            // across all cores from /proc/stat. dropdownRoot.cores.length
+            // over a literal nproc since it's the same live core count
+            // the per-core cpu grid above already uses.
+            thr: parseInt(m[4]), memMb: rssKb / 1024,
+            cpu: parseFloat(m[6]) / Math.max(1, dropdownRoot.cores.length),
             cmd: m[7].length > 0 ? m[7] : name,
           });
         }
@@ -412,7 +432,7 @@ Item {
 
   function fmtMem(mb) {
     if (mb >= 1024) return (mb / 1024).toFixed(1) + "G";
-    return mb + "M";
+    return mb.toFixed(0) + "M";
   }
   function cycleSort() {
     const order = ["cpu", "mem", "name", "pid"];
@@ -751,13 +771,13 @@ Item {
           Item {
             width: parent.width
             height: 8
-            Rectangle { anchors.fill: parent; radius: 1; color: "#353b45" }
+            Rectangle { anchors.fill: parent; radius: Globals.eyeCandyOff ? 0 : 1; color: "#353b45" }
             Rectangle {
               anchors.left: parent.left
               anchors.top: parent.top
               anchors.bottom: parent.bottom
               width: parent.width * (dropdownRoot.memUsedGb / dropdownRoot.memTotalGb)
-              radius: 1
+              radius: Globals.eyeCandyOff ? 0 : 1
               color: dropdownRoot.colors[0]
             }
             Rectangle {
@@ -766,7 +786,7 @@ Item {
               anchors.top: parent.top
               anchors.bottom: parent.bottom
               width: parent.width * (dropdownRoot.memCacheGb / dropdownRoot.memTotalGb)
-              radius: 1
+              radius: Globals.eyeCandyOff ? 0 : 1
               color: "#2bbac5"
               opacity: 0.55
             }
@@ -847,7 +867,7 @@ Item {
           spacing: 2
 
           rightContent: Text {
-            text: (dropdownRoot.netSsid.length > 0 ? dropdownRoot.netSsid + " · " + dropdownRoot.netLinkRate + " · " : "")
+            text: (dropdownRoot.netSsid.length > 0 ? dropdownRoot.elideSsid(dropdownRoot.netSsid) + " · " + dropdownRoot.netLinkRate + " · " : "")
               + dropdownRoot.netDownRate.toFixed(1) + "↓ " + dropdownRoot.netUpRate.toFixed(1) + "↑ MB/s"
             color: dropdownRoot.mutedColor
             font.family: "JetBrains Mono"
@@ -889,7 +909,7 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: procCol.implicitHeight + 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: "transparent"
         border.width: 1
         border.color: "#4b5263"
@@ -965,7 +985,7 @@ Item {
               visible: dropdownRoot.query.length > 0
               implicitWidth: clearLabel.implicitWidth + 10
               implicitHeight: 18
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: clearMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text { id: clearLabel; anchors.centerIn: parent; text: "[clear]"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
               MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.query = "" }
@@ -1041,7 +1061,7 @@ Item {
             Rectangle {
               implicitWidth: killLabel.implicitWidth + 12
               implicitHeight: 18
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: killMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text { id: killLabel; anchors.centerIn: parent; text: "[x] kill"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
               MouseArea { id: killMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.askKill() }
@@ -1076,7 +1096,7 @@ Item {
   Rectangle {
     visible: dropdownRoot.pendingKill !== null
     anchors.fill: parent
-    radius: 12
+    radius: Globals.eyeCandyOff ? 0 : 12
     color: "#1e2127"
     opacity: 0.82
 
@@ -1087,7 +1107,7 @@ Item {
     anchors.centerIn: parent
     width: Math.min(380, parent.width - 32)
     implicitHeight: killModalCol.implicitHeight + 28
-    radius: 2
+    radius: Globals.eyeCandyOff ? 0 : 2
     color: "#282c34"
     border.width: 1
     border.color: dropdownRoot.colors[1]
@@ -1130,7 +1150,7 @@ Item {
         Rectangle {
           implicitWidth: termLabel.implicitWidth + 16
           implicitHeight: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: dropdownRoot.colors[2]
           Text { id: termLabel; anchors.centerIn: parent; text: "< y SIGTERM >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
           MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.confirmKill("TERM") }
@@ -1138,7 +1158,7 @@ Item {
         Rectangle {
           implicitWidth: killLabel2.implicitWidth + 16
           implicitHeight: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: dropdownRoot.colors[1]
           Text { id: killLabel2; anchors.centerIn: parent; text: "< K SIGKILL >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
           MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.confirmKill("KILL") }
@@ -1146,7 +1166,7 @@ Item {
         Rectangle {
           implicitWidth: cancelLabel2.implicitWidth + 16
           implicitHeight: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: cancelMouse2.containsMouse ? dropdownRoot.hoverColor : "transparent"
           Text { id: cancelLabel2; anchors.centerIn: parent; text: "< n cancel >"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
           MouseArea { id: cancelMouse2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.cancelKill() }

@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -610,7 +611,7 @@ Item {
     width: parent.width
     implicitHeight: column.implicitHeight
     color: panelRoot.bgColor
-    radius: 14
+    radius: Globals.eyeCandyOff ? 0 : 14
     border.width: 1
     border.color: panelRoot.hoverColor
     clip: true
@@ -688,7 +689,7 @@ Item {
             readonly property bool active: index === panelRoot.catIndex
             implicitWidth: chipRow.implicitWidth + 20
             implicitHeight: 22
-            radius: 6
+            radius: Globals.eyeCandyOff ? 0 : 6
             color: active ? "#2f343e" : (chipMouse.containsMouse ? "#353b45" : "transparent")
             Row {
               id: chipRow
@@ -785,7 +786,7 @@ Item {
                 readonly property bool big: panelRoot.hasQuery && !!it.top
                 width: listFlick.width - 12
                 height: big ? 40 : 26
-                radius: 8
+                radius: Globals.eyeCandyOff ? 0 : 8
                 color: itemRow.isSel ? "#353b45" : (rowMouse.containsMouse ? "#2f343e" : "transparent")
 
                 MouseArea {
@@ -811,7 +812,7 @@ Item {
                   anchors.verticalCenter: parent.verticalCenter
                   width: itemRow.big ? 36 : 24
                   height: itemRow.big ? 36 : 24
-                  radius: 6
+                  radius: Globals.eyeCandyOff ? 0 : 6
                   color: itemRow.isSel ? panelRoot.hoverColor : (itemRow.big ? "#2f343e" : "transparent")
                   Text {
                     anchors.centerIn: parent
@@ -941,7 +942,7 @@ Item {
               Rectangle {
                 implicitWidth: 20
                 implicitHeight: 18
-                radius: 4
+                radius: Globals.eyeCandyOff ? 0 : 4
                 border.width: 1
                 border.color: panelRoot.hoverColor
                 Text { anchors.centerIn: parent; text: "⏎"; color: panelRoot.colors[2]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
@@ -968,7 +969,7 @@ Item {
             Rectangle {
               width: 52
               height: 52
-              radius: 12
+              radius: Globals.eyeCandyOff ? 0 : 12
               color: "#2f343e"
               border.width: 1
               border.color: panelRoot.hoverColor
@@ -1062,7 +1063,7 @@ Item {
               spacing: 8
               visible: previewCol.cur !== null
               Rectangle {
-                implicitWidth: 20; implicitHeight: 18; radius: 4
+                implicitWidth: 20; implicitHeight: 18; radius: Globals.eyeCandyOff ? 0 : 4
                 border.width: 1; border.color: panelRoot.hoverColor
                 Text { anchors.centerIn: parent; text: "⏎"; color: panelRoot.colors[2]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
               }

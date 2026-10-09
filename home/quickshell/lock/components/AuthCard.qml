@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import "../../sysPanel/Phosphor.js" as Phosphor
 
@@ -94,7 +95,7 @@ Item {
 
           implicitWidth: chipRow.implicitWidth + 20
           implicitHeight: 34
-          radius: 8
+          radius: Globals.eyeCandyOff ? 0 : 8
           color: "#23272e"
           border.width: 1
           border.color: selected ? root.colors[0] : root.rowBg
@@ -106,7 +107,7 @@ Item {
             Rectangle {
               implicitWidth: 22
               implicitHeight: 22
-              radius: 11
+              radius: Globals.eyeCandyOff ? 0 : 11
               color: root.rowBg
               Text {
                 anchors.centerIn: parent
@@ -142,7 +143,7 @@ Item {
       Rectangle {
         implicitWidth: 40
         implicitHeight: 40
-        radius: 20
+        radius: Globals.eyeCandyOff ? 0 : 20
         color: root.rowBg
         border.width: 1
         border.color: root.hoverColor
@@ -228,7 +229,7 @@ Item {
         visible: !root.isLogin
         implicitWidth: switchRow.implicitWidth + 12
         implicitHeight: 24
-        radius: 6
+        radius: Globals.eyeCandyOff ? 0 : 6
         color: switchMouse.containsMouse ? root.rowBg : "transparent"
         RowLayout {
           id: switchRow
@@ -265,7 +266,7 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        radius: 8
+        radius: Globals.eyeCandyOff ? 0 : 8
         color: root.inputBg
         border.width: 1
         border.color: root.pillBorderColor
@@ -340,7 +341,7 @@ Item {
         Rectangle {
           implicitWidth: 32
           implicitHeight: 32
-          radius: 6
+          radius: Globals.eyeCandyOff ? 0 : 6
           color: submitMouse.containsMouse ? root.rowBg : "transparent"
           border.width: 1
           border.color: submitMouse.containsMouse ? root.colors[0] : root.hoverColor
@@ -429,7 +430,7 @@ Item {
 
           implicitWidth: pwrRow.implicitWidth + 12
           implicitHeight: 26
-          radius: 6
+          radius: Globals.eyeCandyOff ? 0 : 6
           color: pwrMouse.containsMouse ? root.rowBg : "transparent"
 
           RowLayout {

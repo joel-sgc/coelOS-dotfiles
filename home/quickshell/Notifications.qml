@@ -129,7 +129,7 @@ Scope {
               // windows (same corner radius as this project's "eye candy"
               // toggle bundle also references, TogglesBackend.qml), so
               // their own corners should match exactly.
-              radius: 8
+              radius: Globals.eyeCandyOff ? 0 : 8
               color: "#282c34"
               border.width: 2
               border.color: toastCard.modelData.isCrit ? "#ef596f" : "#404754"
@@ -242,7 +242,7 @@ Scope {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 2
                 height: 2
-                radius: 1
+                radius: Globals.eyeCandyOff ? 0 : 1
                 width: (parent.width - cornerInset * 2) * notifScope.toastPct(toastCard.modelData)
                 color: toastCard.modelData.isCrit ? "#ef596f" : "#61afef"
               }

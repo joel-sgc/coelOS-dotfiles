@@ -1,4 +1,5 @@
 import Quickshell.Hyprland
+import "../.."
 import QtQuick
 import QtQuick.Layouts
 
@@ -28,7 +29,7 @@ RowLayout {
       Layout.alignment: Qt.AlignVCenter
       implicitWidth: Math.max(22, wsText.implicitWidth + 8)
       height: 26
-      radius: 5
+      radius: Globals.eyeCandyOff ? 0 : 5
       color: wsMouseArea.containsMouse ? root.hoverColor : "transparent"
 
       MouseArea {
@@ -69,7 +70,7 @@ RowLayout {
           bottomMargin: 1
         }
         height: 2
-        radius: 1
+        radius: Globals.eyeCandyOff ? 0 : 1
         color: root.colors[wsDelegate.index % root.colors.length]
         opacity: {
           if (wsDelegate.wsData && wsDelegate.wsData.focused) return 1

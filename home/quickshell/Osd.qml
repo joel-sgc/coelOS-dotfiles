@@ -177,7 +177,7 @@ Scope {
           // elsewhere in this project), and pill's own height is driven
           // by that exact same row, not a separate guess.
           implicitHeight: (osdScope.kind === "media" ? mediaRow.implicitHeight : levelRow.implicitHeight) + 28
-          radius: 16
+          radius: Globals.eyeCandyOff ? 0 : 16
           color: "#282c34"
           border.width: 1
           border.color: "#404754"
@@ -227,13 +227,13 @@ Scope {
                 Rectangle {
                   Layout.fillWidth: true
                   height: 6
-                  radius: 1
+                  radius: Globals.eyeCandyOff ? 0 : 1
                   color: "#353b45"
                   Rectangle {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    radius: 1
+                    radius: Globals.eyeCandyOff ? 0 : 1
                     width: parent.width * (osdScope.kind === "bri" ? osdScope.brightnessPct / 100 : (osdScope.muted ? 0 : osdScope.vol))
                     color: osdScope.kind === "bri" ? "#e5c07b" : "#61afef"
                   }
@@ -259,7 +259,7 @@ Scope {
               spacing: 12
 
               Rectangle {
-                width: 44; height: 44; radius: 8
+                width: 44; height: 44; radius: Globals.eyeCandyOff ? 0 : 8
                 color: "#21252b"
                 clip: true
                 Image {
@@ -317,13 +317,13 @@ Scope {
                   Rectangle {
                     Layout.fillWidth: true
                     height: 3
-                    radius: 1
+                    radius: Globals.eyeCandyOff ? 0 : 1
                     color: "#353b45"
                     Rectangle {
                       anchors.left: parent.left
                       anchors.top: parent.top
                       anchors.bottom: parent.bottom
-                      radius: 1
+                      radius: Globals.eyeCandyOff ? 0 : 1
                       width: osdScope.player && osdScope.player.length > 0 ? parent.width * Math.max(0, Math.min(1, osdScope.player.position / osdScope.player.length)) : 0
                       color: "#61afef"
                     }
@@ -341,7 +341,7 @@ Scope {
                 spacing: 2
 
                 Rectangle {
-                  width: 28; height: 28; radius: 6
+                  width: 28; height: 28; radius: Globals.eyeCandyOff ? 0 : 6
                   color: prevMouse.containsMouse ? "#2f343e" : "transparent"
                   Text {
                     anchors.centerIn: parent
@@ -353,7 +353,7 @@ Scope {
                   MouseArea { id: prevMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: osdScope.mediaPrevious() }
                 }
                 Rectangle {
-                  width: 28; height: 28; radius: 6
+                  width: 28; height: 28; radius: Globals.eyeCandyOff ? 0 : 6
                   color: toggleMouse.containsMouse ? "#2f343e" : "transparent"
                   border.width: 1
                   border.color: "#61afef"
@@ -367,7 +367,7 @@ Scope {
                   MouseArea { id: toggleMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: osdScope.mediaPlayPause() }
                 }
                 Rectangle {
-                  width: 28; height: 28; radius: 6
+                  width: 28; height: 28; radius: Globals.eyeCandyOff ? 0 : 6
                   color: nextMouse.containsMouse ? "#2f343e" : "transparent"
                   Text {
                     anchors.centerIn: parent

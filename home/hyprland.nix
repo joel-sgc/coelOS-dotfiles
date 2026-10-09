@@ -177,6 +177,23 @@ in
         }
       ];
 
+      # See home/quickshell/sysPanel/Popup.qml's WlrLayershell.namespace
+      # comment -- stops Hyprland's default layer fade from animating this
+      # popup's open/close, which could otherwise get caught mid-fade by a
+      # screenshot taken right as HyprlandFocusGrab closes it.
+      #
+      # Hyprland 0.55 moved layerrule onto the same structured syntax as
+      # the windowrule block above -- comma-separated "field value" pairs,
+      # not the old "rule, namespace" positional form. Confirmed against
+      # Hyprland's own source (handleLayerrule in
+      # src/config/legacy/ConfigManager.cpp): the old form fails with
+      # "invalid field noanim: missing a value" because "noanim" has no
+      # space, and the real effect name is "no_anim" (underscored),
+      # taking a truthy value, not a bare flag.
+      layerrule = [
+        "match:namespace coel-sys-popup, no_anim 1"
+      ];
+
       exec-once = [
         "systemctl --user start hyprland-session.target"
         # polkit-kde-authentication-agent-1 retired -- Quickshell's own

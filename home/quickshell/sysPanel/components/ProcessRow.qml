@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 
 // ===== PROCESS ROW =====
 // One row in SystemDropdown.qml's process table -- marker | pid | name |
@@ -23,7 +24,7 @@ Rectangle {
 
   width: parent.width
   height: 20
-  radius: 2
+  radius: Globals.eyeCandyOff ? 0 : 2
   color: row.isSel ? "#2f343e" : (rowMouse.containsMouse ? "#2f343e" : "transparent")
 
   MouseArea {
@@ -65,7 +66,12 @@ Rectangle {
     horizontalAlignment: Text.AlignRight
     anchors.verticalCenter: parent.verticalCenter
     text: procRoot.row.cpu.toFixed(1) + "%"
-    color: procRoot.row.cpu >= 50 ? "#ef596f" : procRoot.row.cpu >= 15 ? "#e5c07b" : procRoot.fgColor
+    // Thresholds rescaled along with SystemDropdown.qml's cpu values
+    // themselves -- those are now normalized to total-system percentage
+    // (matching the panel's own "total" figure) instead of ps's raw
+    // per-core pcpu, so the old 50/15 (meaningful on a single core) would
+    // now almost never trigger on a multi-core machine.
+    color: procRoot.row.cpu >= 20 ? "#ef596f" : procRoot.row.cpu >= 5 ? "#e5c07b" : procRoot.fgColor
     font.family: "JetBrains Mono"
     font.pixelSize: 13
   }

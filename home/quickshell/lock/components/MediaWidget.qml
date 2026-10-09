@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import "../../sysPanel/Phosphor.js" as Phosphor
 
@@ -43,7 +44,7 @@ RowLayout {
     Rectangle {
       implicitWidth: 22
       implicitHeight: 22
-      radius: 6
+      radius: Globals.eyeCandyOff ? 0 : 6
       color: prevMouse.containsMouse ? root.hoverColor : "transparent"
       Text {
         anchors.centerIn: parent
@@ -64,7 +65,7 @@ RowLayout {
     Rectangle {
       implicitWidth: 24
       implicitHeight: 24
-      radius: 6
+      radius: Globals.eyeCandyOff ? 0 : 6
       color: toggleMouse.containsMouse ? root.hoverColor : "transparent"
       Text {
         anchors.centerIn: parent
@@ -85,7 +86,7 @@ RowLayout {
     Rectangle {
       implicitWidth: 22
       implicitHeight: 22
-      radius: 6
+      radius: Globals.eyeCandyOff ? 0 : 6
       color: nextMouse.containsMouse ? root.hoverColor : "transparent"
       Text {
         anchors.centerIn: parent
@@ -130,14 +131,14 @@ RowLayout {
         implicitHeight: 3
         Rectangle {
           anchors.fill: parent
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: root.hoverColor
         }
         Rectangle {
           anchors.left: parent.left
           anchors.top: parent.top
           anchors.bottom: parent.bottom
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: root.accentColor
           width: parent.width * Math.max(0, Math.min(1, root.posSeconds / Math.max(1, root.durSeconds)))
         }

@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 import "../widgets"
 import "../sysPanel/Phosphor.js" as Phosphor
@@ -96,7 +97,7 @@ Item {
     x: (root.width - width) / 2 + root.shakeX
     y: Math.max(24, (root.height - height) / 2)
     height: body.implicitHeight + 20
-    radius: 16
+    radius: Globals.eyeCandyOff ? 0 : 16
     color: Pal.card
     border.width: 1
     border.color: root.phase === "success" ? Pal.green : Pal.faint
@@ -142,7 +143,7 @@ Item {
           spacing: 10
           Rectangle {
             Layout.preferredWidth: 36; Layout.preferredHeight: 36; Layout.alignment: Qt.AlignTop
-            radius: 8
+            radius: Globals.eyeCandyOff ? 0 : 8
             color: Pal.edge
             PhIcon { anchors.centerIn: parent; name: root.glyph; font.pixelSize: 20; color: root.tone }
           }
@@ -188,7 +189,7 @@ Item {
           Layout.fillWidth: true
           Layout.topMargin: 4
           implicitHeight: detailGrid.implicitHeight + 12
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: Pal.deep
           GridLayout {
             id: detailGrid
@@ -374,7 +375,7 @@ Item {
           visible: root.pwVisible
           Layout.preferredWidth: authText.implicitWidth + 20
           Layout.preferredHeight: authText.implicitHeight
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: root.phase === "success" ? Pal.green : root.phase === "verifying" ? Pal.yellow : root.canSubmit ? Pal.blue : Pal.muted
           opacity: root.canSubmit || root.busy ? 1 : 0.5
           Behavior on color { ColorAnimation { duration: 200 } }

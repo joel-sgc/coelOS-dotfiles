@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell.Bluetooth
 import "../Phosphor.js" as Phosphor
@@ -267,7 +268,7 @@ Item {
       Rectangle {
         implicitWidth: powerLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: dropdownRoot.powered ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: powerLabel
@@ -286,7 +287,7 @@ Item {
       Rectangle {
         implicitWidth: visLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: dropdownRoot.discoverable ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: visLabel
@@ -321,7 +322,7 @@ Item {
       visible: !dropdownRoot.powered
       width: parent.width
       height: visible ? offColumn.implicitHeight + 36 : 0
-      radius: 2
+      radius: Globals.eyeCandyOff ? 0 : 2
       color: "transparent"
       border.width: 1
       border.color: dropdownRoot.hoverColor
@@ -342,7 +343,7 @@ Item {
           anchors.horizontalCenter: parent.horizontalCenter
           implicitWidth: onLabel.implicitWidth + 20
           implicitHeight: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: dropdownRoot.colors[0]
           Text {
             id: onLabel
@@ -383,7 +384,7 @@ Item {
 
           width: parent.width
           height: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: sel ? "#2f343e" : (pMouse.containsMouse ? "#2f343e" : "transparent")
 
           MouseArea {
@@ -537,7 +538,7 @@ Item {
             Rectangle {
               implicitWidth: toggleLabel.implicitWidth + 12
               implicitHeight: 20
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: toggleMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text {
                 id: toggleLabel
@@ -552,7 +553,7 @@ Item {
             Rectangle {
               implicitWidth: trustLabel.implicitWidth + 12
               implicitHeight: 20
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: trustMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text {
                 id: trustLabel
@@ -567,7 +568,7 @@ Item {
             Rectangle {
               implicitWidth: forgetLabel.implicitWidth + 12
               implicitHeight: 20
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: forgetMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text {
                 id: forgetLabel
@@ -618,7 +619,7 @@ Item {
 
           width: parent.width
           height: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: sel ? "#2f343e" : (nMouse.containsMouse ? "#2f343e" : "transparent")
 
           MouseArea {
@@ -659,7 +660,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             implicitWidth: nPairLabel.implicitWidth + 10
             implicitHeight: 18
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: nPairMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
             Text {
               id: nPairLabel
@@ -746,7 +747,7 @@ Item {
       width: Math.min(320, parent.width - 32)
       height: modalCol.implicitHeight + 28
       color: "#282c34"
-      radius: 2
+      radius: Globals.eyeCandyOff ? 0 : 2
       border.width: 1
       border.color: dropdownRoot.colors[2]
 
@@ -798,7 +799,7 @@ Item {
         Rectangle {
           implicitWidth: cancelLabel.implicitWidth + 20
           implicitHeight: 22
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
           Text {
             id: cancelLabel

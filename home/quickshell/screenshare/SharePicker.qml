@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -197,7 +198,7 @@ Scope {
         x: (keys.width - width) / 2
         y: Math.max(24, (keys.height - height) / 2)
         height: body.implicitHeight + 20
-        radius: 16
+        radius: Globals.eyeCandyOff ? 0 : 16
         color: Pal.card
         border.width: 1
         border.color: Pal.faint
@@ -237,7 +238,7 @@ Scope {
               spacing: 10
               Rectangle {
                 Layout.preferredWidth: 36; Layout.preferredHeight: 36
-                radius: 8
+                radius: Globals.eyeCandyOff ? 0 : 8
                 color: Pal.edge
                 PhIcon { anchors.centerIn: parent; name: "screencast"; font.pixelSize: 20; color: Pal.orange }
               }
@@ -265,7 +266,7 @@ Scope {
                 readonly property bool on: root.tab === modelData.id
                 width: tabRow.implicitWidth + 20
                 height: tabRow.implicitHeight + 2
-                radius: 2
+                radius: Globals.eyeCandyOff ? 0 : 2
                 color: on || tabArea.containsMouse ? Pal.edge : "transparent"
                 border.width: 1
                 border.color: on ? Pal.blue : "transparent"
@@ -581,7 +582,7 @@ Scope {
             Rectangle {
               Layout.preferredWidth: shareText.implicitWidth + 20
               Layout.preferredHeight: shareText.implicitHeight
-              radius: 2
+              radius: Globals.eyeCandyOff ? 0 : 2
               color: root.selection ? Pal.green : Pal.muted
               opacity: root.selection ? 1 : 0.45
               Mono {

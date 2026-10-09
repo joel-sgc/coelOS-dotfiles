@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -424,14 +425,14 @@ Item {
           Rectangle {
             id: dndPill
             y: (parent.height - height) / 2
-            width: 22; height: 12; radius: 6
+            width: 22; height: 12; radius: Globals.eyeCandyOff ? 0 : 6
             color: "transparent"
             border.width: 1
             border.color: dropdownRoot.dnd ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
             Rectangle {
               anchors.verticalCenter: parent.verticalCenter
               x: dropdownRoot.dnd ? (parent.width - width - 2) : 2
-              width: 8; height: 8; radius: 4
+              width: 8; height: 8; radius: Globals.eyeCandyOff ? 0 : 4
               color: dropdownRoot.dnd ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
               Behavior on x { NumberAnimation { duration: 120 } }
             }
@@ -572,7 +573,7 @@ Item {
     Rectangle {
       width: parent.width
       height: 30
-      radius: 6
+      radius: Globals.eyeCandyOff ? 0 : 6
       color: "transparent"
       border.width: 1
       border.color: dropdownRoot.hoverColor
@@ -622,7 +623,7 @@ Item {
         Rectangle {
           implicitWidth: slashLabel.implicitWidth + 8
           implicitHeight: 16
-          radius: 4
+          radius: Globals.eyeCandyOff ? 0 : 4
           color: "transparent"
           border.width: 1
           border.color: dropdownRoot.hoverColor
@@ -722,7 +723,7 @@ Item {
           // the actual content height plus matching top/bottom padding
           // instead of a guessed constant.
           implicitHeight: compactCol.implicitHeight + 12
-          radius: 4
+          radius: Globals.eyeCandyOff ? 0 : 4
           color: dropdownRoot.current && dropdownRoot.current.id === modelData.id ? "#2f343e" : (compactMouse.containsMouse ? "#2f343e" : "transparent")
           border.width: 1
           // Same precedence as NotificationRow.qml's own card border:
@@ -745,7 +746,7 @@ Item {
       Rectangle {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: "transparent"
         border.width: 1
         border.color: dropdownRoot.hoverColor

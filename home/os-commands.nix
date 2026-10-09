@@ -33,7 +33,10 @@ let
   # should do nothing, not stack a second overlay on top of the first.
   powerMenu = pkgs.writeShellApplication {
     name = "coel-power-menu";
-    runtimeInputs = [ pkgs.quickshell pkgs.procps ];
+    runtimeInputs = [
+      pkgs.quickshell
+      pkgs.procps
+    ];
     text = ''
       if pgrep -f "quickshell -p .*power-menu-shell\.qml" >/dev/null; then
         exit 0
@@ -49,7 +52,11 @@ let
   # coel-power-menu it launches the live repo copy of the QML.
   sharePicker = pkgs.writeShellApplication {
     name = "coel-share-picker";
-    runtimeInputs = [ pkgs.quickshell pkgs.coreutils pkgs.gnugrep ];
+    runtimeInputs = [
+      pkgs.quickshell
+      pkgs.coreutils
+      pkgs.gnugrep
+    ];
     text = builtins.readFile ./quickshell/screenshare/picker.sh;
   };
 
@@ -70,10 +77,13 @@ let
     runtimeInputs = [ showDone ];
     text = ''
       trap 'coel-show-done --status "$?"' EXIT
-
-      echo "Updating CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos --upgrade"
       echo
-      sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos" --upgrade
+
+      echo "Updating flake inputs..."
+      nix flake update --flake "$HOME/.nixos"
+      echo
+      echo "Rebuilding CoelOS: sudo nixos-rebuild switch --flake ~/.nixos#coelos"
+      sudo nixos-rebuild switch --flake "$HOME/.nixos#coelos"
     '';
   };
 
@@ -89,6 +99,7 @@ let
       hyprland
       wl-clipboard
       libnotify
+      quickshell
     ];
     text = builtins.readFile ../scripts/coel-screenshot.sh;
   };

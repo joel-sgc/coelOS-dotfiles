@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import "../Phosphor.js" as Phosphor
 
 // ===== DEVICE ROW =====
@@ -42,7 +43,7 @@ Column {
     id: rowItem
     width: parent.width
     height: 22
-    radius: 2
+    radius: Globals.eyeCandyOff ? 0 : 2
     color: rowRoot.row.isSel ? "#2f343e" : (rowMouse.containsMouse ? "#2f343e" : "transparent")
 
     MouseArea {

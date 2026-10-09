@@ -9,6 +9,11 @@
 # out-of-band, matching this flake's pinned hashes exactly:
 #   nix-store --add-fixed sha256 ultraleap-hand-tracking-service_5.17.1.0-a9f25232-1.0_amd64.deb
 #   nix-store --add-fixed sha256 openxr-layer-ultraleap_1.6.5-2B2486adf9.CI1130164_amd64.deb
+# --add-fixed paths are NOT GC roots: `nix-collect-garbage` deletes them and
+# the build then tries the dead repo.ultraleap.com URL. Root them:
+#   nix-store --add-root ~/.local/state/nix-roots/ultraleap-service-deb --indirect -r <store path>
+# Everything here is built from nixpkgs-pinned (see flake.nix) so these are
+# only needed again if that pin is bumped.
 #
 # The vendor's shipped udev rules (lib/udev/rules.d/99-{LMC,LMC2,SIR170}.rules)
 # are malformed: a stray blank line splits each into a no-op match rule and a
@@ -27,23 +32,37 @@
 # builds) falls back to the same kind of hardcoded FHS defaults when
 # LEAPC_HEADER_OVERRIDE/LEAPC_LIB_OVERRIDE aren't set. Symlinking those too
 # means `uv sync` needs no special env vars.
-{ inputs, pkgs, ... }:
+{ inputs, pkgs, pkgs-pinned, ... }:
 
+let
+  pinnedUltraleap = pkgs-pinned.extend (
+    pkgs.lib.composeManyExtensions [
+      inputs.ultraleap-nix.overlays.default
+      (final: prev: {
+        ultraleap-hand-tracking-service = prev.ultraleap-hand-tracking-service.overrideAttrs (old: {
+          postInstall = (old.postInstall or "") + ''
+            for f in "$out"/lib/udev/rules.d/99-LMC.rules \
+                     "$out"/lib/udev/rules.d/99-LMC2.rules \
+                     "$out"/lib/udev/rules.d/99-SIR170.rules; do
+              grep -v '^[[:space:]]*$' "$f" | paste -sd, - > "$f.fixed"
+              mv "$f.fixed" "$f"
+            done
+          '';
+        });
+      })
+    ]
+  );
+in
 {
   imports = [ inputs.ultraleap-nix.nixosModules.default ];
+  # The service (and OpenXR layer) come from the frozen nixpkgs-pinned set so
+  # a `nix flake update` of the main nixpkgs doesn't re-unpack and re-patchelf
+  # the 666MB .deb. The upstream overlay still goes on the main set for the
+  # Python bindings, which pick up the pinned service via `final`.
   nixpkgs.overlays = [
     inputs.ultraleap-nix.overlays.default
     (final: prev: {
-      ultraleap-hand-tracking-service = prev.ultraleap-hand-tracking-service.overrideAttrs (old: {
-        postInstall = (old.postInstall or "") + ''
-          for f in "$out"/lib/udev/rules.d/99-LMC.rules \
-                   "$out"/lib/udev/rules.d/99-LMC2.rules \
-                   "$out"/lib/udev/rules.d/99-SIR170.rules; do
-            grep -v '^[[:space:]]*$' "$f" | paste -sd, - > "$f.fixed"
-            mv "$f.fixed" "$f"
-          done
-        '';
-      });
+      inherit (pinnedUltraleap) ultraleap-hand-tracking-service openxr-ultraleap-layer;
     })
   ];
 

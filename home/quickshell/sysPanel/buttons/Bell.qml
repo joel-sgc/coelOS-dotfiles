@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 
 import "../Phosphor.js" as Phosphor
 
@@ -37,7 +38,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: 5
+    radius: Globals.eyeCandyOff ? 0 : 5
     color: (bellRoot.active || mouseArea.containsMouse) ? root.hoverColor : "transparent"
   }
 

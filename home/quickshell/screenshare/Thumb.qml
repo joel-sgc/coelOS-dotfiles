@@ -1,4 +1,5 @@
 import Quickshell.Wayland
+import ".."
 import QtQuick
 import "../widgets"
 
@@ -17,7 +18,7 @@ Rectangle {
   property bool showBar: false        // faux title bar on the fallback tile
 
   color: Pal.deep
-  radius: 4
+  radius: Globals.eyeCandyOff ? 0 : 4
   clip: true
   border.width: 1
   border.color: "#3e4451"

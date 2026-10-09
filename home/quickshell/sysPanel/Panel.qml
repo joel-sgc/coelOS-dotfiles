@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
+import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 
@@ -48,6 +49,17 @@ Scope {
   // NotificationsDropdown.qml (real history/actions) via root.notifications.
   property var notifications: null
 
+  // Fed from Border.qml's own readyScreens (threaded through shell.qml) --
+  // this Variants' model used to be Quickshell.screens directly, racing
+  // Border's own identical Variants for which one's per-screen window the
+  // compositor saw created first (what decides same-layer stacking order).
+  // Gating this one's model on "screens Border has already created a
+  // window for" makes Panel's window structurally always-later, hence
+  // always on top, instead of leaving it to chance -- see Border.qml's
+  // own readyScreens comment for the full story (confirmed live: correct
+  // on the primary monitor, backwards on the secondary).
+  property var readyScreens: []
+
   // Bubbled up from whichever screen's Logo button was clicked, since
   // shell.qml owns the actual Launcher open/closed state (one launcher
   // instance shared across every screen, not per-screen state like
@@ -60,8 +72,30 @@ Scope {
   // the Variants delegate below, not on panelScope itself.
   signal openPanelRequested(var screen, string name)
 
+  // Suppresses every dropdown's own focus-grab auto-close (Popup.qml)
+  // while a screenshot is in progress -- coel-screenshot.sh's
+  // wayfreeze/slurp steal keyboard/pointer focus to do their job, which
+  // would otherwise close whatever popup is open right as it's being
+  // screenshotted. coel-screenshot.sh brackets its whole run with
+  // `quickshell ipc call screenshot start`/`stop`; the Timer below is a
+  // safety net so a killed/crashed screenshot script can't leave popups
+  // permanently unable to close.
+  property bool screenshotting: false
+
+  IpcHandler {
+    target: "screenshot"
+    function start(): void { panelScope.screenshotting = true; }
+    function stop(): void { panelScope.screenshotting = false; }
+  }
+
+  Timer {
+    interval: 10000
+    running: panelScope.screenshotting
+    onTriggered: panelScope.screenshotting = false
+  }
+
   Variants {
-    model: Quickshell.screens
+    model: panelScope.readyScreens
 
     delegate: Component {
       PanelWindow {
@@ -166,6 +200,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "calendar"
           barHeight: root.barHeight
           centerHorizontally: true
@@ -188,6 +223,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "notifications"
           barHeight: root.barHeight
           centerHorizontally: true
@@ -213,6 +249,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "tray"
           barHeight: root.barHeight
           // Rough estimate, same caveat as every other rightMargin here:
@@ -244,6 +281,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "power"
           barHeight: root.barHeight
           rightMargin: 8
@@ -262,6 +300,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "bluetooth"
           barHeight: root.barHeight
           // Rough estimate of where the bluetooth button sits (it's not
@@ -287,6 +326,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "network"
           barHeight: root.barHeight
           // Same rough-estimate caveat as bluetooth's rightMargin above.
@@ -310,6 +350,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "audio"
           barHeight: root.barHeight
           // Same rough-estimate caveat as bluetooth/network above --
@@ -337,6 +378,7 @@ Scope {
         Popup {
           screen: root.screen
           barWindow: root
+          screenshotting: panelScope.screenshotting
           open: root.openPopup === "system"
           barHeight: root.barHeight
           // Same rough-estimate caveat as every other dropdown above --

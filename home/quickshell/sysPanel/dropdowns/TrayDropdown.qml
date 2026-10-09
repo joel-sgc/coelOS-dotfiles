@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
@@ -160,7 +161,7 @@ Item {
 
       width: col.width
       height: 22
-      radius: 2
+      radius: Globals.eyeCandyOff ? 0 : 2
       color: (entry && entry.enabled && rMouse.containsMouse) ? "#2f343e" : "transparent"
 
       MouseArea {

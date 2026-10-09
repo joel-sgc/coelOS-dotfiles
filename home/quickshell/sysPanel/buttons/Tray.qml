@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell.Widgets
 import Quickshell.Services.SystemTray
@@ -45,7 +46,7 @@ RowLayout {
 
       Rectangle {
         anchors.fill: parent
-        radius: 5
+        radius: Globals.eyeCandyOff ? 0 : 5
         color: trayMouseArea.containsMouse ? root.hoverColor : "transparent"
       }
 

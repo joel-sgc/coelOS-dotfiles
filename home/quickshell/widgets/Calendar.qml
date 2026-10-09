@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
@@ -207,7 +208,7 @@ DesktopWidget {
 
           Rectangle {
             anchors.fill: parent
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: slot.isSel ? Pal.edge : "transparent"
             border.width: 1
             border.color: slot.isSel ? (root.focused ? Pal.blue : Pal.muted)
@@ -230,7 +231,7 @@ DesktopWidget {
                 spacing: 2
                 Repeater {
                   model: slot.cell ? slot.cell.dots : []
-                  delegate: Rectangle { required property color modelData; width: 4; height: 4; radius: 2; color: modelData }
+                  delegate: Rectangle { required property color modelData; width: 4; height: 4; radius: Globals.eyeCandyOff ? 0 : 2; color: modelData }
                 }
               }
             }

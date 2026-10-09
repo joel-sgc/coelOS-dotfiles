@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -199,7 +200,7 @@ Item {
     id: card
     anchors.centerIn: parent
     width: 620
-    radius: 12
+    radius: Globals.eyeCandyOff ? 0 : 12
     border.width: 1
     border.color: root.borderColor
     color: root.bgColor
@@ -221,7 +222,7 @@ Item {
           Layout.leftMargin: 18
           spacing: 12
           Rectangle {
-            width: 30; height: 30; radius: 15
+            width: 30; height: 30; radius: Globals.eyeCandyOff ? 0 : 15
             color: root.rowBorderColor
             border.width: 1
             border.color: root.borderColor
@@ -322,7 +323,7 @@ Item {
 
               Layout.fillWidth: true
               Layout.preferredHeight: 118
-              radius: 10
+              radius: Globals.eyeCandyOff ? 0 : 10
               border.width: 1
               border.color: (isSel || isArmed || isDone) ? hot : root.rowBorderColor
               color: (isSel || isArmed) ? root.selectedBg : root.rowBg
@@ -365,12 +366,12 @@ Item {
                 anchors.margins: 10
                 anchors.bottomMargin: 8
                 height: 2
-                radius: 1
+                radius: Globals.eyeCandyOff ? 0 : 1
                 color: root.rowBorderColor
                 Rectangle {
                   height: parent.height
                   width: parent.width * (root.secondsLeft / root.countdown)
-                  radius: 1
+                  radius: Globals.eyeCandyOff ? 0 : 1
                   color: tile.hot
                 }
               }

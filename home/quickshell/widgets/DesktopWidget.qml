@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -44,7 +45,7 @@ PanelWindow {
 
   Rectangle {
     anchors.fill: parent
-    radius: 16
+    radius: Globals.eyeCandyOff ? 0 : 16
     color: Pal.card
     border.width: 1
     border.color: win.focused ? Pal.faint : Pal.edge

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, pkgs-pinned, lib, ... }:
 
 let
   gpVendor = pkgs.runCommand "globalprotect-vendor" {} ''
@@ -6,7 +6,7 @@ let
     cp -r ${./globalprotect/vendor/opt/paloaltonetworks/globalprotect}/* $out/
   '';
 
-  gpFHS = (import ./globalprotect/fhs.nix { inherit pkgs; }) "globalprotect-fhs";
+  gpFHS = (import ./globalprotect/fhs.nix { pkgs = pkgs-pinned; }) "globalprotect-fhs";
 
   # GlobalProtect's full-tunnel config duplicates routes for whatever local
   # subnet you're on through its own tunnel interface (gpd0), with no

@@ -20,9 +20,26 @@ Scope {
   // gives the frame an actual edge distinguishing it from the desktop.
   property color innerAccentColor: "#22ffffff"
   property real innerAccentWidth: 1.5
-  property int radius: 16
+  property int radius: Globals.eyeCandyOff ? 0 : 16
   property bool enabled: true
   property int barHeight: 36
+
+  // Which screens this file has actually created a window for so far --
+  // Panel.qml gates its own per-screen window creation on this (see its
+  // own readyScreens property) instead of reacting to Quickshell.screens
+  // directly. Both Border and Panel sit on the same WlrLayer.Top, where
+  // stacking order within a layer is just "whichever surface the
+  // compositor saw created later paints on top" -- reliable at initial
+  // startup (both react to the same screens list at once, in declaration
+  // order), but NOT reliable for a screen added later (a monitor
+  // reconnect), since Border's and Panel's Variants are two independent
+  // watchers of the same model with no guaranteed relative order between
+  // them. Confirmed live via `hyprctl -j layers`: the primary monitor had
+  // the correct [Border, Panel] order, the secondary had it backwards
+  // ([Panel, Border], so Border painted over the bar) -- this makes the
+  // order structurally guaranteed instead of raced, for every screen,
+  // present at startup or added afterward.
+  property var readyScreens: []
 
   Variants {
     model: Quickshell.screens
@@ -31,6 +48,13 @@ Scope {
       PanelWindow {
         required property var modelData
         screen: modelData
+
+        Component.onCompleted: {
+          if (root.readyScreens.indexOf(modelData) < 0) root.readyScreens = root.readyScreens.concat([modelData]);
+        }
+        Component.onDestruction: {
+          root.readyScreens = root.readyScreens.filter(s => s !== modelData);
+        }
 
         anchors {
           top: true
@@ -59,7 +83,7 @@ Scope {
           property color borderColor: root.borderColor
           property color innerAccentColor: root.innerAccentColor
           property real innerAccentWidth: root.innerAccentWidth
-          property int radius: root.radius
+          property int radius: Globals.eyeCandyOff ? 0 : root.radius
 
           onPaint: {
             var ctx = getContext("2d");

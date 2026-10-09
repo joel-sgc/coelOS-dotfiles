@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import QtQuick.Shapes
 import "../widgets"
 
@@ -21,7 +22,7 @@ Item {
 
   Rectangle {
     anchors.centerIn: parent
-    width: ring.diameter + 12; height: width; radius: width / 2
+    width: ring.diameter + 12; height: width; radius: Globals.eyeCandyOff ? 0 : width / 2
     color: Qt.rgba(97 / 255, 175 / 255, 239 / 255, 0.08)
     visible: ring.halo
   }

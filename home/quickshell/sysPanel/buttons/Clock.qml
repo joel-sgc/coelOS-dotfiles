@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 
 // ===== CLOCK =====
 // Same format as waybar's clock module ({:L%A @ %I:%M %p}) -- Qt's own
@@ -33,7 +34,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    radius: 6
+    radius: Globals.eyeCandyOff ? 0 : 6
     color: (clockRoot.active || mouseArea.containsMouse) ? root.hoverColor : "transparent"
   }
 

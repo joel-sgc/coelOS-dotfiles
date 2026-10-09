@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
@@ -321,7 +322,7 @@ Scope {
       Item { Layout.fillWidth: true }
       Rectangle {
         Layout.preferredWidth: 90; Layout.preferredHeight: 6
-        radius: 1
+        radius: Globals.eyeCandyOff ? 0 : 1
         color: Pal.track
         clip: true
         Rectangle {
@@ -367,7 +368,7 @@ Scope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: Math.max(300, cardCol.implicitHeight + 22)
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: hot ? Pal.raised : "transparent"
             border.width: 1
             border.color: hot ? Pal.green : active ? Pal.blue : Pal.faint
@@ -444,7 +445,7 @@ Scope {
                   readonly property bool high: !!modelData.high && col.index !== 2
                   width: cardCol.width
                   height: cardRow.implicitHeight + 10
-                  radius: 2
+                  radius: Globals.eyeCandyOff ? 0 : 2
                   color: selected || (cardArea.containsMouse && kb.dragId === -1) ? Pal.edge : "transparent"
                   opacity: kb.dragId === modelData.id ? 0.35 : 1
 
@@ -555,7 +556,7 @@ Scope {
         y: kb.drop ? kb.drop.lineY - 1 : 0
         width: kb.drop ? kb.drop.lineW - 12 : 0
         height: 2
-        radius: 1
+        radius: Globals.eyeCandyOff ? 0 : 1
         color: Pal.green
         z: 50
       }
@@ -567,7 +568,7 @@ Scope {
         y: kb.dragY - kb.grabY
         width: kb.dragW
         height: kb.dragH
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: Pal.faint
         border.width: 1
         border.color: Pal.blue

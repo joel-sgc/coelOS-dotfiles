@@ -1,4 +1,5 @@
 import Quickshell
+import ".."
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -72,7 +73,7 @@ PanelWindow {
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
     height: dialogCol.implicitHeight + 20
-    radius: 16
+    radius: Globals.eyeCandyOff ? 0 : 16
     color: Pal.card
     border.width: 1
     border.color: Pal.faint
@@ -233,7 +234,7 @@ PanelWindow {
           Layout.alignment: Qt.AlignTop
           Layout.preferredWidth: addText.implicitWidth + 20
           Layout.preferredHeight: addText.implicitHeight
-          radius: 2
+          radius: Globals.eyeCandyOff ? 0 : 2
           color: root.canSave ? Pal.green : Pal.muted
           opacity: root.canSave ? 1 : 0.45
           Mono {

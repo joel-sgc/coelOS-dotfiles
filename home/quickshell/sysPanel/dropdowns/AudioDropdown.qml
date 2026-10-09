@@ -1,4 +1,5 @@
 import QtQuick
+import "../.."
 import QtQuick.Layouts
 import Quickshell.Io
 import Quickshell.Services.Pipewire
@@ -331,7 +332,7 @@ Item {
       Rectangle {
         implicitWidth: devTabLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: dropdownRoot.view === "devices" ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: devTabLabel
@@ -346,7 +347,7 @@ Item {
       Rectangle {
         implicitWidth: cardTabLabel.implicitWidth + 16
         implicitHeight: 20
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: dropdownRoot.view === "cards" ? dropdownRoot.hoverColor : "transparent"
         Text {
           id: cardTabLabel
@@ -486,7 +487,7 @@ Item {
                   required property int index
                   width: 7
                   height: 10
-                  radius: 1
+                  radius: Globals.eyeCandyOff ? 0 : 1
                   color: index < parent.parent.lit ? (index < 18 ? dropdownRoot.colors[3] : index < 24 ? dropdownRoot.colors[2] : dropdownRoot.colors[1]) : "#353b45"
                 }
               }
@@ -533,7 +534,7 @@ Item {
 
             width: parent.width
             height: 22
-            radius: 2
+            radius: Globals.eyeCandyOff ? 0 : 2
             color: sel ? "#2f343e" : (cardMouse.containsMouse ? "#2f343e" : "transparent")
 
             MouseArea {
@@ -612,7 +613,7 @@ Item {
         visible: dropdownRoot.selectedCard !== null
         width: parent.width
         height: settingsCol.implicitHeight + 28
-        radius: 2
+        radius: Globals.eyeCandyOff ? 0 : 2
         color: "transparent"
         border.width: 1
         border.color: dropdownRoot.hoverColor
