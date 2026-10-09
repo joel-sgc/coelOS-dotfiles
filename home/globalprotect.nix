@@ -1,12 +1,10 @@
 {
-  config,
   pkgs,
-  lib,
   ...
 }:
 
 let
-  gpFHS = (import ../lib/globalprotect-fhs.nix { inherit pkgs; }) "globalprotect-agent-fhs";
+  gpFHS = (import ../modules/globalprotect/fhs.nix { inherit pkgs; }) "globalprotect-agent-fhs";
 
   portal = "secureaccess.luc.edu";
   username = "jgutierrez11@luc.edu";

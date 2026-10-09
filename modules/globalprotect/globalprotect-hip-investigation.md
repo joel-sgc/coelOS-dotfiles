@@ -104,7 +104,7 @@ correctly tracked ClamAV being installed and later purged. That ruled out
 NixOS packages things.
 
 **Root cause**: `PanGpHip` runs inside the FHS sandbox built by
-`lib/globalprotect-fhs.nix` (`pkgs.buildFHSEnv`). That sandbox's `targetPkgs`
+`modules/globalprotect/fhs.nix` (`pkgs.buildFHSEnv`). That sandbox's `targetPkgs`
 list was deliberately minimal (just GlobalProtect's own runtime deps --
 `iproute2`, `iputils`, `procps`, etc.) and never included any firewall/AV
 tooling. So even with real root and firewalld genuinely running on the real
@@ -113,7 +113,7 @@ host, `PanGpHip`'s filesystem view inside the sandbox had no
 recognize our firewall, it had no visibility into it at all.
 
 **Fix**: added `pkgs.iptables` and `pkgs.nftables` to `targetPkgs` in
-`lib/globalprotect-fhs.nix` (`ufw` isn't packaged in nixpkgs, so not
+`modules/globalprotect/fhs.nix` (`ufw` isn't packaged in nixpkgs, so not
 included -- iptables + nftables covered 2 of the 3 products the Ubuntu VM
 test showed). This is "make the real, already-running software visible
 to OPSWAT's own legitimate detection," not report forgery -- the sandbox
@@ -129,7 +129,7 @@ tier, which isn't needed for this use case). Base-tier access confirmed
 working (`ping 10.17.28.88` succeeds).
 
 Current live state:
-- `lib/globalprotect-fhs.nix`: `targetPkgs` includes `iptables` + `nftables`
+- `modules/globalprotect/fhs.nix`: `targetPkgs` includes `iptables` + `nftables`
 - `services.firewalld.enable = true;` / `networking.nftables.enable = true;`
   (configuration.nix) -- this is what's actually being detected as "enabled"
 - `enableGpHipComplianceExperiment`/ClamAV has since been removed from the

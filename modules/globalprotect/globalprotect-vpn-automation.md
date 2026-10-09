@@ -324,5 +324,5 @@ risks locking the account. Add backoff in the TUI.
 | [home/globalprotect.nix](home/globalprotect.nix) | Defines the five `coel-vpn-*` commands and the user agent service. |
 | [home/globalprotect/gp-connect.exp](home/globalprotect/gp-connect.exp) | The `expect` script `coel-vpn-connect` runs — prompt matching, MFA exchange, `GP_STATUS` emission. |
 | [modules/globalprotect.nix](modules/globalprotect.nix) | System daemon, FHS wrapper, route-hijack fix. |
-| [lib/globalprotect-fhs.nix](lib/globalprotect-fhs.nix) | Shared FHS sandbox builder (daemon + agent). |
-| [modules/vendor/opt/paloaltonetworks/globalprotect/](modules/vendor/opt/paloaltonetworks/globalprotect/) | Vendored client `6.2.8-1057`. |
+| [modules/globalprotect/fhs.nix](modules/globalprotect/fhs.nix) | Shared FHS sandbox builder (daemon + agent). |
+| [modules/globalprotect/vendor/opt/paloaltonetworks/globalprotect/](modules/globalprotect/vendor/opt/paloaltonetworks/globalprotect/) | Vendored client `6.2.8-1057`. |

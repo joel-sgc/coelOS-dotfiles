@@ -262,7 +262,7 @@
   # needs-auth chicken/egg problem (enrolling normally requires an already-
   # authenticated session, which is circular the first time). Ported from
   # the old dotfiles' configs/polkit-fprint.rules.
-  security.polkit.extraConfig = builtins.readFile ./configuration/polkit-fprint-enroll.js;
+  security.polkit.extraConfig = builtins.readFile ./scripts/polkit-fprint-enroll.js;
 
   # Suspends on lid-close even on AC power (systemd's default otherwise
   # ignores lid-close while plugged in). Power-key handling isn't touched
