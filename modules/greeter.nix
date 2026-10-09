@@ -53,6 +53,23 @@ let
     cp ${quickshellSrc}/sysPanel/Phosphor.js $out/sysPanel/Phosphor.js
     cp ${quickshellSrc}/assets/coelos-wordmark.png $out/assets/coelos-wordmark.png
     cp ${quickshellSrc}/greeter-shell.qml $out/shell.qml
+    # Globals.qml (home/quickshell/Globals.qml) -- lock/components/
+    # (AuthCard.qml, MediaWidget.qml) reads Globals.eyeCandyOff for its
+    # rounding, via the root-relative `import "../.."` every file outside
+    # home/quickshell/ itself needs to reach that singleton. Without it
+    # also present at $out's root, that import resolves to nothing,
+    # "Globals" is undefined, and the whole greeter UI fails to load --
+    # confirmed live as a black screen with a blinking cursor (cage
+    # running, quickshell crashed on top of it).
+    #
+    # Not a straight copy of home/quickshell/qmldir: that one also lists
+    # Border/Launcher/Notifications/Osd/Polkit/Widgets, none of which
+    # exist in this derivation's $out (only greeter/, lock/, and the two
+    # asset files above are copied) -- a qmldir entry pointing at a
+    # missing file would just trade one load failure for another. This
+    # greeter root only ever needs the one singleton.
+    cp ${quickshellSrc}/Globals.qml $out/Globals.qml
+    echo 'singleton Globals 1.0 Globals.qml' > $out/qmldir
   '';
 
   greeterLauncher = pkgs.writeShellScript "qs-greeter" ''
