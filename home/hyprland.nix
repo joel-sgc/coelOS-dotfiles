@@ -74,7 +74,18 @@ in
     settings = {
       monitor = [
         "eDP-1,2256x1504@59.999,0x0,1"
-        "DP-9, preferred, 0x-1080, 1"
+        # Empty name -- a wildcard Hyprland falls back to for any monitor
+        # without its own explicit rule above, so this applies to whatever
+        # external monitor connects, not just today's specific one. Was a
+        # hardcoded "DP-9, preferred, 0x-1080, 1" (one specific monitor
+        # name, and a fixed -1080 y-offset that only centered it because
+        # that particular monitor happened to be exactly 1080px tall at
+        # scale 1 -- left-aligned otherwise, and wrong for any other
+        # resolution). auto-center-up is Hyprland's own built-in for
+        # exactly this: stacks above whatever's already placed (eDP-1) and
+        # centers horizontally against it, computed from the connecting
+        # monitor's own actual logical size, not a hardcoded number.
+        ",preferred,auto-center-up,1"
       ];
 
       # Also set here (not just home.sessionVariables) per the Hyprland
@@ -242,7 +253,7 @@ in
         # home/hypridle.nix's comment on programs.hyprlock.
         "$mainMod, L, exec, ${pkgs.quickshell}/bin/quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml"
         "$mainMod, W, killactive"
-        "$mainMod, M, exec, uwsm stop"
+        "$mainMod, M, exec, coel-logout"
         "$mainMod, B, exec, coel-random-wallpaper"
         "$mainMod, F, togglefloating"
         "$mainMod SHIFT, F, fullscreen"

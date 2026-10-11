@@ -24,6 +24,29 @@ let
     '';
   };
 
+  # Ends the current graphical session regardless of how it was started --
+  # "uwsm stop" (what $mainMod+M and the power dropdown's logout button used
+  # to run directly) only tears down a session uwsm itself launched via its
+  # own wayland-wm@*.service unit; a session started any other way (e.g. a
+  # plain, non-uwsm-wrapped Hyprland launch, or Plasma's own startplasma-
+  # wayland) has no such unit for it to find, so it just logs "Compositor is
+  # not running" and does nothing (confirmed live via journalctl after this
+  # exact symptom: Super+M did nothing while using the greeter's "Hyprland"
+  # entry rather than "Hyprland (uwsm-managed)"). `loginctl terminate-
+  # session` instead goes through systemd-logind directly -- the one thing
+  # every graphical session has in common (pam_systemd registers one
+  # regardless of compositor or launch method) -- which kills every process
+  # in the session's scope, triggering whatever normal shutdown handling
+  # that compositor has either way. $XDG_SESSION_ID is set by pam_systemd
+  # for exactly this reason.
+  logout = pkgs.writeShellApplication {
+    name = "coel-logout";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      loginctl terminate-session "$XDG_SESSION_ID"
+    '';
+  };
+
   # Launched by home/hyprland.nix's XF86PowerOff bind -- see
   # home/quickshell/power-menu-shell.qml's own comment for why this is a
   # separate, standalone Quickshell process (not part of Panel.qml's
@@ -208,6 +231,7 @@ in
 {
   home.packages = [
     purge
+    logout
     powerMenu
     sharePicker
     rebuild

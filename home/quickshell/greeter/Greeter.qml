@@ -86,20 +86,54 @@ Scope {
     function onLaunchRequested() { backend.doLaunch(); }
   }
 
-  // Hardcoded to the real panel's known resolution -- confirmed live
-  // (real hardware log.qslog, re-checked after removing the
-  // Screen.width/height binding) that cage never sends a second,
-  // correct configure event after its first one: Qt logs "There are no
-  // outputs - creating placeholder screen" once, then "Configure event
-  // ... contains invalid width/height: 0" once, and nothing further.
-  // There's no later real-size event to react to -- the window's
-  // implicit size was silently falling back to Qt's tiny placeholder-
-  // screen default the whole time, not to the real output size, which
-  // is why AuthCard (anchored to the *right* edge of that tiny area)
-  // never landed anywhere visible while ClockDate (anchored left)
-  // still did. This machine has a single fixed monitor (eDP-1,
-  // 2256x1504 -- confirmed in the greeter plan doc), so hardcoding
-  // sidesteps the race entirely instead of trying to detect it.
+  // Sized to the FULL combined canvas, with the actual UI positioned
+  // only within eDP-1's own sub-rectangle inside it -- this used to just
+  // hardcode the laptop panel's own known resolution (2256x1504), because
+  // cage never sends a second, correct `configure` event after its first
+  // one (confirmed live: Qt logs "There are no outputs - creating
+  // placeholder screen" once, then "Configure event ... contains invalid
+  // width/height: 0" once, and nothing further -- the window's implicit
+  // size was silently falling back to Qt's tiny placeholder-screen
+  // default the whole time, which is why AuthCard, anchored to the
+  // *right* edge of that tiny area, never landed anywhere visible while
+  // ClockDate, anchored left, still did).
+  //
+  // Hardcoding one fixed size stopped being enough once a second,
+  // external monitor entered the picture (confirmed live): cage's
+  // multi-output mode ("extend", its only real option -- see below) spans
+  // a single combined bounding box across every connected output (its
+  // own upstream wiki: content that doesn't fill that whole box gets
+  // positioned/clipped against it, not against any one real monitor), so
+  // a fixed 2256x1504 surface was landing somewhere inside a larger
+  // virtual canvas instead of filling the laptop panel -- the exact same
+  // "AuthCard off-screen" symptom, new cause.
+  //
+  // Tried asking cage for just eDP-1 directly instead -- doesn't work.
+  // `-m last` sounded like it would pick a single specific output, but
+  // it actually means "whichever output connected most recently" (cage
+  // -h's own wording), and on this laptop eDP-1 connects before any
+  // external monitor, so "last" picked the external monitor instead,
+  // putting the WHOLE greeter there rather than fixing anything. cage
+  // 0.3.0 has no flag to name a specific output at all (confirmed via
+  // cage -h: only extend/last exist) -- there's no way to just tell it
+  // "eDP-1", so fighting cage's output selection from the launch command
+  // is a dead end.
+  //
+  // So instead of fighting the combined bounding box, this window now
+  // IS the combined bounding box, honestly: `canvasWidth`/`canvasHeight`
+  // sum/max across every `Quickshell.screens` entry's own real x/y/width/
+  // height (populated from `wl_output` geometry, the same mechanism
+  // Border.qml/Panel.qml already rely on for real multi-monitor geometry
+  // under Hyprland -- a different, more reliable data path than the
+  // broken `configure`-event negotiation above), covering whatever
+  // layout wlroots actually chose. The background gradient still fills
+  // that whole canvas (so the external monitor just shows a plain dark
+  // screen, not garbage), but the actual LockScreen UI is positioned at
+  // `targetScreen`'s own x/y/width/height sub-rectangle within it --
+  // `eDP-1` by name when present (this machine's real laptop panel),
+  // falling back to the first screen Quickshell sees otherwise. The
+  // literal 2256x1504/0,0 fallbacks only matter if `Quickshell.screens`
+  // is somehow empty, which shouldn't happen in practice.
   //
   // implicitWidth/Height, not width/height -- confirmed live (real
   // hardware log.qslog) that Quickshell logs "Setting `width` is
@@ -114,8 +148,19 @@ Scope {
     id: win
     visible: true
     color: "transparent"
-    implicitWidth: 2256
-    implicitHeight: 1504
+
+    readonly property var targetScreen: Quickshell.screens.find(s => s.name === "eDP-1")
+      || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+
+    readonly property real canvasWidth: Quickshell.screens.length > 0
+      ? Math.max(...Quickshell.screens.map(s => s.x + s.width))
+      : 2256
+    readonly property real canvasHeight: Quickshell.screens.length > 0
+      ? Math.max(...Quickshell.screens.map(s => s.y + s.height))
+      : 1504
+
+    implicitWidth: canvasWidth
+    implicitHeight: canvasHeight
 
     Rectangle {
       anchors.fill: parent
@@ -128,7 +173,10 @@ Scope {
     }
 
     LockScreen {
-      anchors.fill: parent
+      x: win.targetScreen ? win.targetScreen.x : 0
+      y: win.targetScreen ? win.targetScreen.y : 0
+      width: win.targetScreen ? win.targetScreen.width : 2256
+      height: win.targetScreen ? win.targetScreen.height : 1504
       mode: "login"
       users: backend.users
       selectedUser: backend.selectedUserIndex

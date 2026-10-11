@@ -49,8 +49,31 @@ Scope {
         required property var modelData
         screen: modelData
 
-        Component.onCompleted: {
-          if (root.readyScreens.indexOf(modelData) < 0) root.readyScreens = root.readyScreens.concat([modelData]);
+        // A short delay, not an immediate Component.onCompleted -- that
+        // only means this QML object finished constructing, which can
+        // still land before the real Wayland layer-surface creation
+        // request this window issues actually reaches the compositor
+        // (the two aren't synchronous, and Quickshell doesn't expose a
+        // QML-assignable "actually mapped" signal to gate on instead --
+        // onExposed exists but is a C++-only method, confirmed live:
+        // assigning it as `onExposed: {}` is a hard QML error, "Cannot
+        // assign to non-existent property"). That gap is exactly why
+        // gating readyScreens on onCompleted didn't fully close the race
+        // it was meant to close: on a hot-reload there's little else
+        // competing for the event loop, so onCompleted and the real
+        // surface request landed close enough together for the order to
+        // come out right every time that was tested, but on a real cold
+        // external-monitor reconnect (more going on at once) the gap was
+        // wide enough for Panel's own surface request -- already gated
+        // on this screen appearing in readyScreens -- to still land
+        // first. 120ms is a large margin for a local IPC round-trip, not
+        // a measured minimum.
+        Timer {
+          interval: 120
+          running: true
+          onTriggered: {
+            if (root.readyScreens.indexOf(modelData) < 0) root.readyScreens = root.readyScreens.concat([modelData]);
+          }
         }
         Component.onDestruction: {
           root.readyScreens = root.readyScreens.filter(s => s !== modelData);

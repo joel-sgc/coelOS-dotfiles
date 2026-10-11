@@ -93,6 +93,21 @@ let
     # event-loop iteration, and quickshell's own Wayland roundtrip is fast
     # enough to lose that race, logging "There are no outputs" every time.
     # Giving cage's backend a moment to finish first avoids it.
+    #
+    # Plain extend (cage's default -- no -m flag needed): confirmed live
+    # that "-m last" is NOT "use eDP-1", it's "use whichever output was
+    # most recently connected" (cage -h's own wording) -- on this laptop
+    # eDP-1 is connected before any external monitor, so "last" actually
+    # picked the external monitor instead, showing the greeter there
+    # instead of the laptop panel. cage 0.3.0 has no flag to target a
+    # specific named output at all (confirmed via cage -h: just
+    # extend/last, nothing else), so there's no way to ask it for eDP-1
+    # directly. Back to extend's combined bounding box across every
+    # connected output instead, with Greeter.qml now sizing its window to
+    # that whole combined box and positioning the actual UI within just
+    # eDP-1's own sub-rectangle inside it (see its own comment) -- rather
+    # than fighting cage's output selection, which this cage version
+    # simply doesn't expose.
     exec ${pkgs.cage}/bin/cage -s -d -- \
       ${pkgs.bash}/bin/bash -c "sleep 1; exec ${pkgs.quickshell}/bin/quickshell -p ${greeterConfig}"
   '';
