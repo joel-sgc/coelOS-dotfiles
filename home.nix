@@ -104,13 +104,16 @@
     sshfs
     wireguard-tools
     proton-vpn
-    rclone # Bambu Lab printer mount (configuration.nix's fileSystems."/home/joelsgc/bambu")
-           # -- provides the mount.rclone helper that entry's fsType =
-           # "rclone" actually runs. Printer firmware speaks *implicit*
-           # FTPS (port 990); rclone's ftp backend has first-class support
-           # for that specifically (`tls = true`), unlike sshfs (SSH-only,
-           # what jsgc-server's own mount above uses) or Dolphin/KIO's
-           # ftp:// support, which doesn't reliably handle Bambu's variant.
+    rclone # CLI for one-off FTP access to the Bambu Lab printer's SD card
+           # (implicit FTPS, port 990) -- no persistent mount for this
+           # anymore: the printer's embedded FTP server returns directory
+           # listings in a non-deterministic order between requests, which
+           # made the FUSE-mounted version silently ENOENT files that had
+           # just been listed. Talk to it directly instead, e.g.:
+           #   rclone delete ":ftp,host=<ip>,port=990,user=bblp,pass=<obscured>,tls=true,no_check_certificate=true:<path>" --retries 10 --low-level-retries 20 -P
+           # (rclone obscure '<access code>' to get pass=; no_check_certificate
+           # is needed since the printer's FTPS cert is self-signed with no
+           # IP SANs).
 
     # Security tools
     john

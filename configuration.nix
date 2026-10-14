@@ -125,25 +125,6 @@
     ];
   };
 
-  # Bambu Lab 3D printer FTP mount -- can't reuse the sshfs approach above
-  # (that's SSH/SFTP; the printer's embedded server speaks *implicit*
-  # FTPS on port 990, a completely different protocol with no SSH
-  # involved at all), so this goes through rclone's FTP backend instead
-  # (home.nix's home.packages provides the mount.rclone helper this
-  # fsType actually runs, same pattern as sshfs's own package living
-  # there rather than in environment.systemPackages).
-  fileSystems."/home/joelsgc/bambu" = {
-    device = ":ftp,host=10.99.0.40,port=990,user=bblp,pass=3a73380f,tls=true:";
-    fsType = "rclone";
-    options = [
-      "x-systemd.automount"
-      "_netdev"
-      "allow_other"
-      "uid=1000"
-      "gid=100"
-    ];
-  };
-
   ##############################################################################
   # Desktop Environment
   ##############################################################################
