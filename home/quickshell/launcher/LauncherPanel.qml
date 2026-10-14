@@ -272,6 +272,45 @@ Item {
     }
   }
 
+  // A plain regex heuristic, not the WHATWG URL class -- Qt's JS engine
+  // doesn't reliably ship that global, so this stays portable. Rejects
+  // anything with whitespace outright (a real URL never has any), then
+  // accepts: an explicit scheme (http://, ftp://, ...), a bare IPv4
+  // (loose -- doesn't range-check octets, a bogus one just fails to load
+  // in zen rather than mis-detecting), "localhost", a dotted hostname
+  // with a plausible (2+ letter) TLD, or a single-label LAN-style
+  // hostname like "jsgc-server:3000" -- each optionally followed by
+  // :port and/or a /path. That last case only counts with an explicit
+  // :port attached: that's the one unambiguous signal that distinguishes
+  // a deliberate host:port address from a plain one-word search term
+  // (and a lookahead requires at least one letter in the label, so a
+  // bare numeric pair like "10:30" -- which reads more like a time --
+  // doesn't misfire).
+  function looksLikeUrl(s) {
+    if (!s || /\s/.test(s)) return false;
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return true;
+    if (/^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/\S*)?$/.test(s)) return true;
+    if (/^localhost(:\d+)?(\/\S*)?$/i.test(s)) return true;
+    if (/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(:\d+)?(\/\S*)?$/i.test(s)) return true;
+    return /^(?=[a-z0-9-]*[a-z])[a-z0-9]([a-z0-9-]*[a-z0-9])?:\d+(\/\S*)?$/i.test(s);
+  }
+  // Local/private hosts default to http:// (dev servers rarely have real
+  // TLS); everything else defaults to https://. A URL that already has a
+  // scheme is left untouched either way. Checked against just the host
+  // portion (before any :port or /path), not the whole string, so e.g.
+  // a public "example.com/10.5" path segment can't accidentally match
+  // the private-IP prefixes below.
+  function normalizeUrl(s) {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return s;
+    const hostPart = s.split(/[:\/]/)[0];
+    const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(hostPart)
+      || /^10\./.test(hostPart) || /^172\.(1[6-9]|2\d|3[01])\./.test(hostPart) || /^192\.168\./.test(hostPart)
+      // No dot at all -- a single-label host like "jsgc-server" is never
+      // a real public TLD, so it's almost certainly LAN/local.
+      || !hostPart.includes(".");
+    return (isLocal ? "http://" : "https://") + s;
+  }
+
   function fuzzyList() {
     const raw = query.trim(), q = raw.toLowerCase();
     // super+. (openEmoji) restricts the whole launcher to emoji-only
@@ -298,10 +337,12 @@ Item {
         return recentItems.concat(restItems);
       }
       let matches = emoji.matches(q).slice(0, 50);
-      if (matches.length > 0) {
+      if (matches.length > 0 && matches[0]) {
         let bi = 0;
-        matches.forEach((x, i) => { if (x.score > matches[bi].score) bi = i; });
-        matches = [Object.assign({}, matches[bi], { top: true })].concat(matches.filter((_, i) => i !== bi));
+        matches.forEach((x, i) => { if (x && matches[bi] && x.score > matches[bi].score) bi = i; });
+        if (matches[bi]) {
+          matches = [Object.assign({}, matches[bi], { top: true })].concat(matches.filter((_, i) => i !== bi));
+        }
       }
       return matches;
     }
@@ -314,20 +355,45 @@ Item {
     // return as the emoji-scope/no-query branches above, and deliberately
     // not a real category (buildCategories()/categories): there's nothing
     // to browse without a query, so a chip for it would only ever be empty.
-    const bangMatch = raw.match(/^(@g|@ddg|@yt)\s+(\S.*)$/i);
+    // The query half is optional in the regex on purpose -- recognize the
+    // bang (and show it as the top hit) the moment it's typed, not only
+    // once a complete "<bang> <term>" is present, so there's instant
+    // feedback that the bang was understood rather than it looking dead
+    // until you've also typed a search term.
+    const bangMatch = raw.match(/^(@g|@ddg|@yt)(?:\s+(.*))?$/i);
     if (bangMatch) {
       const engines = {
         "@g": { label: "Google", url: "https://www.google.com/search?q=" },
         "@ddg": { label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
-        "@y": { label: "YouTube", url: "https://www.youtube.com/results?search_query=" },
+        "@yt": { label: "YouTube", url: "https://www.youtube.com/results?search_query=" },
       };
       const bang = bangMatch[1].toLowerCase();
-      const term = bangMatch[2].trim();
+      const term = (bangMatch[2] || "").trim();
       const engine = engines[bang];
+      const hasTerm = term.length > 0;
+      // A URL typed after the bang opens directly instead of being
+      // searched for -- "@g example.com" should go to example.com, not
+      // search Google for the literal text "example.com".
+      const termIsUrl = hasTerm && looksLikeUrl(term);
+      const openUrl = termIsUrl ? normalizeUrl(term) : "";
       return [{
-        label: "Search " + engine.label + " for “" + term + "”",
-        sub: bang + " → zen", icon: "magnifying-glass", cat: "search", top: true,
-        command: ["zen", engine.url + encodeURIComponent(term)],
+        label: termIsUrl ? "Open " + term : hasTerm ? "Search " + engine.label + " for “" + term + "”" : "Search " + engine.label + "…",
+        sub: termIsUrl ? (openUrl + " → zen") : hasTerm ? (bang + " → zen") : "type a search term, then ⏎",
+        icon: termIsUrl ? "globe" : "magnifying-glass", cat: "search", top: true,
+        bangPending: !hasTerm,
+        command: termIsUrl ? ["zen", openUrl] : hasTerm ? ["zen", engine.url + encodeURIComponent(term)] : null,
+      }];
+    }
+    // A bare URL with no bang at all -- same idea, just not behind @g/
+    // @ddg/@yt: typing a plain address opens it directly rather than
+    // falling through to the fuzzy app/category search, which would
+    // mostly just find nothing for something like "example.com/path".
+    if (looksLikeUrl(raw)) {
+      const openUrl = normalizeUrl(raw);
+      return [{
+        label: "Open " + raw,
+        sub: openUrl + " → zen", icon: "globe", cat: "search", top: true,
+        command: ["zen", openUrl],
       }];
     }
     let list = [];
@@ -538,6 +604,11 @@ Item {
     if (it.fill) {
       query = it.label;
       selIndex = 0;
+      searchInput.forceActiveFocus();
+      return;
+    }
+    if (it.bangPending) {
+      msg = "type a search term, then press enter";
       searchInput.forceActiveFocus();
       return;
     }

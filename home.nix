@@ -104,6 +104,13 @@
     sshfs
     wireguard-tools
     proton-vpn
+    rclone # Bambu Lab printer mount (configuration.nix's fileSystems."/home/joelsgc/bambu")
+           # -- provides the mount.rclone helper that entry's fsType =
+           # "rclone" actually runs. Printer firmware speaks *implicit*
+           # FTPS (port 990); rclone's ftp backend has first-class support
+           # for that specifically (`tls = true`), unlike sshfs (SSH-only,
+           # what jsgc-server's own mount above uses) or Dolphin/KIO's
+           # ftp:// support, which doesn't reliably handle Bambu's variant.
 
     # Security tools
     john

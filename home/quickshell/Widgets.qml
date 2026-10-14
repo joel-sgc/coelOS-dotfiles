@@ -51,4 +51,11 @@ Scope {
     anchorRight: true
     marginRight: root.left
   }
+
+  ServerStatus {
+    screen: root.screen
+    shown: root.shown
+    marginRight: root.left
+    marginBottom: root.left
+  }
 }

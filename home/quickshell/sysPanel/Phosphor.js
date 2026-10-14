@@ -146,6 +146,10 @@ const codepoints = {
   // Osd.qml -- volume/brightness/media OSD
   "sun-dim": 0xe474, // ph-sun-dim (low brightness)
 
+  // widgets/ServerStatus.qml
+  memory: 0xe9c4, // ph-memory (ram usage row)
+  "desktop-tower": 0xe562, // ph-desktop-tower (widget header icon)
+
   // widgets/ -- desktop widgets (weather, calendar, kanban)
   sun: 0xe472, // ph-sun (clear)
   moon: 0xe330, // ph-moon (clear, night)

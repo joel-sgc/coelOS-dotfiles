@@ -21,9 +21,11 @@ PanelWindow {
   id: win
 
   property int marginTop: 60
+  property int marginBottom: 40
   property int marginLeft: 40
   property int marginRight: 40
   property bool anchorRight: false
+  property bool anchorBottom: false
   property bool shown: true
   property int cardWidth: 360
   readonly property bool focused: keys.Window.active
@@ -32,8 +34,8 @@ PanelWindow {
   signal keyPressed(var event)
 
   visible: shown
-  anchors { top: true; left: !win.anchorRight; right: win.anchorRight }
-  margins { top: win.marginTop; left: win.marginLeft; right: win.marginRight }
+  anchors { top: !win.anchorBottom; bottom: win.anchorBottom; left: !win.anchorRight; right: win.anchorRight }
+  margins { top: win.marginTop; bottom: win.marginBottom; left: win.marginLeft; right: win.marginRight }
   implicitWidth: win.cardWidth
   implicitHeight: body.implicitHeight + 20
 

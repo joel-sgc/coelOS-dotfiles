@@ -10,3 +10,4 @@ Weather 1.0 Weather.qml
 Calendar 1.0 Calendar.qml
 Kanban 1.0 Kanban.qml
 KanbanEditor 1.0 KanbanEditor.qml
+ServerStatus 1.0 ServerStatus.qml
