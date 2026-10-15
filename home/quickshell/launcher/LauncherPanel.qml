@@ -74,6 +74,11 @@ Item {
   TogglesBackend { id: toggles; notifications: panelRoot.notifications }
   CurrencyBackend { id: currency }
 
+  // Own top-level PanelWindow (see its own header comment) -- instantiated
+  // here rather than bubbled up through Launcher.qml's Scope, since nothing
+  // else needs to react to it opening/closing.
+  SshKeygenModal { id: sshKeygenModal; existingAliases: ssh.hosts.map(h => h.name) }
+
   onPanelOpenChanged: if (panelOpen) {
     query = "";
     selIndex = 0;
@@ -121,6 +126,8 @@ Item {
         { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"], groupLabel: "capture" },
         { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"], groupLabel: "capture" },
         { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"], groupLabel: "capture" },
+        { id: "sshKeygen", label: "New SSH key", sub: "generate · ssh-keygen", icon: "key", right: "", groupLabel: "ssh" },
+        { label: "Edit SSH config", sub: "~/.ssh/config", icon: "hard-drives", right: "", command: ["ghostty", "-e", "fresh", "/home/joelsgc/.ssh/config"], groupLabel: "ssh" },
       ] },
       { id: "convert", label: "convert", icon: "arrows-left-right", items: [
         ["5 km to mi", "length"], ["72 f to c", "temperature"], ["$120 to eur", "currency"],
@@ -396,6 +403,22 @@ Item {
         command: ["zen", openUrl],
       }];
     }
+    // "ssh" alone or "ssh <name>" -- the generic per-category matching
+    // below already surfaces every host for a bare "ssh" (each item's hay
+    // includes its category label), but a combined query like "ssh
+    // homelab" doesn't substring-match "homelab coel@... ssh" in that
+    // order, so a real host search needs its own branch here, same
+    // "recognize the bang immediately, term is optional" shape as the
+    // @g/@ddg/@yt bangs above.
+    const sshMatch = raw.match(/^ssh(?:\s+(.*))?$/i);
+    if (sshMatch) {
+      const term = (sshMatch[1] || "").trim().toLowerCase();
+      const hostItems = ssh.categoryItems();
+      const filtered = term
+        ? hostItems.filter(h => (h.label + " " + (h.sub || "")).toLowerCase().includes(term))
+        : hostItems;
+      return filtered.map(h => Object.assign({}, h, { cat: "ssh" }));
+    }
     let list = [];
     // Spotlight-style, not rofi-style: installed apps only ever show up
     // here, inside a real search -- there's no "applications" chip to
@@ -617,6 +640,7 @@ Item {
     if (it.id === "micmute") { toggles.toggleMicMute(); msg = "microphone " + (toggles.micMuted ? "muted" : "unmuted"); return; }
     if (it.id === "monochrome") { toggles.toggleMonochrome(); msg = "toggling monochrome…"; return; }
     if (it.id === "eyecandy") { toggles.toggleEyeCandy(); msg = "eye candy " + (toggles.eyeCandyOff ? "off" : "on"); return; }
+    if (it.id === "sshKeygen") { sshKeygenModal.openNew(); closeRequested(); return; }
     if (it.danger) {
       const id = it.id || it.label;
       if (armedId !== id) {

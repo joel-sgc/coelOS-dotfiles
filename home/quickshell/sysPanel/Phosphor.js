@@ -109,6 +109,7 @@ const codepoints = {
   "circle-half": 0xe18c, // ph-circle-half (monochrome toggle)
   sparkle: 0xe6a2, // ph-sparkle (eye candy toggle)
   "hard-drives": 0xe2a0, // ph-hard-drives (ssh category, tagged "servers")
+  key: 0xe2d6, // ph-key (new ssh key action, SshKeygenModal.qml header)
   "arrows-left-right": 0xe0a0, // ph-arrows-left-right (convert category/results)
   trash: 0xe4a6,
 

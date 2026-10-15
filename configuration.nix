@@ -112,6 +112,13 @@
     fsType = "fuse.sshfs";
     options = [
       "x-systemd.automount"
+      # Bounds the *initial* connect/handshake, which ServerAliveInterval
+      # below does not cover (that only detects a dead connection after
+      # one is already established) -- without this, a server that hangs
+      # mid-handshake (observed 2026-10-15: jsgc-server's sftp subsystem
+      # hung indefinitely after a kernel crash) blocks every process that
+      # touches ~/server, Dolphin included, forever instead of failing fast.
+      "x-systemd.mount-timeout=15"
       "_netdev"
       "IdentityFile=/home/joelsgc/.ssh/id_ed25519_coelos_server"
       "IdentitiesOnly=yes"
