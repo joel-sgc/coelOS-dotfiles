@@ -22,11 +22,9 @@ Scope {
   property var screen: null
   property alias shown: board.shown
   property alias marginTop: board.marginTop
-  property alias marginLeft: board.marginLeft
   property alias marginRight: board.marginRight
-  property alias anchorRight: board.anchorRight
   property bool showHints: true
-  readonly property bool focused: board.focused
+  readonly property bool focused: card.focused
 
   // ----- data -----
   property var columns: defaultColumns()
@@ -305,21 +303,20 @@ Scope {
   }
 
   // ----- board -----
-  DesktopWidget {
+  WidgetColumn {
     id: board
     screen: kb.screen
+    anchorRight: true
+    WidgetCard {
+    id: card
     cardWidth: 860
-    onKeyPressed: (e) => kb.handleKey(e)
-
-    // header
-    RowLayout {
-      Layout.fillWidth: true
-      Layout.bottomMargin: 8
-      spacing: 8
-      Mono { text: "kanban"; font.weight: Font.Medium; color: board.focused ? Pal.blue : Pal.dim }
-      Mono { text: "─ ~/dots/shell ─"; color: Pal.muted }
-      Mono { text: kb.doneCount + "/" + kb.total + " done"; color: Pal.green }
-      Item { Layout.fillWidth: true }
+    widgetId: "kanban"
+    title: "kanban"
+    subtitle: "~/dots/shell"
+    summary: kb.doneCount + "/" + kb.total + " done"
+    summaryAlways: true
+    summaryColor: Pal.green
+    headerData: [
       Rectangle {
         Layout.preferredWidth: 90; Layout.preferredHeight: 6
         radius: Globals.eyeCandyOff ? 0 : 1
@@ -336,9 +333,10 @@ Scope {
           height: parent.height
           color: Pal.yellow
         }
-      }
+      },
       Mono { text: (kb.total ? Math.round(kb.doneCount / kb.total * 100) : 0) + "%"; color: Pal.muted }
-    }
+    ]
+    onKeyPressed: (e) => kb.handleKey(e)
 
     Item {
       id: boardArea
@@ -361,7 +359,7 @@ Scope {
             id: col
             required property var modelData
             required property int index
-            readonly property bool active: board.focused && kb.kcol === index
+            readonly property bool active: card.focused && kb.kcol === index
             readonly property bool hot: kb.drop !== null && kb.drop.col === index
             readonly property var m: kb.meta[index]
 
@@ -604,5 +602,6 @@ Scope {
       Layout.topMargin: 12
       items: [["h/l", "column"], ["j/k", "card"], ["H/L", "move"], ["space", "advance"], ["x", "delete"], ["a", "new card"], ["drag", "reorder"]]
     }
+  }
   }
 }

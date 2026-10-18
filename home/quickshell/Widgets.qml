@@ -8,7 +8,7 @@ import "./widgets"
 // Weather + calendar stacked on the left, kanban to their right, all on the
 // first screen only (a widget duplicated across monitors would be two kanban
 // boards editing the same file). Each widget is a layer-shell Bottom-layer
-// window -- see widgets/DesktopWidget.qml. Colors live in widgets/Pal.qml.
+// window -- see widgets/WidgetColumn.qml / WidgetCard.qml. Colors live in widgets/Pal.qml.
 //
 // `quickshell ipc -p ~/.nixos/home/quickshell call widgets toggle` hides or
 // shows all of them; `... call widgets newcard` opens the kanban editor.
@@ -28,19 +28,17 @@ Scope {
     function newcard(): void { kanban.openNew(0); }
   }
 
-  Weather {
-    id: weather
+  // Weather + calendar share one window so the calendar slides up when the
+  // weather card minimizes (see WidgetColumn.qml for why).
+  WidgetColumn {
     screen: root.screen
     shown: root.shown
     marginTop: root.top
     marginLeft: root.left
-  }
+    gap: root.gap
 
-  Calendar {
-    screen: root.screen
-    shown: root.shown
-    marginTop: weather.marginTop + weather.implicitHeight + root.gap
-    marginLeft: root.left
+    Weather {}
+    Calendar {}
   }
 
   Kanban {
@@ -48,14 +46,17 @@ Scope {
     screen: root.screen
     shown: root.shown
     marginTop: root.top
-    anchorRight: true
     marginRight: root.left
   }
 
-  ServerStatus {
+  WidgetColumn {
     screen: root.screen
     shown: root.shown
+    anchorRight: true
+    anchorBottom: true
     marginRight: root.left
     marginBottom: root.left
+
+    ServerStatus {}
   }
 }

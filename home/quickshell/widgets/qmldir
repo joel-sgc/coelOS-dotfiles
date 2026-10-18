@@ -5,9 +5,11 @@ Box 1.0 Box.qml
 TextButton 1.0 TextButton.qml
 Hints 1.0 Hints.qml
 DashedLine 1.0 DashedLine.qml
-DesktopWidget 1.0 DesktopWidget.qml
+WidgetCard 1.0 WidgetCard.qml
+WidgetColumn 1.0 WidgetColumn.qml
 Weather 1.0 Weather.qml
 Calendar 1.0 Calendar.qml
 Kanban 1.0 Kanban.qml
 KanbanEditor 1.0 KanbanEditor.qml
 ServerStatus 1.0 ServerStatus.qml
+singleton WidgetState 1.0 WidgetState.qml

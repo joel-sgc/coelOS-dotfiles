@@ -12,13 +12,33 @@ import QtQuick.Layouts
 //     "title": "standup", "where": "#3b", "cal": "work" }
 // with cal one of work | personal | health. The file is optional and watched;
 // a real calendar sync (vdirsyncer/khal, ICS...) just needs to write it.
-DesktopWidget {
+WidgetCard {
   id: root
 
   property bool mondayFirst: true
   property bool showHints: true
 
   cardWidth: 360
+  widgetId: "calendar"
+  title: "calendar"
+  subtitle: "week " + isoWeek(today)
+  summary: {
+    const n = new Date(nowMs);
+    const hm = String(n.getHours()).padStart(2, "0") + ":" + String(n.getMinutes()).padStart(2, "0");
+    const evs = (eventsByDay[todayKey] || []).filter(function (e) { return (e.start || "") > hm; })
+      .sort(function (a, b) { return (a.start || "").localeCompare(b.start || ""); });
+    return evs.length > 0 ? evs[0].start + " " + evs[0].title : "nothing left today";
+  }
+  property real nowMs: Date.now()
+
+  headerData: [
+    TextButton {
+      hPad: 8
+      onClicked: root.goToday()
+      Mono { text: "t"; color: Pal.yellow }
+      Mono { text: "today"; color: Pal.muted }
+    }
+  ]
 
   property var today: new Date()
   property var sel: new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -57,6 +77,7 @@ DesktopWidget {
     repeat: true
     onTriggered: {
       const n = new Date();
+      root.nowMs = n.getTime();
       if (n.toDateString() !== root.today.toDateString()) root.today = n;
     }
   }
@@ -131,21 +152,6 @@ DesktopWidget {
     else if (e.key === Qt.Key_T) goToday();
     else used = false;
     e.accepted = used;
-  }
-
-  // ----- header -----
-  RowLayout {
-    Layout.fillWidth: true
-    Layout.bottomMargin: 8
-    spacing: 8
-    Mono { text: "calendar"; font.weight: Font.Medium; color: root.focused ? Pal.blue : Pal.dim }
-    Mono { Layout.fillWidth: true; text: "─ week " + root.isoWeek(root.today) + " ─"; color: Pal.muted }
-    TextButton {
-      hPad: 8
-      onClicked: root.goToday()
-      Mono { text: "t"; color: Pal.yellow }
-      Mono { text: "today"; color: Pal.muted }
-    }
   }
 
   // ----- month grid -----

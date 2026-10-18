@@ -236,6 +236,9 @@ in
 
       bind = [
         "$mainMod, T, exec, $terminal"
+        # F4: restart the Quickshell panel (same command as the exec-once
+        # above, after killing the running instance).
+        ", F4, exec, ${pkgs.quickshell}/bin/quickshell kill -c ~/.nixos/home/quickshell; env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
         # `quickshell ipc call` talks to the IpcHandler in Launcher.qml --
         # needs `-p ~/.nixos/home/quickshell` (a path) to target the
         # instance launched above with `-c` (a named XDG config); with no

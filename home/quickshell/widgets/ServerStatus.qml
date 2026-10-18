@@ -11,7 +11,7 @@ import QtQuick.Layouts
 // diffing), just run remotely through one ssh call instead of locally --
 // one round trip per poll gathers cpu+ram+disk together rather than three
 // separate connections.
-DesktopWidget {
+WidgetCard {
   id: root
 
   property string sshHost: "server"
@@ -31,8 +31,18 @@ DesktopWidget {
   property real diskTotalKb: 0
 
   cardWidth: 300
-  anchorRight: true
-  anchorBottom: true
+  widgetId: "server"
+  title: "server"
+  icon: "desktop-tower"
+  subtitle: sshHost
+  summary: loaded ? "cpu " + rows[0].pctVal + "% · ram " + rows[1].pctVal + "% · disk " + rows[2].pctVal + "%" : (failed ? "unreachable" : "checking…")
+
+  headerData: [
+    TextButton {
+      onClicked: root.refresh()
+      Mono { text: "[" + (root.refreshing ? "⟳" : "r") + "]"; color: Pal.muted }
+    }
+  ]
 
   function gb(kb) { return (kb / 1024 / 1024).toFixed(1); }
   function pct(used, total) { return total > 0 ? Math.round(used / total * 100) : 0; }
@@ -103,20 +113,6 @@ DesktopWidget {
 
   onKeyPressed: (e) => {
     if (e.key === Qt.Key_R) { root.refresh(); e.accepted = true; }
-  }
-
-  // ----- header -----
-  RowLayout {
-    Layout.fillWidth: true
-    Layout.bottomMargin: 8
-    spacing: 8
-    PhIcon { name: "desktop-tower"; color: root.focused ? Pal.blue : Pal.dim; font.pixelSize: 14 }
-    Mono { text: "server"; font.weight: Font.Medium; color: root.focused ? Pal.blue : Pal.dim }
-    Mono { Layout.fillWidth: true; text: "─ " + root.sshHost + " ─"; color: Pal.muted; elide: Text.ElideRight }
-    TextButton {
-      onClicked: root.refresh()
-      Mono { text: "[" + (root.refreshing ? "⟳" : "r") + "]"; color: Pal.muted }
-    }
   }
 
   Box {

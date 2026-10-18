@@ -21,5 +21,6 @@
     jdk17_headless
     
     android-tools
+    sqlite
   ];  
 }

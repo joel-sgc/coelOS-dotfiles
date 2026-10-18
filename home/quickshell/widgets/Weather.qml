@@ -6,7 +6,7 @@ import QtQuick.Layouts
 // Open-Meteo (free, no API key). Always fetched in metric and converted
 // locally, so the u toggle is instant. Location: fixed latitude/longitude if
 // set (non-NaN), otherwise a one-time IP geolocation (ipwho.is, also keyless).
-DesktopWidget {
+WidgetCard {
   id: root
 
   // Set both to pin a location; leave NaN to use the IP lookup.
@@ -40,6 +40,22 @@ DesktopWidget {
   property var daily: []    // 5 x {label, code, loC, hiC}
 
   cardWidth: 360
+  widgetId: "weather"
+  title: "weather"
+  subtitle: place || "locating"
+  summary: loaded ? cv(tempC) + (fahrenheit ? "°F" : "°C") + " · " + label(code) : (failed ? "offline" : "locating…")
+
+  headerData: [
+    TextButton {
+      onClicked: root.fahrenheit = !root.fahrenheit
+      Mono { text: "u"; color: Pal.yellow }
+      Mono { text: root.fahrenheit ? "°F" : "°C"; color: Pal.muted }
+    },
+    TextButton {
+      onClicked: root.refresh()
+      Mono { text: "[" + (root.refreshing ? "⟳" : "r") + "]"; color: Pal.muted }
+    }
+  ]
 
   function cv(c) { return Math.round(fahrenheit ? c * 9 / 5 + 32 : c); }
 
@@ -201,29 +217,6 @@ DesktopWidget {
   onKeyPressed: (e) => {
     if (e.key === Qt.Key_U) { root.fahrenheit = !root.fahrenheit; e.accepted = true; }
     else if (e.key === Qt.Key_R) { root.refresh(); e.accepted = true; }
-  }
-
-  // ----- header -----
-  RowLayout {
-    Layout.fillWidth: true
-    Layout.bottomMargin: 8
-    spacing: 8
-    Mono { text: "weather"; font.weight: Font.Medium; color: root.focused ? Pal.blue : Pal.dim }
-    Mono {
-      Layout.fillWidth: true
-      text: "─ " + (root.place || "locating") + " ─"
-      color: Pal.muted
-      elide: Text.ElideRight
-    }
-    TextButton {
-      onClicked: root.fahrenheit = !root.fahrenheit
-      Mono { text: "u"; color: Pal.yellow }
-      Mono { text: root.fahrenheit ? "°F" : "°C"; color: Pal.muted }
-    }
-    TextButton {
-      onClicked: root.refresh()
-      Mono { text: "[" + (root.refreshing ? "⟳" : "r") + "]"; color: Pal.muted }
-    }
   }
 
   // ----- now -----
