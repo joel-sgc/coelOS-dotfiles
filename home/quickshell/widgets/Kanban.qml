@@ -484,11 +484,12 @@ Scope {
                         color: Pal.muted
                       }
                       Flow {
-                        visible: card.high || !!card.modelData.tag || card.due !== null
+                        visible: card.high || !!card.modelData.tag || card.due !== null || !!card.modelData.pomos
                         Layout.fillWidth: true
                         spacing: 8
                         Mono { visible: card.high; text: "!high"; font.pixelSize: 11; color: Pal.red }
                         Mono { visible: !!card.modelData.tag; text: "#" + card.modelData.tag; font.pixelSize: 11; color: Pal.cyan }
+                        Mono { visible: !!card.modelData.pomos; text: "◷ " + card.modelData.pomos; font.pixelSize: 11; color: Pal.red }
                         Mono { visible: card.due !== null; text: card.due ? card.due.text : ""; font.pixelSize: 11; color: card.due ? card.due.color : Pal.muted }
                       }
                     }

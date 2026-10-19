@@ -14,6 +14,12 @@
     ./modules/filesystems.nix
     ./modules/ultraleap.nix
     ./modules/greeter.nix
+    ./modules/fnlock/nixos/fnlock.nix
+    # On trial (started Oct 2026): returns the EC to the patched RW firmware at
+    # boot after an EC reset. Each jump is an unclean power-off that counts
+    # toward the TPM lockout limit -- see modules/fnlock/README.md. Remove this
+    # line to turn it off; the service is a no-op while the EC is already on RW.
+    ./modules/fnlock/nixos/ec-jump-rw.nix
   ];
 
   # Flips SDDM -> the Quickshell/greetd login screen (modules/greeter.nix
@@ -336,6 +342,7 @@
   ];
 
   environment.systemPackages = [
+    pkgs.framework-tool
     pkgs.micro
     pkgs.git
     pkgs.sshfs
@@ -389,6 +396,7 @@
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
   programs.virt-manager.enable = true;
+  virtualisation.podman.enable = true;
 
   services.udev.extraRules = ''
     KERNEL=="sda", GROUP="kvm", MODE="0660"

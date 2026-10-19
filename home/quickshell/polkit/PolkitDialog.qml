@@ -101,7 +101,7 @@ Item {
     color: Pal.card
     border.width: 1
     border.color: root.phase === "success" ? Pal.green : Pal.faint
-    Behavior on border.color { ColorAnimation { duration: 200 } }
+    Behavior on border.color { ColorAnimation { duration: Globals.eyeCandyOff ? 0 : 200 } }
 
     MouseArea { anchors.fill: parent }
 
@@ -378,7 +378,7 @@ Item {
           radius: Globals.eyeCandyOff ? 0 : 2
           color: root.phase === "success" ? Pal.green : root.phase === "verifying" ? Pal.yellow : root.canSubmit ? Pal.blue : Pal.muted
           opacity: root.canSubmit || root.busy ? 1 : 0.5
-          Behavior on color { ColorAnimation { duration: 200 } }
+          Behavior on color { ColorAnimation { duration: Globals.eyeCandyOff ? 0 : 200 } }
           Mono {
             id: authText
             anchors.centerIn: parent

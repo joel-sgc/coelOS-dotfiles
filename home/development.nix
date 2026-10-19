@@ -6,7 +6,7 @@
     ./pnpm.nix
   ];
 
-  home.packages = with pkgs; [
+  home.packages = with pkgs; [    
     python3
     uv
 

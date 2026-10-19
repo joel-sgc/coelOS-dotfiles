@@ -16,7 +16,7 @@ FocusScope {
   id: card
 
   property int cardWidth: 360
-  readonly property bool focused: card.activeFocus && card.Window.active
+  readonly property bool focused: widgetId !== "" && WidgetState.focusId === widgetId && card.Window.active
   default property alias content: body.data
 
   // Header + minimize. Each widget names itself and fills in what the header
@@ -60,9 +60,16 @@ FocusScope {
     border.color: card.focused ? Pal.faint : Pal.edge
   }
 
+  // Focus follows the pointer, as it did when every widget had its own
+  // window (the compositor focused the window under the mouse). Cards now
+  // share windows, so the card itself claims focus on hover.
+  HoverHandler {
+    onHoveredChanged: if (hovered) { WidgetState.focusId = card.widgetId; card.forceActiveFocus(); }
+  }
+
   TapHandler {
     acceptedButtons: Qt.LeftButton
-    onPressedChanged: if (pressed) card.forceActiveFocus()
+    onPressedChanged: if (pressed) { WidgetState.focusId = card.widgetId; card.forceActiveFocus(); }
   }
 
     ColumnLayout {

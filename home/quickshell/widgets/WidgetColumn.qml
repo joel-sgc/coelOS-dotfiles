@@ -33,7 +33,10 @@ PanelWindow {
   anchors { top: true; bottom: true; left: !win.anchorRight; right: win.anchorRight }
   margins { top: win.marginTop; bottom: win.marginBottom; left: win.marginLeft; right: win.marginRight }
   implicitWidth: col.implicitWidth
-  mask: Region { item: col }
+  // Explicit bounds rather than `item: col`: a bottom-anchored column moves
+  // when the surface is configured, and this guarantees the click region
+  // follows it.
+  mask: Region { x: col.x; y: col.y; width: col.width; height: col.height }
 
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore

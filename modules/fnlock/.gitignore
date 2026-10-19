@@ -1,0 +1,7 @@
+# Build workspace (sources, build output)
+work/
+
+# Firmware images: rebuild them, don't commit them.
+# Keep ec-backup.bin somewhere safe and private instead (it contains
+# per-device factory data).
+*.bin

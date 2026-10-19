@@ -10,6 +10,9 @@ import QtQuick
 Singleton {
   id: st
 
+  // Which card the user last clicked; a card shows as focused only while it
+  // is this one *and* its window has keyboard focus.
+  property string focusId: ""
   property var min: ({})
   property bool dirReady: false
   property string lastSaved: ""

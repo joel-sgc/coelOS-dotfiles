@@ -236,6 +236,13 @@ in
 
       bind = [
         "$mainMod, T, exec, $terminal"
+        # Fn lock OSD. The patched Framework EC taps KEY_F13 when Fn lock turns
+        # on and KEY_F14 when it turns off (confirmed with evtest). xkb's us
+        # layout maps those keycodes (191/192) to XF86Tools / XF86Launch5, not
+        # F13/F14, so that is what Hyprland sees and what is bound here. The
+        # initial state is read at startup from /run/fnlock/state (Osd.qml).
+        ", XF86Tools, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOn"
+        ", XF86Launch5, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOff"
         # F4: restart the Quickshell panel (same command as the exec-once
         # above, after killing the running instance).
         ", F4, exec, ${pkgs.quickshell}/bin/quickshell kill -c ~/.nixos/home/quickshell; env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
@@ -316,6 +323,13 @@ in
         ", XF86AudioNext, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaNext"
         ", XF86AudioPlay, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
         ", XF86AudioPause, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
+      ];
+
+      # Caps lock OSD. `bindn` doesn't consume the key, so Caps Lock still
+      # toggles normally; Osd.qml reads the keyboard LED a moment later to
+      # learn the new state (the bind itself can't know it).
+      bindn = [
+        ", Caps_Lock, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd capsLock"
       ];
     };
   };

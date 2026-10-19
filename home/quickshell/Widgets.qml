@@ -49,12 +49,25 @@ Scope {
     marginRight: root.left
   }
 
+  // Bottom right: pomodoro in the corner, server to its left. Separate
+  // columns (the server is shorter, so it sits on the same bottom edge).
   WidgetColumn {
     screen: root.screen
     shown: root.shown
     anchorRight: true
     anchorBottom: true
     marginRight: root.left
+    marginBottom: root.left
+
+    Pomodoro { id: pomodoro }
+  }
+
+  WidgetColumn {
+    screen: root.screen
+    shown: root.shown
+    anchorRight: true
+    anchorBottom: true
+    marginRight: root.left + pomodoro.cardWidth + root.gap
     marginBottom: root.left
 
     ServerStatus {}

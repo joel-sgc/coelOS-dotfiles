@@ -13,3 +13,4 @@ Kanban 1.0 Kanban.qml
 KanbanEditor 1.0 KanbanEditor.qml
 ServerStatus 1.0 ServerStatus.qml
 singleton WidgetState 1.0 WidgetState.qml
+Pomodoro 1.0 Pomodoro.qml

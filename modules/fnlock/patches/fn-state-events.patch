@@ -1,0 +1,85 @@
+diff --git a/zephyr/program/framework/azalea/src/keyboard_customization.c b/zephyr/program/framework/azalea/src/keyboard_customization.c
+index fc32654..2d0cf92 100644
+--- a/zephyr/program/framework/azalea/src/keyboard_customization.c
++++ b/zephyr/program/framework/azalea/src/keyboard_customization.c
+@@ -20,6 +20,7 @@
+ #include "hooks.h"
+ #include "system.h"
+ #include "hid_device.h"
++#include "host_command.h"
+ 
+ /* Console output macros */
+ #define CPUTS(outstr) cputs(CC_KEYBOARD, outstr)
+@@ -181,6 +182,14 @@ void caps_resume(void)
+ DECLARE_HOOK(HOOK_CHIPSET_RESUME, caps_resume, HOOK_PRIO_DEFAULT);
+ 
+ 
++/*
++ * Local addition: set-2 scancodes sent when Fn lock toggles. These are the
++ * F13 and F14 positions, which this keyboard never produces. Map them to
++ * whatever Linux key you like with a udev hwdb rule.
++ */
++#define SCANCODE_FNLOCK_ON	0x0008
++#define SCANCODE_FNLOCK_OFF	0x0010
++
+ #define FN_PRESSED BIT(0)
+ #define FN_LOCKED BIT(1)
+ static uint8_t Fn_key;
+@@ -242,6 +251,21 @@ void fnkey_startup(void)
+ }
+ DECLARE_HOOK(HOOK_CHIPSET_STARTUP, fnkey_startup, HOOK_PRIO_DEFAULT);
+ 
++/*
++ * Local addition: report Fn / Fn-lock state to the host.
++ * Response byte: bit0 = Fn currently held, bit1 = Fn lock enabled.
++ */
++static enum ec_status host_command_get_fn_state(struct host_cmd_handler_args *args)
++{
++	struct ec_response_get_fn_state *r = args->response;
++
++	r->state = Fn_key & (FN_PRESSED | FN_LOCKED);
++	args->response_size = sizeof(*r);
++
++	return EC_RES_SUCCESS;
++}
++DECLARE_HOST_COMMAND(EC_CMD_GET_FN_STATE, host_command_get_fn_state, EC_VER_MASK(0));
++
+ int hotkey_F1_F12(uint16_t *key_code, uint16_t fn, int8_t pressed)
+ {
+ 	const uint16_t prss_key = *key_code;
+@@ -376,6 +400,15 @@ int functional_hotkey(uint16_t *key_code, int8_t pressed)
+ 					Fn_key &= ~FN_LOCKED;
+ 				else
+ 					Fn_key |= FN_LOCKED;
++
++				/*
++				 * Local addition: announce the new state to the
++				 * host as a tap of an otherwise unused key.
++				 */
++				uint16_t code = (Fn_key & FN_LOCKED) ?
++					SCANCODE_FNLOCK_ON : SCANCODE_FNLOCK_OFF;
++				simulate_keyboard(code, 1);
++				simulate_keyboard(code, 0);
+ 			}
+ 			return EC_ERROR_UNIMPLEMENTED;
+ 		}
+diff --git a/zephyr/program/framework/include/board_host_command.h b/zephyr/program/framework/include/board_host_command.h
+index c77c341..7cc91c5 100644
+--- a/zephyr/program/framework/include/board_host_command.h
++++ b/zephyr/program/framework/include/board_host_command.h
+@@ -458,4 +458,15 @@ enum battery_extender_cmd {
+ 	BATT_EXTENDER_READ_CMD,
+ };
+ 
++/*****************************************************************************/
++/*
++ * Local addition: get Fn key / Fn lock state.
++ * bit0 = Fn held, bit1 = Fn lock enabled
++ */
++#define EC_CMD_GET_FN_STATE	0x3EF0
++
++struct ec_response_get_fn_state {
++	uint8_t state;
++} __ec_align1;
++
+ #endif /* __BOARD_HOST_COMMAND_H */

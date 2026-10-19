@@ -82,14 +82,51 @@ Scope {
   }
 
   // ----- show/hide -----
-  property string kind: "vol" // "vol" | "bri" | "media"
+  property string kind: "vol" // "vol" | "bri" | "media" | "caps" | "fn"
   property bool shown: false
+  readonly property bool isLock: kind === "caps" || kind === "fn"
   Timer { id: hideTimer; interval: 1500; onTriggered: osdScope.shown = false }
   function flash(k) {
     osdScope.kind = k;
     osdScope.shown = true;
     hideTimer.restart();
   }
+
+  // ----- lock keys -----
+  // Caps lock is real: Hyprland's bind (home/hyprland.nix) only says "the key
+  // was pressed", so after a beat to let the compositor flip the keyboard LED
+  // we read that LED from sysfs. Fn lock comes from the patched Framework EC:
+  // it taps F13 (lock on) / F14 (lock off), which home/hyprland.nix binds to
+  // fnLockOn / fnLockOff, and /run/fnlock/state (kept current by the root
+  // fnlockd service, modules/fnlock/nixos/fnlock.nix) is read once at startup
+  // and on fnLockSync so a reload doesn't lose track of it.
+  property bool caps: false
+  property bool fnLock: false
+  Timer { id: capsDelay; interval: 60; onTriggered: capsRead.running = true }
+  Process {
+    id: capsRead
+    command: ["sh", "-c", "cat /sys/class/leds/*capslock/brightness 2>/dev/null"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        osdScope.caps = text.split("\n").some(function (l) { return l.trim() !== "" && l.trim() !== "0"; });
+        osdScope.flash("caps");
+      }
+    }
+  }
+  function capsLockPressed() { capsDelay.restart(); }
+  Process {
+    id: fnRead
+    command: ["cat", "/run/fnlock/state"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        const t = text.trim();
+        if (t === "locked") osdScope.fnLock = true;
+        else if (t === "unlocked") osdScope.fnLock = false;
+      }
+    }
+  }
+  Component.onCompleted: fnRead.running = true
+  function fnLockSet(on) { fnLock = on; flash("fn"); }
 
   // ----- real actions, called from the IpcHandler below -----
   readonly property real volStep: 0.05
@@ -129,6 +166,10 @@ Scope {
     function mediaPlayPause(): void { osdScope.mediaPlayPause(); }
     function mediaNext(): void { osdScope.mediaNext(); }
     function mediaPrevious(): void { osdScope.mediaPrevious(); }
+    function capsLock(): void { osdScope.capsLockPressed(); }
+    function fnLockOn(): void { osdScope.fnLockSet(true); }
+    function fnLockOff(): void { osdScope.fnLockSet(false); }
+    function fnLockSync(): void { fnRead.running = true; }
   }
 
   // One per screen, shown on all of them simultaneously (not just the
@@ -161,7 +202,7 @@ Scope {
 
         Rectangle {
           id: pill
-          implicitWidth: osdScope.kind === "media" ? 400 : 340
+          implicitWidth: osdScope.kind === "media" ? 400 : osdScope.isLock ? 390 : 340
           // Directly off whichever row is actually active, +28 (14px top
           // and bottom) -- no intermediate wrapper Item in between anymore.
           // That wrapper's own `centerIn` still wasn't actually centering
@@ -176,20 +217,20 @@ Scope {
           // the anchoring-a-positioner's-own-child issue documented
           // elsewhere in this project), and pill's own height is driven
           // by that exact same row, not a separate guess.
-          implicitHeight: (osdScope.kind === "media" ? mediaRow.implicitHeight : levelRow.implicitHeight) + 28
+          implicitHeight: (osdScope.kind === "media" ? mediaRow.implicitHeight : osdScope.isLock ? lockRow.implicitHeight : levelRow.implicitHeight) + 28
           radius: Globals.eyeCandyOff ? 0 : 16
           color: "#282c34"
           border.width: 1
           border.color: "#404754"
           opacity: osdScope.shown ? 1 : 0
           scale: osdScope.shown ? 1 : 0.98
-          Behavior on opacity { NumberAnimation { duration: 180 } }
-          Behavior on scale { NumberAnimation { duration: 180 } }
+          Behavior on opacity { NumberAnimation { duration: Globals.eyeCandyOff ? 0 : 180 } }
+          Behavior on scale { NumberAnimation { duration: Globals.eyeCandyOff ? 0 : 180 } }
 
           // ----- level view (volume/brightness) -----
           RowLayout {
               id: levelRow
-              visible: osdScope.kind !== "media"
+              visible: osdScope.kind !== "media" && !osdScope.isLock
               anchors.verticalCenter: parent.verticalCenter
               x: 14
               width: parent.width - 28
@@ -248,6 +289,103 @@ Scope {
                 Layout.alignment: Qt.AlignRight
               }
             }
+
+          // ----- lock view (caps lock / fn lock) -----
+          RowLayout {
+            id: lockRow
+            visible: osdScope.isLock
+            anchors.verticalCenter: parent.verticalCenter
+            x: 14
+            width: parent.width - 28
+            spacing: 12
+
+            readonly property bool isCaps: osdScope.kind === "caps"
+            readonly property bool on: isCaps ? osdScope.caps : osdScope.fnLock
+            readonly property color accent: isCaps ? "#e5c07b" : "#2bbac5"
+            readonly property color tone: on ? accent : "#7f848e"
+
+            // keycap: 1px border, thicker bottom edge, status LED top-left
+            Rectangle {
+              width: 40; height: 40
+              radius: Globals.eyeCandyOff ? 0 : 6
+              color: lockRow.on ? lockRow.accent : "#404754"
+              Rectangle {
+                anchors { fill: parent; leftMargin: 1; rightMargin: 1; topMargin: 1; bottomMargin: 3 }
+                radius: Globals.eyeCandyOff ? 0 : 5
+                color: "#21252b"
+              }
+              Text {
+                x: (parent.width - width) / 2
+                y: (parent.height - 2 - height) / 2
+                text: Phosphor.icon(lockRow.isCaps ? "text-aa" : "keyboard")
+                font.family: lockRow.on && Qt.fontFamilies().indexOf("Phosphor-Fill") >= 0 ? "Phosphor-Fill" : "Phosphor"
+                font.pixelSize: 18
+                color: lockRow.tone
+              }
+              Rectangle {
+                x: 5; y: 4; width: 5; height: 5
+                radius: Globals.eyeCandyOff ? 0 : 3
+                color: lockRow.on ? lockRow.accent : "#353b45"
+              }
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 0
+              RowLayout {
+                spacing: 6
+                Text { text: lockRow.isCaps ? "caps lock" : "fn lock"; color: "#7f848e"; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+                Text { text: lockRow.on ? "on" : "off"; color: lockRow.tone; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+              }
+              Text {
+                Layout.fillWidth: true
+                text: lockRow.isCaps
+                  ? (lockRow.on ? "TYPING IN CAPITALS" : "typing in lowercase")
+                  : (lockRow.on ? "f1–f12 send function keys" : "f1–f12 send media keys")
+                color: "#5c6370"
+                font.family: "JetBrains Mono"
+                font.pixelSize: 12
+                elide: Text.ElideRight
+              }
+            }
+
+            RowLayout {
+              spacing: 4
+              Repeater {
+                model: [
+                  { id: "caps", label: "caps", color: "#e5c07b" },
+                  { id: "fn", label: "fn", color: "#2bbac5" }
+                ]
+                delegate: Rectangle {
+                  id: chip
+                  required property var modelData
+                  readonly property bool active: modelData.id === osdScope.kind
+                  readonly property bool v: modelData.id === "caps" ? osdScope.caps : osdScope.fnLock
+                  implicitWidth: chipRow.implicitWidth + 12
+                  implicitHeight: chipRow.implicitHeight
+                  radius: Globals.eyeCandyOff ? 0 : 2
+                  color: active ? "#2f343e" : "transparent"
+                  Row {
+                    id: chipRow
+                    anchors.centerIn: parent
+                    spacing: 5
+                    Rectangle {
+                      anchors.verticalCenter: parent.verticalCenter
+                      width: 5; height: 5
+                      radius: Globals.eyeCandyOff ? 0 : 3
+                      color: chip.v ? chip.modelData.color : "#404754"
+                    }
+                    Text {
+                      text: chip.modelData.label
+                      color: chip.active ? "#abb2bf" : chip.v ? "#7f848e" : "#5c6370"
+                      font.family: "JetBrains Mono"
+                      font.pixelSize: 11
+                    }
+                  }
+                }
+              }
+            }
+          }
 
           // ----- media view -----
           RowLayout {

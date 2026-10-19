@@ -434,7 +434,7 @@ Item {
               x: dropdownRoot.dnd ? (parent.width - width - 2) : 2
               width: 8; height: 8; radius: Globals.eyeCandyOff ? 0 : 4
               color: dropdownRoot.dnd ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
-              Behavior on x { NumberAnimation { duration: 120 } }
+              Behavior on x { NumberAnimation { duration: Globals.eyeCandyOff ? 0 : 120 } }
             }
           }
           Text {

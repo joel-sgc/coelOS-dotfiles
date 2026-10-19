@@ -329,7 +329,7 @@ PanelWindow {
     color: Pal.card
     border.width: 1
     border.color: root.phase === "done" ? Pal.green : Pal.faint
-    Behavior on border.color { ColorAnimation { duration: 200 } }
+    Behavior on border.color { ColorAnimation { duration: Globals.eyeCandyOff ? 0 : 200 } }
 
     MouseArea { anchors.fill: parent }
 

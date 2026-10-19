@@ -124,7 +124,7 @@ Scope {
           anchors.fill: parent
           color: "#18181b"
           opacity: winRoot.shown ? 0.55 : 0
-          Behavior on opacity { NumberAnimation { duration: 120 } }
+          Behavior on opacity { NumberAnimation { duration: Globals.eyeCandyOff ? 0 : 120 } }
 
           MouseArea {
             anchors.fill: parent
