@@ -15,7 +15,7 @@ import QtQuick.Layouts
 WidgetCard {
   id: root
 
-  property bool mondayFirst: true
+  property bool mondayFirst: false
   property bool showHints: true
 
   cardWidth: 360
@@ -44,14 +44,33 @@ WidgetCard {
   property var sel: new Date(today.getFullYear(), today.getMonth(), today.getDate())
   property var view: new Date(today.getFullYear(), today.getMonth(), 1)
 
-  readonly property var calColors: ({ work: Pal.blue, personal: Pal.purple, health: Pal.green })
+  readonly property var calColors: ({ work: Pal.blue, personal: Pal.purple, health: Pal.green, google: Pal.yellow })
 
   // ----- events -----
   property var events: []
+  // Written by coel-gcal-sync (home/gcal-sync.nix); kept apart from events.json
+  // so a sync never overwrites hand-written events.
+  property var gcalEvents: []
   readonly property var eventsByDay: {
     const m = {};
-    for (const e of events) (m[e.date] = m[e.date] || []).push(e);
+    for (const e of events.concat(gcalEvents)) (m[e.date] = m[e.date] || []).push(e);
     return m;
+  }
+  FileView {
+    path: (Quickshell.env("COEL_DATA_DIR") || (Quickshell.env("HOME") + "/.local/share/coel")) + "/gcal-events.json"
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      try {
+        const j = JSON.parse(text());
+        root.gcalEvents = Array.isArray(j) ? j : [];
+      } catch (err) {
+        console.warn("calendar: gcal-events.json is not valid JSON:", err);
+        root.gcalEvents = [];
+      }
+    }
+    onLoadFailed: root.gcalEvents = []
   }
   FileView {
     path: (Quickshell.env("COEL_DATA_DIR") || (Quickshell.env("HOME") + "/.local/share/coel")) + "/events.json"
@@ -275,7 +294,7 @@ WidgetCard {
         Mono { Layout.preferredWidth: 10; Layout.alignment: Qt.AlignTop; text: "│"; color: root.calColors[modelData.cal] || Pal.blue }
         Mono {
           Layout.preferredWidth: 92; Layout.alignment: Qt.AlignTop
-          text: modelData.start + (modelData.end ? "–" + modelData.end : "")
+          text: modelData.start ? modelData.start + (modelData.end ? "–" + modelData.end : "") : "all day"
           color: Pal.dim
         }
         Text {
@@ -305,7 +324,7 @@ WidgetCard {
       Layout.topMargin: 6
       spacing: 12
       Repeater {
-        model: [["work", Pal.blue], ["personal", Pal.purple], ["health", Pal.green]]
+        model: [["work", Pal.blue], ["personal", Pal.purple], ["health", Pal.green], ["google", Pal.yellow]]
         delegate: Row {
           required property var modelData
           spacing: 7

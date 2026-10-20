@@ -1,6 +1,7 @@
 import QtQuick
 import "../.."
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Io
 import QtQuick.LocalStorage
 
@@ -87,6 +88,33 @@ Item {
     dropdownRoot.db = dropdownRoot.openDb();
     dropdownRoot.dbEnsureSchema();
     dropdownRoot.loadTodos();
+  }
+
+  // ----- google events (read-only) -----
+  // Flattened from the iCal feed by coel-gcal-sync (home/gcal-sync.nix).
+  // Deliberately separate from `todos`: these are shown above the local
+  // todos and never written back, so a sync can't touch the SQLite data.
+  property var gcalEvents: []
+  readonly property var gcalByDay: {
+    const m = {};
+    for (const e of gcalEvents) (m[e.date] = m[e.date] || []).push(e);
+    return m;
+  }
+  FileView {
+    path: (Quickshell.env("COEL_DATA_DIR") || (Quickshell.env("HOME") + "/.local/share/coel")) + "/gcal-events.json"
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      try {
+        const j = JSON.parse(text());
+        dropdownRoot.gcalEvents = Array.isArray(j) ? j : [];
+      } catch (err) {
+        console.warn("calendar: gcal-events.json is not valid JSON:", err);
+        dropdownRoot.gcalEvents = [];
+      }
+    }
+    onLoadFailed: dropdownRoot.gcalEvents = []
   }
 
   property string calSel: dkey(now)
@@ -244,6 +272,7 @@ Item {
         color: isToday ? "#282c34" : !inMonth ? "#4b5263" : wknd ? mutedColor : fgColor,
         bg: isToday ? colors[0] : isSel ? "#2f343e" : "transparent",
         border: isSel ? (!todoFocused ? colors[2] : mutedColor) : "transparent",
+        gdot: (gcalByDay[k] || []).length > 0,
         dot: list.length === 0 ? "transparent" : openCount > 0 ? (isToday ? "#282c34" : colors[2]) : (isToday ? "#282c34" : mutedColor),
       });
     }
@@ -283,6 +312,12 @@ Item {
     }
     return out;
   }
+  readonly property var gcalRows: (gcalByDay[calSel] || []).slice()
+    .sort((a, b) => (a.start || "").localeCompare(b.start || ""))
+    .map(e => ({
+      time: e.start ? e.start : "all day",
+      text: e.title + (e.where ? " · " + e.where : ""),
+    }))
   readonly property int tdDoneCount: tdList().filter(x => x.done).length
   readonly property string tdSummary: tdList().length > 0 ? (tdDoneCount + "/" + tdList().length + " done") : ""
 
@@ -544,6 +579,15 @@ Item {
                   radius: Globals.eyeCandyOff ? 0 : 2
                   color: dayCell.modelData.dot
                 }
+                Rectangle {
+                  visible: dayCell.modelData.gdot
+                  x: parent.width / 2 + 4
+                  y: 20
+                  width: 4
+                  height: 4
+                  radius: Globals.eyeCandyOff ? 0 : 2
+                  color: dropdownRoot.colors[0]
+                }
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
@@ -577,6 +621,37 @@ Item {
           color: dropdownRoot.mutedColor
           font.family: "JetBrains Mono"
           font.pixelSize: 13
+        }
+
+        Repeater {
+          model: dropdownRoot.gcalRows
+          delegate: Item {
+            id: gcalRow
+            required property var modelData
+            width: parent.width
+            height: Math.max(20, gcalText.implicitHeight + 4)
+            Text { x: 6; y: 2; width: 14; text: "│"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+            Text {
+              x: 20
+              y: 2
+              width: 70
+              text: gcalRow.modelData.time
+              color: dropdownRoot.colors[0]
+              font.family: "JetBrains Mono"
+              font.pixelSize: 13
+            }
+            Text {
+              id: gcalText
+              x: 92
+              y: 2
+              width: Math.max(0, parent.width - 92 - 6)
+              wrapMode: Text.WordWrap
+              text: gcalRow.modelData.text
+              color: dropdownRoot.fgColor
+              font.family: "JetBrains Mono"
+              font.pixelSize: 13
+            }
+          }
         }
 
         Repeater {
@@ -664,7 +739,7 @@ Item {
         }
 
         Text {
-          visible: dropdownRoot.tdRows.length === 0
+          visible: dropdownRoot.tdRows.length === 0 && dropdownRoot.gcalRows.length === 0
           width: parent.width
           text: "nothing planned — press <font color='" + dropdownRoot.colors[2] + "'>a</font> to add"
           color: dropdownRoot.mutedColor

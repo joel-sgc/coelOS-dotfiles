@@ -25,6 +25,7 @@
     ./home/micro.nix
     ./home/fresh.nix
     ./home/quickshell.nix
+    ./home/gcal-sync.nix
     ./home/kicad.nix
     ./home/dynamixel-wizard.nix
     ./home/ghostty.nix

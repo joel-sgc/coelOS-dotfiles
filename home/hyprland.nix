@@ -253,6 +253,9 @@ in
         # ~/.config/quickshell/shell.qml instance instead and silently
         # no-ops.
         "$mainMod, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
+        # The laptop's dedicated launcher key (KEY_MEDIA, evtest scancode ed;
+        # xkb calls it XF86AudioMedia) opens the same launcher as super+space.
+        ", XF86AudioMedia, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
         "$mainMod SHIFT, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
         # Opens the launcher restricted to emoji-only search
         # (LauncherPanel.qml's searchScope) -- emoji is search-only, no chip.
