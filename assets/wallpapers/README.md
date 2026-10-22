@@ -9,5 +9,4 @@ attribution.
 
 Wired up in `home/wallpaper.nix` (`coel-random-wallpaper`, symlinked
 into `~/Pictures/wallpapers`) — picks a random image from this set on
-every Hyprland/Plasma session start. See that file and
-`home/kde-wallpaper.nix` for the two session-specific hookups.
+every Hyprland session start. See that file for the hookup.

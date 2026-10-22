@@ -12,9 +12,7 @@ in
 {
   # Scope every Wayland user service (hypridle, swayosd, awww, cliphist, ...)
   # to Hyprland's own session target instead of the generic
-  # graphical-session.target. Plasma's session also activates the generic
-  # target, so leaving this at the default would start these services during
-  # a Plasma login too. See home/hypridle.nix, home/swayosd.nix,
+  # graphical-session.target. See home/hypridle.nix, home/swayosd.nix,
   # home/wallpaper.nix, home/clipboard.nix.
   wayland.systemd.target = "hyprland-session.target";
 
@@ -30,7 +28,7 @@ in
 
   # Hyprland-only env for systemd-started services (portals etc.), which
   # never see Hyprland's own `env =` lines. env-hyprland is sourced by
-  # UWSM for Hyprland sessions only, so Plasma is untouched.
+  # UWSM for Hyprland sessions.
   xdg.configFile."uwsm/env-hyprland".text = ''
     export NIXOS_OZONE_WL=1
     export MOZ_ENABLE_WAYLAND=1
@@ -47,7 +45,6 @@ in
       "hyprland"
       "gtk"
     ];
-    kde.default = [ "kde" ];
     common.default = [ "gtk" ];
   };
 
@@ -95,11 +92,9 @@ in
       env = [
         "NIXOS_OZONE_WL,1"
         "MOZ_ENABLE_WAYLAND,1"
-        # Deliberately set only here, not globally (home.sessionVariables)
-        # -- see home/qt-theme.nix for why. Gives Qt6 apps under Hyprland
-        # (e.g. hyprland-share-picker) a real color source instead of
-        # falling back to plain light Qt defaults, without ever touching
-        # a separate Plasma session.
+        # Gives Qt6 apps under Hyprland (e.g. hyprland-share-picker,
+        # Dolphin) a real color source instead of falling back to plain
+        # light Qt defaults. See home/qt-theme.nix.
         "QT_QPA_PLATFORMTHEME,qt6ct"
         # Without this, QT_QPA_PLATFORMTHEME=qt6ct is a silent no-op for
         # any Qt app whose own Nix wrapper bakes in its own QT_PLUGIN_PATH
@@ -207,10 +202,8 @@ in
 
       exec-once = [
         "systemctl --user start hyprland-session.target"
-        # polkit-kde-authentication-agent-1 retired -- Quickshell's own
-        # Polkit.qml is the authentication agent now (only one agent can
-        # register per session, so don't start both). Plasma sessions keep
-        # their own agent; this list is Hyprland-only.
+        # Quickshell's own Polkit.qml is the authentication agent (only one
+        # agent can register per session, so don't start another).
         # mako retired -- Quickshell's own NotificationsBackend.qml is now
         # the real org.freedesktop.Notifications server (see
         # home/quickshell/notifications/).
@@ -218,8 +211,7 @@ in
         # XF86PowerOff bind below (-> coel-power-menu) is what actually
         # fires, instead of an immediate shutdown racing the menu.
         "${pkgs.systemd}/bin/systemd-inhibit --what=handle-power-key --who=Hyprland --why='Custom power menu' --mode=block sleep infinity"
-        # Random wallpaper on every login (home/wallpaper.nix; Plasma's
-        # equivalent is the XDG autostart entry in home/kde-wallpaper.nix).
+        # Random wallpaper on every login (home/wallpaper.nix).
         # The script itself retries for a few seconds in case it races the
         # awww daemon's systemd-user startup.
         "coel-random-wallpaper"

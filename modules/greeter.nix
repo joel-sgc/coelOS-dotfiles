@@ -18,7 +18,7 @@ let
 
   # Sessions discovered from the real wayland-sessions/*.desktop files NixOS
   # installs (config.services.displayManager.sessionData.desktops), so
-  # Hyprland/Plasma entries always match what's actually configured rather
+  # the Hyprland entries always match what's actually configured rather
   # than being hand-maintained here.
   sessionsJson = pkgs.runCommand "qs-greeter-sessions.json"
     { nativeBuildInputs = [ pkgs.jq ]; } ''
@@ -28,11 +28,7 @@ let
         id=$(basename "$f" .desktop)
         name=$(grep -m1 '^Name=' "$f" | cut -d= -f2-)
         exec=$(grep -m1 '^Exec=' "$f" | cut -d= -f2- | sed -E 's/ ?%[a-zA-Z]//g')
-        # The real DesktopNames= value, not our own filename-derived id --
-        # Plasma's session fails to start without XDG_CURRENT_DESKTOP set
-        # to its real expected value ("KDE", not "plasma"): portals, Qt
-        # platform theming, and KDE component detection all key off it,
-        # unlike Hyprland's own startup script, which corrects it itself.
+        # The real DesktopNames= value, not our own filename-derived id.
         desktopNames=$(grep -m1 '^DesktopNames=' "$f" | cut -d= -f2-)
         jq -n --arg id "$id" --arg n "$name" --arg e "$exec" --arg d "$desktopNames" \
           '{id:$id, name:$n, exec:$e, desktopNames:$d}'
@@ -85,7 +81,7 @@ let
     # /run/seatd.sock exists, but seatd was only ever added to fix a
     # VM-only "socket missing" error -- on real hardware it left cage with
     # zero real outputs instead. logind is what this laptop's Hyprland/
-    # Plasma sessions already use successfully every day.
+    # Hyprland sessions already use successfully every day.
     export LIBSEAT_BACKEND=logind
     # Brief delay before the client connects: cage execs its child right
     # after starting its own backend, but wlroots' DRM connector
@@ -113,21 +109,15 @@ let
   '';
 in
 {
-  # Importing this file is a no-op on its own (SDDM keeps running) until
+  # Importing this file is a no-op on its own until
   # services.qs-greeter.enable is explicitly set true elsewhere -- this
-  # module replaces the login manager entirely, too high-stakes a flip to
-  # risk an unrelated rebuild picking it up silently just by being imported.
+  # module is the login manager, too high-stakes a flip to risk an
+  # unrelated rebuild picking it up silently just by being imported.
   options.services.qs-greeter.enable = lib.mkEnableOption ''
-    the Quickshell-based greetd login screen (home/quickshell/greeter/),
-    replacing SDDM
+    the Quickshell-based greetd login screen (home/quickshell/greeter/)
   '';
 
   config = lib.mkIf cfg.enable {
-    # The previous (SDDM-based) generation stays in the bootloader menu as
-    # the real fallback if this regresses -- SDDM and greetd would contend
-    # for the same VT if both were enabled at once.
-    services.displayManager.sddm.enable = lib.mkForce false;
-
     services.greetd = {
       enable = true;
       settings.default_session = {
@@ -138,9 +128,8 @@ in
 
     # greetd's own unit defaults to Type=idle, which defers execution until
     # all other boot jobs are dispatched (systemd's documented behavior,
-    # capped at 5s) to avoid interleaving console output -- SDDM's splash
-    # covers that gap, but cage has nothing covering it, so it showed as a
-    # plain black screen instead. Session-launch output is already
+    # capped at 5s) to avoid interleaving console output -- cage has nothing
+    # covering that gap, so it showed as a plain black screen. Session-launch output is already
     # redirected to a log file (GreeterBackend.qml doLaunch()), so the
     # interleaving concern Type=idle guards against doesn't apply here.
     systemd.services.greetd.serviceConfig.Type = lib.mkForce "simple";
@@ -166,9 +155,8 @@ in
     # system-wide for it to render at all.
     fonts.packages = [ pkgs.jetbrains-mono phosphorFont ];
 
-    # Same gnome-keyring PAM integration configuration.nix already sets
-    # for sddm, mirrored here for parity now that greetd is what actually
-    # starts the session.
+    # gnome-keyring PAM integration, so the login keyring unlocks with the
+    # password typed at the greeter.
     security.pam.services.greetd.enableGnomeKeyring = true;
 
     # Password FIRST, then fingerprint as a second required factor.

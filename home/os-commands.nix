@@ -28,8 +28,7 @@ let
   # "uwsm stop" (what $mainMod+M and the power dropdown's logout button used
   # to run directly) only tears down a session uwsm itself launched via its
   # own wayland-wm@*.service unit; a session started any other way (e.g. a
-  # plain, non-uwsm-wrapped Hyprland launch, or Plasma's own startplasma-
-  # wayland) has no such unit for it to find, so it just logs "Compositor is
+  # plain, non-uwsm-wrapped Hyprland launch) has no such unit for it to find, so it just logs "Compositor is
   # not running" and does nothing (confirmed live via journalctl after this
   # exact symptom: Super+M did nothing while using the greeter's "Hyprland"
   # entry rather than "Hyprland (uwsm-managed)"). `loginctl terminate-

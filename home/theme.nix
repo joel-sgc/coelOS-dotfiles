@@ -68,12 +68,8 @@ in
     "gtk-4.0/gtk.css".text = config.xdg.configFile."gtk-3.0/gtk.css".text;
   };
 
-  # Qt theming is intentionally left to KDE/Plasma's native platform theme
-  # (plasma-integration) here -- an earlier qt5ct/qt6ct setup
-  # (QT_QPA_PLATFORMTHEME=qt5ct) bypassed that and crashed the shell to a
-  # black screen (KWin/plasmashell couldn't resolve the QtQuickControls2
-  # style). The custom One Dark palette lives on via the GTK overrides
-  # above and the Plasma color scheme (home/kde-theme.nix) instead.
+  # Qt theming lives in home/qt-theme.nix (qt6ct); the GTK overrides above
+  # cover GTK apps.
 
   home.packages = [ themeTest ];
 }

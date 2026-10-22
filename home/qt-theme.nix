@@ -93,16 +93,11 @@ in
   # plugin (QT_QPA_PLATFORMTHEME=qt6ct below) that reads qt6ct.conf.
   #
   # Why this exists: hyprland-share-picker (xdg-desktop-portal-hyprland's
-  # screen-share picker) is a Qt6 app, rendering in plain light Qt defaults
-  # under Hyprland since Plasma's plasma-integration normally supplies
-  # colors for free and Hyprland has no equivalent.
+  # screen-share picker) and Dolphin are Qt6 apps that render in plain
+  # light Qt defaults without a platform theme.
   #
-  # QT_QPA_PLATFORMTHEME is set in home/hyprland.nix's own `env=` list, NOT
-  # globally -- setting it globally (home.sessionVariables) is what broke
-  # Plasma before: applied everywhere, Plasma's own session picked it up
-  # too and couldn't resolve its QQC2 style anymore (see home/theme.nix's
-  # comment). Hyprland's `env=` only reaches processes it execs itself, so
-  # it can never reach a separate Plasma session.
+  # QT_QPA_PLATFORMTHEME is set in home/hyprland.nix's own `env=` list and
+  # uwsm env file.
   #
   # QT_QPA_PLATFORMTHEME alone isn't enough for any KDE Frameworks app
   # (Dolphin, etc.) -- their own Nix wrapper bakes in a QT_PLUGIN_PATH from
@@ -111,7 +106,18 @@ in
   # home-manager profile's merged plugin dir, where installing this
   # package via home.packages already symlinks libqt6ct.so to) is what
   # actually makes it discoverable -- see that file's comment.
-  home.packages = [ pkgs.kdePackages.qt6ct ];
+  #
+  # Papirus is the icon theme qt6ct.conf names below (Dolphin's file &
+  # folder icons; the same one Nautilus gets implicitly under GTK). `color`
+  # bakes the folder tint in at *build* time: nixpkgs' papirus-icon-theme
+  # derivation runs `papirus-folders -C ${color}` itself before the result
+  # becomes an immutable store path -- it can't be changed at runtime.
+  # "blue" is the closest preset to theme.blue (papirus-folders only
+  # supports a fixed named palette, not arbitrary hex).
+  home.packages = [
+    pkgs.kdePackages.qt6ct
+    (pkgs.papirus-icon-theme.override { color = "blue"; })
+  ];
 
   xdg.configFile = {
     "qt6ct/qt6ct.conf".text = ''

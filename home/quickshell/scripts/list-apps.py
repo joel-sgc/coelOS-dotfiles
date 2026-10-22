@@ -25,6 +25,14 @@ def app_dirs():
     return dirs
 
 
+# parse_desktop's "this id is hidden" result, distinct from None ("unreadable/
+# not a launcher"): a Hidden/NoDisplay entry earlier in the search path must
+# still claim its basename, so the real system entry of the same id further
+# down doesn't resurface. That's how home/desktop-entries.nix's
+# hiddenDesktopIds (Hidden=true stubs in $XDG_DATA_HOME) take effect.
+HIDDEN = object()
+
+
 def parse_desktop(path):
     try:
         with open(path, "r", errors="replace") as f:
@@ -45,9 +53,9 @@ def parse_desktop(path):
     if fields.get("Type", "Application") != "Application":
         return None
     if fields.get("NoDisplay", "false").lower() == "true":
-        return None
+        return HIDDEN
     if fields.get("Hidden", "false").lower() == "true":
-        return None
+        return HIDDEN
 
     name = fields.get("Name")
     exec_raw = fields.get("Exec")
@@ -81,9 +89,11 @@ def main():
             if base in seen:
                 continue
             entry = parse_desktop(path)
-            if entry:
+            if entry is HIDDEN:
+                seen[base] = None
+            elif entry:
                 seen[base] = entry
-    print(json.dumps(list(seen.values())))
+    print(json.dumps([e for e in seen.values() if e]))
 
 
 if __name__ == "__main__":

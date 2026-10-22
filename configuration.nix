@@ -22,10 +22,8 @@
     ./modules/fnlock/nixos/ec-jump-rw.nix
   ];
 
-  # Flips SDDM -> the Quickshell/greetd login screen (modules/greeter.nix
-  # is a no-op until this is set). Use `nixos-rebuild test` only until this
-  # is confirmed working on real hardware -- `switch` would make an
-  # unconfirmed regression the default boot.
+  # The Quickshell/greetd login screen (modules/greeter.nix is a no-op
+  # until this is set).
   services.qs-greeter.enable = true;
 
   ##############################################################################
@@ -143,12 +141,13 @@
   ##############################################################################
 
   services.xserver.enable = true;
-  services.displayManager.sddm.enable = true;
-  services.desktopManager.plasma6.enable = true;
 
-  # Hyprland, added alongside Plasma as a second selectable SDDM session
-  # while migrating. Phase 1: bare compositor only — portals, bars, and
-  # the rest of the tray/applet stack land in later phases.
+  # Services the Plasma module used to enable implicitly: udiskie
+  # (home/udiskie.nix) and Dolphin's device handling need udisks2, and
+  # battery/power data (poweralertd, the Quickshell panel) comes from UPower.
+  services.udisks2.enable = true;
+  services.upower.enable = true;
+
   programs.hyprland = {
     enable = true;
     # Launch through UWSM: Hyprland runs as wayland-wm@*.service and the
@@ -164,21 +163,11 @@
   services.xserver.desktopManager.xterm.enable = false;
   services.xserver.excludePackages = [ pkgs.xterm ];
 
-  environment.plasma6.excludePackages = with pkgs.kdePackages; [
-    konsole
-    elisa
-    kwallet
-    kwalletmanager
-    kate
-    gwenview
-  ];
-
   # Linking Ghostty to DBus
   services.dbus.packages = [ pkgs.ghostty ];
 
   # Keyring (GNOME Keyring for Secret Service / credentials in VS Code, etc.)
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.sddm.enableGnomeKeyring = true;
 
   # Required for hyprlock to authenticate. fprintAuth disabled here even
   # though fprintd.enable would default it to true: hyprlock has its own
@@ -190,12 +179,11 @@
   # making a typed password feel like it needed a fingerprint scan too.
   security.pam.services.hyprlock.fprintAuth = false;
 
-  # SDDM has the same "password waits on fingerprint" symptom as hyprlock,
-  # but no independent native fingerprint path to fall back on -- SDDM has
-  # no PAM stack of its own (`auth substack login`), and pam_fprintd is the
-  # only way /etc/pam.d/login can check a fingerprint, so disabling it here
-  # would remove fingerprint login entirely rather than just unblocking the
-  # password field. Fix instead: reorder pam_fprintd to run just after the
+  # /etc/pam.d/login has the same "password waits on fingerprint" symptom
+  # as hyprlock, but no independent native fingerprint path to fall back
+  # on -- pam_fprintd is the only way it can check a fingerprint, so
+  # disabling it here would remove fingerprint login entirely rather than
+  # just unblocking the password field. Fix instead: reorder pam_fprintd to run just after the
   # real password check (`unix`), not before it, so a typed password
   # authenticates immediately and a lone fingerprint scan still falls
   # through unix's fast failure to reach pam_fprintd. Set as an offset from
@@ -239,7 +227,6 @@
         "hyprland"
         "gtk"
       ];
-      kde.default = [ "kde" ];
       common.default = [ "gtk" ];
     };
   };
@@ -280,8 +267,7 @@
   # Suspends on lid-close even on AC power (systemd's default otherwise
   # ignores lid-close while plugged in). Power-key handling isn't touched
   # here -- Hyprland covers it separately (systemd-inhibit + coel-power-menu
-  # in home/hyprland.nix); under Plasma the physical key uses systemd's own
-  # default.
+  # in home/hyprland.nix).
   services.logind.settings.Login = {
     HandleLidSwitch = "suspend";
     HandleLidSwitchExternalPower = "suspend";
@@ -346,6 +332,18 @@
     pkgs.micro
     pkgs.git
     pkgs.sshfs
+
+    # Dolphin, no longer pulled in by the Plasma module: kio-extras (sftp://,
+    # trash:/, MTP...), kio-fuse (lets non-KDE apps open files from KIO
+    # locations), kde-cli-tools (kioclient/"open with" helpers), thumbnailers
+    # and breeze-icons as the icon fallback behind Papirus.
+    pkgs.kdePackages.dolphin
+    pkgs.kdePackages.kio-extras
+    pkgs.kdePackages.kio-fuse
+    pkgs.kdePackages.kde-cli-tools
+    pkgs.kdePackages.ffmpegthumbs
+    pkgs.kdePackages.kdegraphics-thumbnailers
+    pkgs.kdePackages.breeze-icons
 
     # Basic CLI utilities NixOS doesn't ship by default (unlike most
     # distros' base install)

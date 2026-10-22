@@ -66,8 +66,7 @@ they are enabled by default in the NixOS/home-manager config.
 
 The password lives in the **login keyring** via the Secret Service API
 (`libsecret` / `secret-tool`). On this host `org.freedesktop.secrets` is
-owned by **gnome-keyring**, PAM-unlocked at login. (`kwallet-query
---write-password` silently no-ops here, which is why libsecret is used.)
+owned by **gnome-keyring**, PAM-unlocked at login.
 
 Lookup key:
 
@@ -293,7 +292,7 @@ unlocked keyring. If the TUI runs outside the graphical session (a bare
 tty, `ssh`, a system service), the keyring lookup fails with
 `GP_STATUS: no-password`. Options:
 
-- Run the TUI inside the Plasma/systemd user session so it inherits the bus.
+- Run the TUI inside the systemd user session so it inherits the bus.
 - Pass the password directly: `cmd.Env = append(os.Environ(),
   "GP_PASSWORD="+pw)` — read `pw` from wherever the TUI keeps its own
   secrets. The wrapper uses `GP_PASSWORD` verbatim and never touches the

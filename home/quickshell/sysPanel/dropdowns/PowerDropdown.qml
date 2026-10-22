@@ -218,7 +218,7 @@ Item {
     { id: "lock", icon: "lock", label: "lock", command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"] },
     // Same coel-logout (home/os-commands.nix) the $mainMod+M keybind
     // already runs (home/hyprland.nix) -- works regardless of session
-    // type (plain Hyprland, uwsm-managed Hyprland, or Plasma), unlike a
+    // type (plain or uwsm-managed Hyprland), unlike a
     // direct "uwsm stop" call.
     { id: "logout", icon: "sign-out", label: "log out", command: ["coel-logout"] },
     { id: "suspend", icon: "moon", label: "suspend", command: ["systemctl", "suspend"] },

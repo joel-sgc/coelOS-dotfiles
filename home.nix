@@ -45,10 +45,6 @@
     ./home/poweralertd.nix
     ./home/bluetooth-agent.nix
     ./home/kanshi.nix
-    ./home/kde-window-shortcuts.nix
-    ./home/kde-shortcuts.nix
-    ./home/kde-wallpaper.nix
-    ./home/kde-theme.nix
     ./home/qt-theme.nix
     ./home/cursor.nix
 
@@ -144,7 +140,7 @@
     # natively on Wayland instead of falling back to XWayland. Matters more
     # than usual here since XWayland has no real fractional-scaling support
     # -- at the monitor's 1.17 scale factor, XWayland-rendered apps look
-    # pixelated. Benefits both Hyprland and Plasma (also Wayland-native), so
+    # pixelated. Benefits Hyprland (Wayland-native), so
     # this is global rather than Hyprland-only.
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";

@@ -12,8 +12,7 @@ let
 
   # Secret Service (libsecret / `secret-tool`) attributes for the stored LUC
   # portal password. On this box org.freedesktop.secrets is owned by
-  # gnome-keyring (PAM-unlocked at login) -- kwallet-query's --write-password
-  # silently no-ops here, so we go through libsecret instead. The lookup key
+  # gnome-keyring (PAM-unlocked at login), so we go through libsecret. The lookup key
   # is the (service, account) pair below.
   secretService = "coel-vpn";
   secretAccount = username;

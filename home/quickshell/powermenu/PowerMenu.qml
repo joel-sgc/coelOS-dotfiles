@@ -25,9 +25,7 @@ import "../sysPanel/Phosphor.js" as Phosphor
 // step, not just PowerDropdown's single click-again-to-confirm.
 //
 // Real commands, not the mock's demo ones: logout uses hyprctl since this
-// is only ever reached via Hyprland's own power-key bind (see
-// configuration.nix's comment: Plasma's physical power key uses systemd's
-// own default instead, unrelated to this component).
+// is only ever reached via Hyprland's own power-key bind.
 Item {
   id: root
 

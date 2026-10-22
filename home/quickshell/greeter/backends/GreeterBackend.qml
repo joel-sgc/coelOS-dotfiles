@@ -51,7 +51,6 @@ Item {
   ]
   readonly property var demoSessions: [
     { id: "hyprland", name: "Hyprland", exec: "Hyprland", desktopNames: "Hyprland" },
-    { id: "plasma", name: "Plasma (Wayland)", exec: "startplasma-wayland", desktopNames: "KDE" },
   ]
   Component.onCompleted: {
     users = demoUsers;
@@ -198,9 +197,8 @@ Item {
       return;
     }
     // XDG_CURRENT_DESKTOP set from the session's own real DesktopNames=
-    // value (e.g. "KDE" for Plasma, "Hyprland" for Hyprland), not our own
-    // filename-derived s.id -- portals, Qt platform theming and KDE
-    // component detection all key off the real value. PATH is explicit
+    // value, not our own filename-derived s.id -- portals and Qt platform
+    // theming key off the real value. PATH is explicit
     // since Greetd.launch() doesn't inherit a normal login shell's PATH,
     // and session scripts that exec bare command names (not full store
     // paths) need it to find them. stdout/stderr redirected to a log file
@@ -216,35 +214,18 @@ Item {
     // Every session launches through a script file written to disk
     // first, then Greetd.launch() just runs that short file path --
     // confirmed live (a phone video of the real console during a failed
-    // Plasma attempt) that a long inline `/bin/sh -c "<giant string>"`
+    // attempt) that a long inline `/bin/sh -c "<giant string>"`
     // argument never actually ran at all: the console showed NixOS's
     // normal environment setup finish, then sat on a bare, blinking
     // interactive /bin/sh prompt with no script/argument, meaning the
     // command string was getting lost somewhere before the shell actually
     // executed, not failing inside whatever it would have run. This
-    // wasn't unique to Plasma's longer command either -- confirmed live
-    // that the uwsm-managed Hyprland entry (a few words longer than plain
-    // Hyprland's single bare path) hit the exact same silent-drop failure
-    // on the old inline-command path. A short, fixed-size argv regardless
-    // of session avoids the whole class of bug, so every session now
-    // goes through this, not just Plasma.
-    //
-    // DBUS_SESSION_BUS_ADDRESS and the startup sleep are still Plasma-only
-    // (scoped below) -- plasma-dbus-run-session-if-needed spawns its own
-    // private bus when the former is unset, which fails immediately on
-    // this system (/etc/dbus-1/session.conf is dbus's own deprecated
-    // empty stub); the sleep is the same cage/kwin DRM-master handoff race
-    // already fixed once for cage's own startup. Neither is needed for
-    // Hyprland (plain or uwsm-managed): its D-Bus clients already fall
-    // back to the systemd-user bus on their own, and it's never shown the
-    // DRM-handoff race plain Hyprland doesn't hit either.
-    const needsPlasmaFixups = s.exec.indexOf("dbus-run-session") !== -1;
-    const plasmaFixupLines = needsPlasmaFixups
-      ? "export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus\nsleep 1\n"
-      : "";
+    // failure hit the uwsm-managed Hyprland entry too (a few words longer
+    // than plain Hyprland's single bare path) on the old inline-command
+    // path. A short, fixed-size argv regardless of session avoids the
+    // whole class of bug.
     const scriptContent =
       "#!/bin/sh\n" +
-      plasmaFixupLines +
       "exec " + s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1\n";
     const safeScript = scriptContent.replace(/'/g, "'\\''");
     // Remembers this session as the one to default to next time, read

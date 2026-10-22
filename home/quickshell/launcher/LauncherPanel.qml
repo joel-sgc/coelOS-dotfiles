@@ -7,6 +7,7 @@ import Quickshell.Io
 import "../sysPanel/Phosphor.js" as Phosphor
 import "../sysPanel/Calc.js" as Calc
 import "../sysPanel/Convert.js" as Convert
+import "Match.js" as Match
 import "backends"
 
 // ===== LAUNCHER PANEL =====
@@ -111,12 +112,22 @@ Item {
   function buildCategories() {
     return [
       { id: "launch", label: "launch", icon: "rocket-launch", items: [
-        { label: "Terminal", sub: "ghostty", icon: "terminal-window", right: "", command: ["ghostty"] },
-        { label: "Browser", sub: "zen", icon: "globe", right: "", command: ["zen"] },
-        { label: "Editor", sub: "$EDITOR", icon: "code", right: "", command: ["ghostty", "-e", "fresh"] },
-        { label: "Files", sub: "dolphin", icon: "folder", right: "", command: ["dolphin"] },
-      ] },
-      { id: "ssh", label: "ssh", icon: "hard-drives", items: ssh.categoryItems() },
+        { label: "Terminal", sub: "ghostty", icon: "terminal-window", right: "", command: ["ghostty"], groupLabel: "shortcuts" },
+        { label: "Browser", sub: "zen", icon: "globe", right: "", command: ["zen"], groupLabel: "shortcuts" },
+        { label: "Editor", sub: "$EDITOR", icon: "code", right: "", command: ["ghostty", "-e", "fresh"], groupLabel: "shortcuts" },
+        { label: "Files", sub: "dolphin", icon: "folder", right: "", command: ["dolphin"], groupLabel: "shortcuts" },
+      ].concat(apps.installed
+        .slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+        .map(app => ({
+          label: app.name, sub: app.comment, icon: "squares-four", right: "",
+          previewImage: app.icon ? Quickshell.iconPath(app.icon, "") : "",
+          command: app.terminal ? ["ghostty", "-e"].concat(app.argv) : app.argv,
+          groupLabel: "applications", browseOnly: true,
+        }))) },
+      { id: "ssh", label: "ssh", icon: "hard-drives", items: ssh.categoryItems().map(h => Object.assign({}, h, { groupLabel: "hosts" })).concat([
+        { id: "sshKeygen", label: "New SSH key", sub: "generate · ssh-keygen", icon: "key", right: "", groupLabel: "tools" },
+        { label: "Edit SSH config", sub: "~/.ssh/config", icon: "hard-drives", right: "", command: ["ghostty", "-e", "fresh", "/home/joelsgc/.ssh/config"], groupLabel: "tools" },
+      ]) },
       { id: "actions", label: "actions", icon: "lightning", items: [
         { id: "dnd", label: "Do not disturb", sub: "silence notifications", icon: "bell-slash", right: toggles.dndOn ? "[on]" : "[off]", rightColor: toggles.dndOn ? colors[3] : mutedColor, groupLabel: "toggles" },
         { id: "awake", label: "Keep awake", sub: "inhibit idle & sleep", icon: "coffee", right: toggles.awakeOn ? "[on]" : "[off]", rightColor: toggles.awakeOn ? colors[3] : mutedColor, groupLabel: "toggles" },
@@ -126,8 +137,6 @@ Item {
         { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"], groupLabel: "capture" },
         { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"], groupLabel: "capture" },
         { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"], groupLabel: "capture" },
-        { id: "sshKeygen", label: "New SSH key", sub: "generate · ssh-keygen", icon: "key", right: "", groupLabel: "ssh" },
-        { label: "Edit SSH config", sub: "~/.ssh/config", icon: "hard-drives", right: "", command: ["ghostty", "-e", "fresh", "/home/joelsgc/.ssh/config"], groupLabel: "ssh" },
       ] },
       { id: "convert", label: "convert", icon: "arrows-left-right", items: [
         ["5 km to mi", "length"], ["72 f to c", "temperature"], ["$120 to eur", "currency"],
@@ -320,6 +329,7 @@ Item {
 
   function fuzzyList() {
     const raw = query.trim(), q = raw.toLowerCase();
+    const cq = Match.compile(raw);
     // super+. (openEmoji) restricts the whole launcher to emoji-only
     // search -- excludes categories, apps, clipboard, calculator; just
     // emoji, per the user's own "exclude categories on command" request.
@@ -412,11 +422,14 @@ Item {
     // @g/@ddg/@yt bangs above.
     const sshMatch = raw.match(/^ssh(?:\s+(.*))?$/i);
     if (sshMatch) {
-      const term = (sshMatch[1] || "").trim().toLowerCase();
-      const hostItems = ssh.categoryItems();
+      const term = (sshMatch[1] || "").trim();
+      // Hosts and the ssh tools (keygen, edit config) both live in the ssh
+      // category, so search all of it, not just the hosts.
+      const sshItems = categories.find(c => c.id === "ssh").items;
+      const tq = Match.compile(term);
       const filtered = term
-        ? hostItems.filter(h => (h.label + " " + (h.sub || "")).toLowerCase().includes(term))
-        : hostItems;
+        ? sshItems.filter(h => Match.score(tq, h.label, h.sub) >= 0)
+        : sshItems;
       return filtered.map(h => Object.assign({}, h, { cat: "ssh" }));
     }
     let list = [];
@@ -428,17 +441,8 @@ Item {
     // `rows` property) so an app match like "OrcaSlicer" outranks clipboard
     // history containing the same substring, e.g. searching "orca".
     apps.installed.forEach(app => {
-      // Plasma's own "Emoji Selector" (plasma-emojier) is a real installed
-      // app -- list-apps.py is right to surface it -- but it's redundant
-      // now that emoji search below is native to the launcher, and having
-      // both show up for the same query is just confusing. Filtered here,
-      // not in list-apps.py, since "real vs redundant" is a launcher UX
-      // call, not something the app scanner should be opinionated about.
-      if (app.argv && app.argv[0] === "plasma-emojier") return;
-      const l = app.name.toLowerCase();
-      const hay = (l + " " + (app.comment || "")).toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = l.startsWith(q) ? 3 : l.split(/[\s-]+/).some(w => w.startsWith(q)) ? 2 : l.includes(q) ? 1 : 0;
+      const score = Match.score(cq, app.name, app.comment);
+      if (score < 0) return;
       list.push({
         label: app.name, sub: app.comment, icon: "squares-four",
         previewImage: app.icon ? Quickshell.iconPath(app.icon, "") : "",
@@ -454,10 +458,9 @@ Item {
     // to ever browse as a static category list; clipboard's own
     // up-to-hundreds is fine now that the list rendering is virtualized).
     categories.forEach(c => c.items.forEach(it => {
-      const l = it.label.toLowerCase();
-      const hay = (l + " " + (it.sub || "") + " " + c.label).toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = l.startsWith(q) ? 3 : l.split(/[\s-]+/).some(w => w.startsWith(q)) ? 2 : l.includes(q) ? 1 : 0;
+      if (it.browseOnly) return;  // the launch tab's app list; apps are searched above
+      const score = Match.score(cq, it.label, it.sub, c.label);
+      if (score < 0) return;
       list.push(Object.assign({}, it, { cat: c.label, score }));
     }));
     const emojiMatchList = emoji.matches(q);

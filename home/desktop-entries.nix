@@ -33,7 +33,6 @@ let
   # to the list below.
   hiddenDesktopIds = [
     "cups" # printing config GUI; services.printing is already wired declaratively (configuration.nix), don't need the launcher
-    "org.kde.qrca" # QR scanner, not used (supersedes the old Keywords-fix entry this file used to carry for it)
     "org.kicad.bitmap2component" # KiCad's own sub-tools -- reachable from the org.kicad.kicad umbrella app, which stays visible
     "org.kicad.eeschema"
     "org.kicad.gerbview"
@@ -41,17 +40,9 @@ let
     "org.kicad.pcbnew"
     "qt6ct" # Qt theme is wired declaratively (home/qt-theme.nix), don't need the GUI
 
-    "org.kde.ark" # archive manager GUI, not used
-    "btop" # btop++, terminal system monitor -- launched via coel-* menus/keybinds, not a menu entry
-    "org.kde.drkonqi.coredump.gui" # crash viewer popup, not something to launch on purpose
-    "org.kde.discover" # Plasma's software-center GUI -- packages are managed declaratively here, not imperatively installed
     "org.kde.kdeconnect.nonplasma" # "KDE Connect Indicator" -- the systray applet, not launched directly
     "org.kde.kdeconnect.sms" # KDE Connect's SMS app specifically; org.kde.kdeconnect.app (the main KDE Connect entry) stays visible
-    "org.kde.kwalletmanager" # KWallet's own GUI; gnome-keyring is what's actually used here (configuration.nix), not kwallet
     "nixos-manual"
-    "org.kde.okular" # Okular, KDE's document viewer, not used
-    "org.kde.plasma-systemmonitor" # "System Monitor" -- same reasoning as btop above
-    "org.kde.spectacle" # Plasma's screenshot tool -- menu entry only; its own Print-key global shortcut (home/kde-shortcuts.nix) isn't affected, since that invokes the app directly rather than going through this menu entry
   ];
 
   hiddenEntries = builtins.listToAttrs (

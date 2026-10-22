@@ -22,7 +22,7 @@ in
   # 5min -> lock, 10min -> screen off, 20min -> suspend.
   #
   # Scoped to hyprland-session.target via home/hyprland.nix's
-  # wayland.systemd.target, so this never runs during a Plasma session.
+  # wayland.systemd.target, so this only runs during a Hyprland session.
   services.hypridle = {
     enable = true;
     settings = {

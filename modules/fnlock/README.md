@@ -251,16 +251,6 @@ Rebuild, then `sudo udevadm trigger` (or reboot). Check with
 keyboard"): Fn+Esc should produce `KEY_PROG3` (locked) and `KEY_PROG4`
 (unlocked). If the `MSC_SCAN` values aren't `64`/`65`, update `fnlock.nix`.
 
-### KDE shortcuts (manual)
-
-System Settings → Keyboard → Shortcuts → Add New → Command or Script:
-
-- **Fn lock on**: `notify-send -t 1500 -a "Fn lock" "Fn lock ON"`, recorded
-  by pressing Fn+Esc so it captures Prog3.
-- **Fn lock off**: same with "OFF", capturing Prog4.
-
-Each Fn+Esc toggles, so recording one shortcut per press gives you both.
-
 ### Reacting to the state file
 
 ```sh

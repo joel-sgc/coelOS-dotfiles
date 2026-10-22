@@ -25,7 +25,6 @@ let
       pkgs.findutils
       pkgs.coreutils
       setWallpaper
-      pkgs.kdePackages.plasma-workspace
     ];
     text =
       "WALLPAPER_DIR_REL=${lib.escapeShellArg wallpaperDir}\n"
@@ -37,10 +36,8 @@ in
   #
   # `coel-random-wallpaper` picks a random image from the vendored set
   # (assets/wallpapers) and applies it via awww on Hyprland or
-  # plasma-apply-wallpaperimage on Plasma -- wired to run once per session
-  # on both (home/hyprland.nix's exec-once here; Plasma's side is
-  # home/kde-wallpaper.nix, an XDG autostart entry). Theming stays static
-  # (home/theme.nix) either way, not derived from the wallpaper.
+  # -- wired to run once per session from home/hyprland.nix's exec-once.
+  # Theming stays static (home/theme.nix), not derived from the wallpaper.
   services.awww.enable = true;
 
   home.file.${wallpaperDir}.source = ../assets/wallpapers;

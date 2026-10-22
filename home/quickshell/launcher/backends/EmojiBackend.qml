@@ -2,6 +2,8 @@ import QtQuick
 import Quickshell.Io
 import QtQuick.LocalStorage
 
+import "../Match.js" as Match
+
 // ----- emoji picker (replacing rofi-emoji / coel-emoji-picker) -----
 // Was a one-time vendor of pkgs.rofi-emoji's bundled data -- discovered
 // (2026-09-27) to be two full Unicode Emoji versions stale (missing all
@@ -29,7 +31,8 @@ Item {
       onStreamFinished: {
         root.entries = text.split("\n").filter(l => l.length > 0).map(line => {
           const parts = line.split("\t");
-          return { char: parts[0], category: parts[1] || "", name: parts[3] || "", keywords: parts[4] || "" };
+          const name = parts[3] || "", keywords = parts[4] || "";
+          return { char: parts[0], category: parts[1] || "", name, keywords, nName: Match.norm(name), nHay: Match.norm(name + " " + keywords) };
         });
       }
     }
@@ -81,11 +84,10 @@ Item {
   // as needed).
   function matches(q) {
     let out = [];
+    const cq = Match.compile(q);
     entries.forEach(e => {
-      const nl = e.name.toLowerCase();
-      const hay = nl + " " + e.keywords.toLowerCase();
-      if (!hay.includes(q)) return;
-      const score = nl.startsWith(q) ? 3 : nl.split(/\s+/).some(w => w.startsWith(q)) ? 2 : e.keywords.toLowerCase().split(" | ").includes(q) ? 2 : 1;
+      const score = Match.scoreN(cq, e.nName, e.nHay);
+      if (score < 0) return;
       out.push({ label: e.char + "  " + e.name, sub: e.category, icon: "smiley", cat: "emoji", score, emojiChar: e.char });
     });
     out.sort((a, b) => b.score - a.score);

@@ -22,13 +22,12 @@ section below. Three new commits since the last update: `a3e10a5`
 ("greeter works with kde plasma"), `f07a61f` ("power menu"), `3d0df64`
 ("uwsm, power menu command, small fixes, new icons"). The rofi-retirement
 pass this doc previously described as uncommitted is now part of that
-history (was `b96ce68`, already landed before this session started). Two
-real threads this session, one shipped and one deliberately reverted:
+history (was `b96ce68`, already landed before this session started). One
+real thread this session:
 
-1. **The greeter's "Current status: ...both Hyprland and Plasma launch
-   successfully" claim lower in this doc was wrong** — or at least didn't
-   survive renewed real-hardware testing. Picking this back up found
-   Plasma (and later, Hyprland's uwsm-managed entry) both still dying
+1. **The greeter's "Current status" claim lower in this doc didn't
+   survive renewed real-hardware testing.** Picking this back up found
+   Hyprland's uwsm-managed entry (and, at the time, another session) dying
    silently. Real root cause, genuinely new, not covered by this doc's
    existing numbered list: `Greetd.launch()`'s command argument gets
    **silently dropped** past some length/complexity threshold — not
@@ -41,18 +40,6 @@ real threads this session, one shipped and one deliberately reverted:
    section below (points 10-13) — read that before touching
    `GreeterBackend.qml`'s `doLaunch()` again, it's not obvious from the
    code alone.
-2. **A real attempt to make KDE Plasma's lock screen look like this
-   project's own Quickshell one was started, hit a hard platform wall, and
-   was fully reverted.** KWin restricts the `ext-session-lock-v1` Wayland
-   protocol to its own trusted client only — this project's lock screen
-   genuinely cannot become the real session lock under Plasma, confirmed
-   live and cross-checked against another project hitting the identical
-   error. A different approach (reskinning KDE's own native locker instead
-   of replacing it) was researched in real depth and a concrete plan was
-   written and approved, but **no implementation work has happened yet** —
-   see "KDE Plasma native lock screen theming" below before starting that
-   from scratch again.
-
 Also shipped this session: a new **power menu** (`XF86PowerOff` →
 `coel-power-menu`), ported from a design mockup the same way the lock
 screen was. See its own section below.
@@ -639,15 +626,12 @@ identical-looking by construction. `GreeterBackend.qml` wraps
 plain interface, UI never touches the auth system" shape as the lock
 screen's own `AuthBackend.qml`. `modules/greeter.nix` is gated behind
 `services.qs-greeter.enable` (currently **`true`** in `configuration.nix`)
-and disables SDDM via `mkForce false` when active — the previous
-(SDDM-based) generation stays selectable in the bootloader menu as a real
-fallback.
+and is the login manager.
 
 Real `users.json`/`sessions.json` are generated at build time from
 `config.users.users` (normal users only) and the real installed
 `wayland-sessions/*.desktop` files (`config.services.displayManager.
-sessionData.desktops`) — both Hyprland and Plasma are selectable, matching
-the previous dual-session SDDM setup. A `mock` mode (auto-enabled whenever
+sessionData.desktops`). A `mock` mode (auto-enabled whenever
 `Greetd.available` is false) lets the whole UI be built and screenshot-
 verified in an ordinary window (`greeter-shell.qml`) before any of the
 NixOS/greetd wiring existed at all.
@@ -694,9 +678,8 @@ speculative):**
    actual execution until other boot jobs are dispatched, capped at a
    documented, hardcoded 5s systemd timeout either way — this is real,
    intentional systemd behavior (meant to avoid interleaving console
-   output between services starting in parallel), not a bug. SDDM never
-   showed this gap because its own splash covers the console immediately;
-   cage has nothing covering it, so the deferral was a visible black
+   output between services starting in parallel), not a bug. cage has
+   nothing covering the console, so the deferral was a visible black
    screen. Fixed with `systemd.services.greetd.serviceConfig.Type =
    lib.mkForce "simple"`.
 
@@ -709,29 +692,7 @@ speculative):**
    command in `["/bin/sh", "-c", "<exec> >logfile 2>&1"]` in
    `GreeterBackend.qml`'s `doLaunch()`).
 
-6. **Plasma specifically failed to launch (instant black-screen bounce
-   back to the greeter)** — two independent bugs, both found via that
-   session-log redirect:
-   - **Wrong `XDG_CURRENT_DESKTOP` value.** `doLaunch()` was deriving it
-     from the session's own filename-derived `id` (`"plasma"`,
-     `"hyprland"`) instead of the `.desktop` file's real `DesktopNames=`
-     field (`"KDE"`, `"Hyprland"`). Hyprland's own startup script
-     self-corrects (and was what originally prompted, wrongly, removing
-     this variable entirely — that had only ever been masking a
-     wrong-*value* problem, not a should-be-unset one). Plasma has no
-     equivalent self-correction and depends on the real value for
-     portals/Qt theming/KDE component detection. Fixed by extracting the
-     real `DesktopNames=` line in `modules/greeter.nix`'s session-JSON
-     generation and using it in `GreeterBackend.qml`.
-   - **Missing `PATH`.** Plasma's session died in ~34ms with zero
-     output — an instant `exec` failure, not a crash. Its own
-     `plasma-dbus-run-session-if-needed` script (unlike Hyprland's, which
-     hardcodes full Nix store paths throughout) execs the bare command
-     name `dbus-run-session`, relying on `$PATH`. `Greetd.launch()`
-     doesn't inherit a normal login shell's `PATH` setup. Fixed by
-     explicitly passing `PATH=/run/current-system/sw/bin` (the standard
-     NixOS location every system-wide package, including `dbus`, is
-     symlinked into).
+6. *(Plasma-session launch fixes -- removed along with Plasma.)*
 
 7. **Wrong default session.** `hyprland-uwsm.desktop` sorts before
    `hyprland.desktop` alphabetically (`-` < `.` in ASCII) in the shell
@@ -771,18 +732,17 @@ speculative):**
    placeholder that, it turned out, had never been real for the lock
    screen either until this pass.
 
-**The "fully working, both Hyprland and Plasma launch successfully" claim
-this paragraph used to make here did not hold up** — picked back up in the
-2026-10-04 session (see top-of-file note) and found genuinely still
+**An earlier "fully working" claim here did not hold up** — picked back up
+in the 2026-10-04 session (see top-of-file note) and found genuinely still
 broken. Points 10-13 below are that session's real findings, in the order
-found; read them before trusting Plasma (or any session with a non-trivial
-`exec`) launches correctly just because the UI reaches the password field.
+found; read them before trusting any session with a non-trivial `exec`
+launches correctly just because the UI reaches the password field.
 
 10. **`Greetd.launch()`'s command argument gets silently dropped past
     some length/complexity threshold.** Not an error, not a crash in
     whatever it would have run — the argument just never reaches a real
     shell. Confirmed two independent ways: (a) a phone video of the real
-    console during a failed Plasma attempt showed NixOS's normal
+    console during a failed attempt showed NixOS's normal
     environment setup finish, then sit on a bare, blinking *interactive*
     `/bin/sh` prompt — i.e. `/bin/sh` started with no script/argument at
     all; (b) `/tmp/qs-greeter-session.log` (where the launched command's
@@ -799,42 +759,15 @@ found; read them before trusting Plasma (or any session with a non-trivial
     "/tmp/qs-greeter-launch.sh"]` — a short, fixed-size argv regardless of
     which session was picked. This replaced the previous per-session
     branching (short inline command for most sessions, a write-a-script-
-    file special case only for Plasma) entirely — see point 12.
-11. **Plasma needed two more real fixes on top of point 6's `PATH`/
-    `XDG_CURRENT_DESKTOP` ones**, both only visible once point 10's bug
-    stopped masking everything past it:
-    - `DBUS_SESSION_BUS_ADDRESS` unset → `plasma-dbus-run-session-if-
-      needed` tries to spawn its own private D-Bus daemon, which fails
-      immediately on this system specifically because `/etc/dbus-1/
-      session.conf` is a symlink to dbus's own *deprecated, empty* stub
-      config (`<busconfig></busconfig>`, no `<listen>` element at all —
-      the real config now lives under dbus's `share/` path, resolved
-      automatically when nothing points `--config-file` elsewhere).
-      Hyprland's own D-Bus clients (mako, the polkit agent) never hit this
-      because they use the newer convention of falling back to the
-      systemd-user bus at `$XDG_RUNTIME_DIR/bus` when the env var is
-      unset; `plasma-dbus-run-session-if-needed`'s own check is a naive
-      "is the var set at all," so pointing it at that same already-running
-      bus explicitly sidesteps the broken private-bus spawn entirely.
-    - A DRM-master handoff race between `cage` (the greeter's own
-      compositor) and `kwin_wayland` — confirmed live via `cage`'s own log
-      showing `Atomic commit failed: Permission denied` right as kwin
-      tried to take over, the mirror image of the race this project
-      already fixed once for `cage`'s own startup (point 3). Fixed the
-      same way: a short `sleep` (1s, after testing — 5s was tried first
-      and was never actually validated, since point 10's bug meant the
-      command carrying it wasn't running at all at the time) before
-      Plasma's real binary execs, inside the launch script from point 10.
-    Both fixes are scoped to sessions whose `exec` contains
-    `"dbus-run-session"` (i.e. just Plasma) — Hyprland (plain or
-    uwsm-managed) needs neither and is left untouched.
+    file special case for one) entirely — see point 12.
+11. *(Plasma-only D-Bus and DRM-handoff fixes -- removed along with Plasma.)*
 12. **The uwsm-managed Hyprland entry (`hyprland-uwsm`,
     `uwsm start -e -D Hyprland hyprland.desktop`) hit point 10's exact
     same silent-drop bug** — its command is a few words longer than plain
     Hyprland's single bare path, enough to cross whatever the real
     threshold is. This is what actually prompted unifying every session
     onto the script-file launch path in point 10, rather than special-
-    casing uwsm too on top of the existing Plasma-only special case.
+    casing uwsm too.
     Separately, `programs.hyprland.withUWSM = true` is now set in
     `configuration.nix` (was previously implicit/unset) along with real
     supporting config in `home/hyprland.nix` — a hand-rolled
@@ -866,7 +799,7 @@ found; read them before trusting Plasma (or any session with a non-trivial
 
 **Current status**: the script-file launch path (point 10) plus points
 11-13 are all live and confirmed working on real hardware — `hyprland`,
-`hyprland-uwsm`, and `plasma` all launch successfully through the
+and `hyprland-uwsm` both launch successfully through the
 greeter, both password and fingerprint still authenticate for real, and
 the last-used session is correctly remembered and defaulted to on the
 next boot. Security review (see above, from before this session) still
@@ -890,118 +823,8 @@ launch mechanics.
   correctly, suspect something else; the script-file path itself has no
   known length limit (it's always `["/bin/sh", "/tmp/qs-greeter-launch.sh"]`
   regardless of the real command's length).
-- Plasma's own native lock screen is a **separate, real effort** now, not
-  just "out of scope" — see "KDE Plasma native lock screen theming"
-  below. This project's own Quickshell lock screen was confirmed live to
-  be structurally unable to become the real session lock under KWin
-  (protocol restriction, not a bug), so "out of scope" no longer means
-  "never looked into," it means "looked into, hit a real wall, revisit via
-  the native-theming plan instead."
 
-## KDE Plasma native lock screen theming — planned, not yet implemented
 
-Goal: make KDE Plasma's own lock screen (`kscreenlocker_greet`) visually
-match this project's Quickshell lock screen, since replacing it outright
-turned out to be impossible (see below). **No implementation work has
-happened on this yet** — a real attempt at a *different* approach (full
-replacement) was made, reverted, and researched into a concrete written
-plan instead. Read this whole section, and the plan file it references,
-before starting.
-
-**What was actually tried first, and why it was abandoned**: redirect
-Plasma's `Super+L`, idle-timeout, and suspend/lid-close lock triggers to
-launch this project's real Quickshell lock screen
-(`lock-real-shell.qml`), the same one Hyprland already uses, via
-`swayidle` (idle/suspend triggers) and a `kglobalaccel` custom shortcut
-(`Super+L`). This got built (`home/kde-idle.nix`, edits to
-`home/kde-shortcuts.nix`) and partially worked (the keybind fired, the
-idle daemon ran) — but every actual lock attempt failed immediately with,
-straight from the Quickshell log: `Cannot start session lock: The current
-compositor does not support the ext-session-lock-v1 protocol.` **This is
-a real, confirmed KWin limitation, not a bug in this repo**: KWin
-restricts the `ext-session-lock-v1` Wayland protocol (what
-`Quickshell.Wayland`'s `WlSessionLock` needs to become the real session
-lock) to its own trusted internal client only, unlike Hyprland/wlroots
-compositors, which expose it to any client. Cross-checked against another
-project (`qylock`, also a Quickshell-based lock screen) hitting the
-identical error on KWin, confirmed by its own maintainer as a known KWin
-limitation. **All of `home/kde-idle.nix` and the `home/kde-shortcuts.nix`
-edits were fully reverted** — neither file has any trace of this attempt
-anymore, confirmed via `git diff`/`git status` after the revert. (A
-leftover swayidle systemd user service and a couple of zombie Quickshell
-processes from live-testing this before the revert were also manually
-cleaned up on the real machine; nothing persists from that attempt
-anywhere.)
-
-**The real alternative, researched in depth, not yet built**: KDE's lock
-screen UI isn't a simple swappable "Look and Feel" theme the way older
-(Plasma 5-era) guides describe — that mechanism doesn't apply to this
-Plasma 6 install. Confirmed directly against `kscreenlocker`'s real
-upstream source (`settings/shell_integration.cpp`):
-
-```cpp
-QString ShellIntegration::defaultShell() const {
-    KSharedConfig::Ptr startupConf = KSharedConfig::openConfig("plasmashellrc");
-    KConfigGroup startupConfGroup(startupConf, "Shell");
-    const QString defaultValue = qEnvironmentVariable("PLASMA_DEFAULT_SHELL", "org.kde.plasma.desktop");
-    QString value = startupConfGroup.readEntry("ShellPackage", defaultValue);
-    return value.isEmpty() ? defaultValue : value;
-}
-```
-
-`kscreenlocker_greet` loads a **`Plasma/Shell`** KPackage — the *same*
-package type and config key (`plasmashellrc` → `[Shell]` → `ShellPackage`)
-that selects the user's entire desktop shell (panels, desktop), not a
-dedicated lock-screen theme — and renders whichever file sits at
-`contents/lockscreen/LockScreen.qml` inside it, by KPackage convention.
-Confirmed currently unset on this system (no `[Shell]` section in
-`~/.config/plasmashellrc` at all, meaning the real default,
-`org.kde.plasma.desktop`, is what's actually in use), and that real
-package is small and fully inspectable: `/run/current-system/sw/share/
-plasma/shells/org.kde.plasma.desktop/` (464K, 61 files). Its real
-`contents/lockscreen/{LockScreen,LockScreenUi,MainBlock,LockOsd,
-NoPasswordUnlock,MediaControls,PasswordSync,config}.qml` were read in
-full — `LockScreenUi.qml` (427 lines) is the structural shell (StackView,
-wallpaper fade, virtual keyboard, caps-lock indicator via
-`org.kde.plasma.private.keyboardindicator`, media-controls loader, OSD,
-battery, keyboard-layout switcher, and the real `authenticator`
-`Connections` block: `onFailed(kind)`, `onSucceeded()`,
-`onInfoMessageChanged()`, `onErrorMessageChanged()`, `onPromptChanged()`,
-`onPromptForSecretChanged()`, calling `authenticator.startAuthenticating()`/
-`authenticator.respond(pw)`); `MainBlock.qml` (169 lines) is the actual
-visible password-pill/user-list/action-buttons block.
-
-**The written plan** (approved, not yet executed): fork
-`org.kde.plasma.desktop`'s shell package **wholesale** as a Nix
-derivation (byte-identical copy, new `metadata.json` `Id` only — forking
-the whole thing rather than writing a minimal new package means
-panels/desktop behavior is completely unaffected no matter what happens
-to the lock-screen files specifically, since `plasmashellrc`'s
-`ShellPackage` key controls the *entire* shell, not just the locker),
-install it via `xdg.dataFile."plasma/shells/<new-id>".source` (same
-whole-directory-derivation-as-source convention already used for
-Quickshell's own config), point `plasmashellrc` at it via the same
-`kwriteconfig6` activation-script convention every other `home/kde-*.nix`
-file already uses, then **restyle only `MainBlock.qml`** (the visible
-password pill/user name/action buttons) to match `lock/components/
-AuthCard.qml`'s look — reusing the Phosphor font + `Phosphor.js` codepoint
-table (already installed system-wide via `fonts.packages`, so available
-to `kscreenlocker_greet` too) and `coelos-wordmark.png` — while leaving
-`LockScreenUi.qml`'s real wiring (everything in the paragraph above)
-completely untouched. A skin of KDE's own tested logic, not a
-reimplementation of it. Staged rollout plan: deploy the unmodified fork
-first and confirm nothing at all changed (isolates whether fork-and-
-repoint itself is safe) before layering in any visual change, with
-`kwriteconfig6 --file plasmashellrc --group Shell --key ShellPackage
-org.kde.plasma.desktop` as the always-available, no-reboot-needed
-rollback at any point.
-
-**Full plan file, with more implementation detail than fits here**:
-`~/.claude/plans/mellow-singing-jellyfish.md` (outside this repo, in the
-assisting AI's own plan-file location — read it directly if picking this
-back up; it won't survive being deleted or that location changing, so
-treat this doc's own summary above as the durable fallback if that file
-is ever gone).
 
 ## Power menu — new, built and tested on real hardware
 
@@ -1049,9 +872,7 @@ mockup's own arm-then-confirm pattern. Real commands via
 lock-real-shell.qml` command used everywhere else in this project, suspend
 → `systemctl suspend`, reboot → `systemctl reboot`, shut down →
 `systemctl poweroff`, log out → `hyprctl dispatch exit` (Hyprland-specific
-since this is currently only ever reached via Hyprland's own power-key
-bind — Plasma's physical power key still uses systemd's own default,
-unrelated to this component, per `configuration.nix`'s own comment).
+since this is only ever reached via Hyprland's own power-key bind).
 Header shows real username/hostname (`hostname`, same `/proc/uptime`
 parse `SystemDropdown.qml` already uses), real battery % via
 `Quickshell.Services.UPower` (same pattern as everywhere else this
@@ -1285,18 +1106,10 @@ renders as Regular instead.
 
 The greeter fixes (points 10-13), the power menu, and the notification
 center (mako retired, real backend, see its own section above) are **done
-and real-hardware-tested**, not yet committed as of this doc. The KDE
-Plasma native lock-screen theming work is **planned and approved, not yet
-started** — see its own section above; that's the most likely next real
-task if picking this project back up without a more specific ask. No other
-single stated top priority; treat the rest below on their own merits if
-asked, in rough likely-relevance order:
+and real-hardware-tested**, not yet committed as of this doc. No single stated top
+priority; treat the list below on its own merits if asked, in rough
+likely-relevance order:
 
-1. **KDE Plasma native lock screen theming** — the written plan
-   (`~/.claude/plans/mellow-singing-jellyfish.md`, summarized in full
-   above) hasn't been executed yet. Start with Stage A (fork
-   `org.kde.plasma.desktop` unmodified, confirm the repoint mechanism
-   itself is safe) before touching any visual content.
 2. fprintd's ~30s timeout on the greeter (see the greeter section's
    "Known open items") — revisit if a fast password-only login still
    feels slow without touching the sensor.
@@ -1356,10 +1169,9 @@ agent via `Quickshell.Services.Polkit`, with the UI in `polkit/` (dialog,
 fingerprint ring, result toast) ported from `example/Polkit Agent.dc.html`
 and built from the `widgets/` primitives.
 
-- **Retired the KDE agent for Hyprland** (`home/hyprland.nix` exec-once). Only
-  one agent can register per login session: with both running, Quickshell logs
-  "An authentication agent already exists" and stays inert. Takes effect after
-  a rebuild + re-login. Plasma sessions keep their own agent.
+- **Retired the KDE agent** (`home/hyprland.nix` exec-once). Only one agent
+  can register per login session: with both running, Quickshell logs "An
+  authentication agent already exists" and stays inert.
 - API limits: no caller app/pid, no detail dict -- so the mockup's "app" line
   isn't shown. `displayName` is the capitalised full name; `string` is the login.
 - fprintd arrives as PAM info/error text (recognised by "finger"). PAM asks for
