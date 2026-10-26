@@ -227,19 +227,10 @@ Item {
   // Real actions/reply only exist while the underlying Notification is
   // still live -- a closed one can only be browsed, per the D-Bus spec
   // (there's nothing left server-side to invoke or reply to).
-  // Filters out the sender's own "mark as read"-style action -- KDE
-  // Connect's messaging notifications carry one of these as a real action
-  // (identifier "1" in practice, label "Mark as read") alongside
-  // "inline-reply". Invoking it for real (action.invoke(), same as any
-  // other action here) tells the sender the notification's been acted on,
-  // and kdeconnected's own response to that is to close it server-side --
-  // same consequence as the toast-timeout bug this replaced, just reached
-  // by the user clicking what looks like an inert "mark read" chip instead
-  // of a timer. We already have our own non-destructive local read flag
-  // (dropdownRoot's own "[mark read]", markRead()/markAllRead() below) that
-  // covers the same apparent purpose without closing anything, so the
-  // sender's real version is redundant and only harmful here -- dropped
-  // the same way "inline-reply" itself is already excluded from this list.
+  // Drops the sender's own "Mark as read" action (KDE Connect sends one,
+  // identifier "1", next to "inline-reply"): invoking it makes kdeconnectd
+  // close the notification server-side. The local read flag (markRead()/
+  // markAllRead() below) covers the same purpose without closing anything.
   function actionsFor(histId) {
     const row = history.find(r => r.id === histId);
     if (!row) return [];

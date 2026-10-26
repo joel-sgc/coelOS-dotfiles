@@ -11,7 +11,7 @@ Scope {
   // screen edge is versus the desktop behind it). Semi-transparent white
   // lightens whatever's underneath instead of competing with a fixed
   // hue, so it stays visible regardless of wallpaper color.
-  property int borderWidth: 12
+  property int borderWidth: 4
   property color borderColor: "#14ffffff"
   // A second, thin stroke traced right along the same rounded-rect edge
   // as the cutout, in a brighter shade than the translucent fill --

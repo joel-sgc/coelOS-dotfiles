@@ -60,10 +60,10 @@ let
   # rpi-imager must run as root on Linux and expects to be launched via
   # pkexec (its own strings/policykit annotations confirm this; it
   # re-drops to the invoking user via runuser/pkexec for xdg-open itself).
-  # A polkit agent is already running in both sessions to show the prompt,
-  # so no extra polkit rule is needed. Rest of the entry copied verbatim
+  # Quickshell's polkit agent already shows the prompt, so no extra polkit
+  # rule is needed. Rest of the entry copied verbatim
   # from com.raspberrypi.rpi-imager.desktop, minus zh_CN translations (same
-  # convention as the qrca/gimp entries below).
+  # convention as the gimp entry below).
   #
   # Split into a wrapper script rather than an inline `sh -c '...'` Exec=
   # line: the Desktop Entry Spec's Exec= quoting grammar can't express a

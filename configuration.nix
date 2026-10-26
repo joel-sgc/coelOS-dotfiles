@@ -14,6 +14,7 @@
     ./modules/filesystems.nix
     ./modules/ultraleap.nix
     ./modules/greeter.nix
+    ./modules/tty.nix
     ./modules/fnlock/nixos/fnlock.nix
     # On trial (started Oct 2026): returns the EC to the patched RW firmware at
     # boot after an EC reset. Each jump is an unclean power-off that counts
@@ -147,6 +148,24 @@
   # battery/power data (poweralertd, the Quickshell panel) comes from UPower.
   services.udisks2.enable = true;
   services.upower.enable = true;
+
+  # The Plasma module also supplied the system fonts and default families;
+  # without them GTK/wx apps (OrcaSlicer, ...) fall back to DejaVu and
+  # render missing glyphs as boxes.
+  fonts.packages = [
+    pkgs.noto-fonts
+    pkgs.noto-fonts-cjk-sans
+    pkgs.noto-fonts-color-emoji
+    pkgs.hack-font
+  ];
+  fonts.fontconfig.defaultFonts = {
+    monospace = [
+      "Hack"
+      "Noto Sans Mono"
+    ];
+    sansSerif = [ "Noto Sans" ];
+    serif = [ "Noto Serif" ];
+  };
 
   programs.hyprland = {
     enable = true;
@@ -332,6 +351,7 @@
     pkgs.micro
     pkgs.git
     pkgs.sshfs
+    pkgs.arp-scan
 
     # Dolphin, no longer pulled in by the Plasma module: kio-extras (sftp://,
     # trash:/, MTP...), kio-fuse (lets non-KDE apps open files from KIO
@@ -358,7 +378,6 @@
     pkgs.pciutils # lspci
     pkgs.usbutils # lsusb
     pkgs.dnsutils # dig, nslookup, host
-    pkgs.btop
     pkgs.ripgrep
     pkgs.fd
     pkgs.ncdu

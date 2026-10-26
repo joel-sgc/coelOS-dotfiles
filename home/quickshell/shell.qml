@@ -115,7 +115,7 @@ ShellRoot {
     barHeight: root.barHeight
   }
 
-  // Polkit authentication agent (replaces polkit-kde-agent) -- see Polkit.qml
+  // Polkit authentication agent -- see Polkit.qml
   Polkit {}
 
   // Volume/brightness/media OSD (replaces swayosd) -- see Osd.qml

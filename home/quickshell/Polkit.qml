@@ -8,9 +8,8 @@ import "./polkit"
 import "./widgets"
 
 // ===== POLKIT AUTHENTICATION AGENT =====
-// Replaces polkit-kde-authentication-agent-1: owns the one PolkitAgent
-// (registers on the system bus for this login session -- only one agent can
-// per session, so the KDE one must not also be running), shows each request
+// Owns the one PolkitAgent (registers on the system bus for this login
+// session -- only one agent can per session), shows each request
 // in PolkitDialog on an Overlay window with exclusive keyboard focus, and
 // reports the outcome in a toast.
 //

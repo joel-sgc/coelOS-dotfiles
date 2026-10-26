@@ -104,3 +104,11 @@ bindkey '^[[1;2C' shift-forward-char   # Shift+Right
 # Shift+Ctrl+Arrow Selection
 bindkey '^[[1;6D' shift-backward-word  # Shift+Ctrl+Left
 bindkey '^[[1;6C' shift-forward-word   # Shift+Ctrl+Right
+
+# kmscon TTY fallbacks (modules/tty.nix): kmscon drops Shift from
+# Ctrl+Shift+Arrow and Ctrl from Ctrl+Backspace/Delete (they arrive as the
+# plain key), so those binds above can't work there. Alt-based equivalents:
+bindkey '^[B' shift-backward-word      # Alt+Shift+B
+bindkey '^[F' shift-forward-word       # Alt+Shift+F
+bindkey '^[^?' backward-kill-word      # Alt+Backspace
+bindkey '^[d' kill-word                # Alt+D

@@ -1,6 +1,48 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
+let
+  # Chromium "install as app" sites, declared here instead of installed by
+  # hand. Add a site = add a line (and drop a PNG in assets/webapp-icons/).
+  # Written straight to $XDG_DATA_HOME/applications via home.file rather than
+  # xdg.desktopEntries, for the same ordering reason as home/desktop-entries.nix.
+  # --app=URL (not --app-id) so nothing depends on PWA state in the profile.
+  webapps = {
+    slack = {
+      name = "Slack";
+      url = "https://app.slack.com/client/T0A6685TESC/";
+    };
+    whatsapp = {
+      name = "WhatsApp Web";
+      url = "https://web.whatsapp.com/";
+    };
+    groupme = {
+      name = "GroupMe";
+      url = "https://web.groupme.com/";
+    };
+    onshape = {
+      name = "Onshape";
+      url = "https://cad.onshape.com/";
+    };
+  };
+
+  mkWebapp =
+    id: app:
+    pkgs.makeDesktopItem {
+      name = "webapp-${id}";
+      desktopName = app.name;
+      exec = "chromium --class=webapp-${id} --app=${app.url}";
+      icon = ../assets/webapp-icons + "/${id}.png";
+      categories = [ "Network" ];
+      startupNotify = true;
+      extraConfig.StartupWMClass = "webapp-${id}";
+    };
+in
 {
+  home.file = lib.mapAttrs' (id: app: {
+    name = ".local/share/applications/webapp-${id}.desktop";
+    value.source = "${mkWebapp id app}/share/applications/webapp-${id}.desktop";
+  }) webapps;
+
   programs.chromium = {
     enable = true;
     package = pkgs.chromium;
