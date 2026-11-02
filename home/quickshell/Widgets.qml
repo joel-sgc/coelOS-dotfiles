@@ -6,7 +6,7 @@ import "./widgets"
 
 // ===== DESKTOP WIDGETS =====
 // Weather + calendar stacked on the left, kanban to their right, all on the
-// first screen only (a widget duplicated across monitors would be two kanban
+// main screen only (MainScreen.qml; a widget duplicated across monitors would be two kanban
 // boards editing the same file). Each widget is a layer-shell Bottom-layer
 // window -- see widgets/WidgetColumn.qml / WidgetCard.qml. Colors live in widgets/Pal.qml.
 //
@@ -17,9 +17,9 @@ Scope {
 
   property int barHeight: 36
   property bool shown: true
-  readonly property var screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
-  readonly property int top: barHeight + 24
-  readonly property int left: 40
+  readonly property var screen: MainScreen.screen
+  readonly property int top: barHeight + 16
+  readonly property int left: 16 + 4
   readonly property int gap: 20
 
   IpcHandler {

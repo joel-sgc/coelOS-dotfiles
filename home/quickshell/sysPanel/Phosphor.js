@@ -91,6 +91,8 @@ const codepoints = {
   selection: 0xe69a, // ph-selection (Screenshot region)
   "app-window": 0xe5da, // ph-app-window (Screenshot window)
   monitor: 0xe32e, // ph-monitor (Screenshot screen)
+  laptop: 0xe586, // ph-laptop (display modes)
+  "check-circle": 0xe184, // ph-check-circle (display modes)
   record: 0xe3ee, // ph-record (Record region)
   eyedropper: 0xe568, // ph-eyedropper (Color picker)
   "text-aa": 0xe6ee, // ph-text-aa (Text from region / OCR)

@@ -8,6 +8,23 @@
 let
   theme = import ./theme/onedark.nix;
   strip = lib.removePrefix "#";
+
+  # Restarts the panel (F4). Kills every instance of the main shell config
+  # by command line -- `quickshell kill` only finds instances it can match
+  # by config name, and misses orphans -- then relaunches. Deliberately
+  # scoped to the `-c <repo>/home/quickshell` panel: the lock screen and
+  # other `-p` instances must survive. The `[q]` keeps pkill/pgrep from
+  # matching this script's own command line.
+  restartQuickshell = pkgs.writeShellScript "restart-quickshell" ''
+    pattern='[q]uickshell -c .*/home/quickshell$'
+    pkill -f "$pattern"
+    for _ in $(seq 1 20); do
+      pgrep -f "$pattern" >/dev/null || break
+      sleep 0.1
+    done
+    pkill -9 -f "$pattern"
+    QML_DISABLE_DISK_CACHE=1 exec ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell
+  '';
 in
 {
   # Scope every Wayland user service (hypridle, swayosd, awww, cliphist, ...)
@@ -55,6 +72,12 @@ in
   # a no-op. (xdg-desktop-portal-hyprland needs no such entry -- the
   # Hyprland module adds it on its own.)
   home.packages = [ pkgs.xdg-desktop-portal-gtk ];
+
+  # Lua config scratch file: examples only, deliberately NOT named
+  # hyprland.lua -- Hyprland would then use it instead of the hyprland.conf
+  # generated below, and it contains no live settings. See the header of
+  # the file for how to switch over.
+  xdg.configFile."hypr/custom.lua".source = ./hyprland/custom.lua;
 
   wayland.windowManager.hyprland = {
     enable = true;
@@ -116,7 +139,7 @@ in
 
       general = {
         gaps_in = 4;
-        gaps_out = "8, 20, 20, 20";
+        gaps_out = "8, 12, 12, 12";
         border_size = 2;
 
         # Blue -> yellow gradient on focus, matching the primary/secondary/
@@ -235,9 +258,9 @@ in
         # initial state is read at startup from /run/fnlock/state (Osd.qml).
         ", XF86Tools, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOn"
         ", XF86Launch5, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOff"
-        # F4: restart the Quickshell panel (same command as the exec-once
-        # above, after killing the running instance).
-        ", F4, exec, ${pkgs.quickshell}/bin/quickshell kill -c ~/.nixos/home/quickshell; env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
+        # F4: kill any running panel and relaunch it (same command as the
+        # exec-once above).
+        ", F4, exec, ${restartQuickshell}"
         # `quickshell ipc call` talks to the IpcHandler in Launcher.qml --
         # needs `-p ~/.nixos/home/quickshell` (a path) to target the
         # instance launched above with `-c` (a named XDG config); with no
@@ -289,6 +312,8 @@ in
         ", XF86MonBrightnessDown, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd brightnessDown"
         ", Print, exec, coel-screenshot"
         ", XF86PowerOff, exec, coel-power-menu"
+        # The laptop's F9 display key sends Super+P, not an XF86 keysym.
+        "$mainMod, P, exec, coel-displays"
       ]
       ++ builtins.concatLists (
         builtins.genList (

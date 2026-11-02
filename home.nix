@@ -97,6 +97,10 @@
     nerd-fonts.fira-code # rofi + ghostty (home/os-commands.nix, home/ghostty.nix)
     noto-fonts-color-emoji # without this, coel-emoji-picker has nothing to actually render
 
+    # Casting to TVs / smart screens (Miracast over Wi-Fi Direct, Chromecast).
+    # Needs services.avahi and the firewall port in configuration.nix.
+    gnome-network-displays
+
     # Networking / VPN
     sshfs
     wireguard-tools

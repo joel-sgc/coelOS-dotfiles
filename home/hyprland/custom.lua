@@ -1,0 +1,130 @@
+-- Hyprland Lua config -- examples and a scratch space.
+--
+-- STATUS: not loaded. home/hyprland.nix links this to ~/.config/hypr/custom.lua,
+-- but Hyprland only reads ~/.config/hypr/hyprland.lua (or hyprland.conf). If a
+-- hyprland.lua exists it is used *instead of* hyprland.conf, not on top of it, so
+-- nothing here changes your live config until you decide to switch over.
+--
+-- To try it for real, the safe way is a full port of home/hyprland.nix into one
+-- hyprland.lua (monitors, env, binds, rules, autostart), then point the Nix
+-- file at that. Everything below uses the API shipped with Hyprland 0.55
+-- (reference: <hyprland>/share/hypr/hyprland.lua and stubs/hl.meta.lua).
+-- Lines marked (check) use dispatcher arguments I could not confirm offline.
+
+local mainMod  = "SUPER"
+local terminal = "ghostty"
+local qs       = "quickshell ipc -p ~/.nixos/home/quickshell call"
+
+---------------------------------------------------------------- monitors
+-- Laptop panel at its native mode, then a wildcard for anything else that is
+-- plugged in (stacked above the laptop and centered, like the current conf).
+-- hl.monitor({ output = "eDP-1", mode = "2256x1504@59.999", position = "0x0", scale = 1 })
+-- hl.monitor({ output = "",      mode = "preferred", position = "auto-center-up", scale = 1 })
+
+---------------------------------------------------------------- environment
+-- hl.env("NIXOS_OZONE_WL", "1")
+-- hl.env("MOZ_ENABLE_WAYLAND", "1")
+-- hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
+
+---------------------------------------------------------------- look and feel
+-- hl.config({
+--     general = {
+--         gaps_in     = 4,
+--         gaps_out    = "8, 12, 12, 12",
+--         border_size = 2,
+--         col = {
+--             -- the blue -> yellow focus gradient from theme/onedark.nix
+--             active_border   = { colors = { "rgba(61afefee)", "rgba(e5c07bee)" }, angle = 45 },
+--             inactive_border = "rgba(5c6370aa)",
+--         },
+--     },
+--     decoration = { rounding = 8 },
+--     input = {
+--         touchpad = { natural_scroll = true, clickfinger_behavior = 1 },
+--     },
+-- })
+-- hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+
+---------------------------------------------------------------- autostart
+-- hl.on("hyprland.start", function()
+--     hl.exec_cmd("systemctl --user start hyprland-session.target")
+--     hl.exec_cmd("coel-random-wallpaper")
+--     hl.exec_cmd("env QML_DISABLE_DISK_CACHE=1 quickshell -c ~/.nixos/home/quickshell")
+-- end)
+
+---------------------------------------------------------------- window rules
+-- Float one-off utility terminals (ghostty --class=com.joelsgc.floating -e ...).
+-- hl.window_rule({
+--     name  = "float-utility-terminal",
+--     match = { class = "^com\\.joelsgc\\.floating$" },
+--     float = true,
+--     size  = "1556 925",
+-- })
+--
+-- Ignore maximize requests from every app.
+-- hl.window_rule({
+--     name  = "suppress-maximize-events",
+--     match = { class = ".*" },
+--     suppress_event = "maximize",
+-- })
+--
+-- Per-app examples (not in the current config):
+-- hl.window_rule({ name = "pip",      match = { title = "^Picture-in-Picture$" }, float = true, pin = true })
+-- hl.window_rule({ name = "vm-ws",    match = { class = "^virt-manager$" },       workspace = "5" })
+-- hl.window_rule({ name = "opacity",  match = { class = "^ghostty$" },            opacity = "0.95 0.9" })
+
+---------------------------------------------------------------- layer rules
+-- hl.layer_rule({
+--     name    = "quickshell-popup-no-anim",
+--     match   = { namespace = "coel-sys-popup" },
+--     no_anim = true,
+-- })
+
+---------------------------------------------------------------- binds
+-- hl.bind(mainMod .. " + T",       hl.dsp.exec_cmd(terminal))
+-- hl.bind(mainMod .. " + space",   hl.dsp.exec_cmd(qs .. " launcher toggle"))
+-- hl.bind(mainMod .. " + W",       hl.dsp.window.close())
+-- hl.bind(mainMod .. " + F",       hl.dsp.window.float({ action = "toggle" }))
+-- hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.fullscreen())            -- (check) args
+--
+-- Focus with the arrow keys:
+-- for _, d in ipairs({ "left", "right", "up", "down" }) do
+--     hl.bind(mainMod .. " + " .. d, hl.dsp.focus({ direction = d }))
+-- end
+--
+-- Workspaces 1-10 (key 0 is workspace 10):
+-- for i = 1, 10 do
+--     local key = i % 10
+--     hl.bind(mainMod .. " + " .. key,         hl.dsp.focus({ workspace = i }))
+--     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+-- end
+--
+-- Media / volume keys: `locked` fires even on the lock screen, `repeating` on hold.
+-- hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(qs .. " osd volumeUp"),
+--         { locked = true, repeating = true })
+-- hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(qs .. " osd mediaPlayPause"), { locked = true })
+--
+-- `non_consuming` passes the key through to the focused app as well (Caps Lock OSD):
+-- hl.bind("Caps_Lock", hl.dsp.exec_cmd(qs .. " osd capsLock"), { non_consuming = true })
+--
+-- Mouse: super + left/right drag to move / resize.
+-- hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
+-- hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+--
+-- A bind you can switch off at runtime:
+-- local b = hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("coel-random-wallpaper"))
+-- b:set_enabled(false)
+
+---------------------------------------------------------------- things Lua adds
+-- Real logic instead of a fixed command, e.g. only act when a window is open:
+-- hl.bind(mainMod .. " + Q", function()
+--     local w = hl.get_active_window()
+--     if w then hl.dispatch(hl.dsp.window.close()) end
+-- end)
+--
+-- React to events:
+-- hl.on("monitor.added", function() hl.exec_cmd("notify-send 'monitor connected'") end)
+--
+-- Run something periodically:
+-- hl.timer(function() hl.exec_cmd("coel-random-wallpaper") end,
+--          { timeout = 30 * 60 * 1000, type = "repeat" })

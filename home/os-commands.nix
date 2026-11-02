@@ -67,6 +67,40 @@ let
     '';
   };
 
+  # Display arrangement modal -- bound to Super+P in home/hyprland.nix (the
+  # laptop's F9 display key sends Super+P). Standalone process like the
+  # power menu, with the same already-open guard.
+  displays = pkgs.writeShellApplication {
+    name = "coel-displays";
+    runtimeInputs = [
+      pkgs.quickshell
+      pkgs.procps
+    ];
+    text = ''
+      if pgrep -f "quickshell -p .*display-modes-shell\.qml" >/dev/null; then
+        exit 0
+      fi
+      exec quickshell -p "$HOME/.nixos/home/quickshell/display-modes-shell.qml"
+    '';
+  };
+
+  # Lists what is announcing itself on the current network that a screen can
+  # be cast to (Chromecast, AirPlay, Miracast-over-LAN, Android TV). Empty
+  # output means nothing is discoverable here -- campus/guest wifi usually
+  # isolates clients and drops mDNS -- so only Wi-Fi Direct Miracast can work.
+  castScan = pkgs.writeShellApplication {
+    name = "coel-cast-scan";
+    runtimeInputs = [
+      pkgs.avahi
+      pkgs.gawk
+    ];
+    text = ''
+      avahi-browse -a -r -t -p \
+        | awk -F';' '$1 == "=" && $5 ~ /_(googlecast|airplay|raop|display|androidtvremote2)\._tcp/ { print $5 "  " $4 "  " $8 ":" $9 }' \
+        | sort -u
+    '';
+  };
+
   # Screen share picker -- xdg-desktop-portal-hyprland runs this (see the
   # xdph.conf entry at the bottom) instead of its stock hyprland-share-picker.
   # The script lives in the repo so its comments sit next to the Quickshell
@@ -232,6 +266,8 @@ in
     purge
     logout
     powerMenu
+    displays
+    castScan
     sharePicker
     rebuild
     update

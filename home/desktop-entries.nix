@@ -263,4 +263,36 @@ in
     name = ".local/share/applications/${id}.desktop";
     value.source = "${item}/share/applications/${id}.desktop";
   }) (hiddenEntries // editedEntries);
+
+  # AppImages that integrate themselves (or get integrated by a helper) drop a
+  # .desktop file plus icons into ~/.local/share and never clean up after
+  # themselves, so deleting the AppImage leaves a dead launcher behind. On every
+  # activation, remove any such hand-made entry whose Exec points at a file
+  # under $HOME that no longer exists (plus its per-user icons). Entries from
+  # Nix are symlinks and entries without an absolute Exec path (steam, gwenview)
+  # are left alone.
+  home.activation.pruneDeadDesktopEntries = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    apps="$HOME/.local/share/applications"
+    if [ -d "$apps" ]; then
+      for f in "$apps"/*.desktop; do
+        [ -f "$f" ] && [ ! -L "$f" ] || continue
+        exe=$(sed -n 's/^Exec=//p' "$f" | head -n 1)
+        case "$exe" in
+          \"*) exe=''${exe#\"}; exe=''${exe%%\"*} ;;
+          *) exe=''${exe%% *} ;;
+        esac
+        case "$exe" in
+          "$HOME"/*) [ -e "$exe" ] && continue ;;
+          *) continue ;;
+        esac
+        icon=$(sed -n 's/^Icon=//p' "$f" | head -n 1)
+        $DRY_RUN_CMD rm -f "$f"
+        case "$icon" in
+          ""|*/*) ;;
+          *) $DRY_RUN_CMD rm -f "$HOME"/.local/share/icons/hicolor/*/apps/"$icon".png "$HOME"/.local/share/icons/hicolor/*/apps/"$icon".svg ;;
+        esac
+        echo "removed dead desktop entry: $(basename "$f")"
+      done
+    fi
+  '';
 }

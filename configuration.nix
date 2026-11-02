@@ -88,6 +88,10 @@
       "1.1.1.1"
       "1.0.0.1"
     ];
+    # Avahi (below) does the mDNS browsing for casting; resolved's own mDNS
+    # would fight it over udp 5353 and also announces this host on every
+    # network, campus wifi included.
+    settings.Resolve.MulticastDNS = "no";
   };
 
   # Tailscale
@@ -103,6 +107,20 @@
   ];
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
+
+  # mDNS browsing for casting (Chromecast/AirPlay discovery, used by
+  # gnome-network-displays and coel-cast-scan). Browse only: nothing about
+  # this machine is announced on the network (publish off) -- matters on
+  # shared campus wifi. openFirewall opens udp 5353 for the replies.
+  services.avahi = {
+    enable = true;
+    openFirewall = true;
+    publish.enable = false;
+    nssmdns4 = false;
+  };
+  # Miracast (Wi-Fi Direct): the TV connects back to the source's RTSP
+  # control port.
+  networking.firewall.allowedTCPPorts = [ 7236 ];
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

@@ -377,12 +377,13 @@ Item {
     // once a complete "<bang> <term>" is present, so there's instant
     // feedback that the bang was understood rather than it looking dead
     // until you've also typed a search term.
-    const bangMatch = raw.match(/^(@g|@ddg|@yt)(?:\s+(.*))?$/i);
+    const bangMatch = raw.match(/^(@g|@ddg|@yt|@amzn)(?:\s+(.*))?$/i);
     if (bangMatch) {
       const engines = {
         "@g": { label: "Google", url: "https://www.google.com/search?q=" },
         "@ddg": { label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
         "@yt": { label: "YouTube", url: "https://www.youtube.com/results?search_query=" },
+        "@amzn": { label: "Amazon", url: "https://www.amazon.com/s?k=" },
       };
       const bang = bangMatch[1].toLowerCase();
       const term = (bangMatch[2] || "").trim();
