@@ -16,6 +16,7 @@
     ./modules/greeter.nix
     ./modules/tty.nix
     ./modules/fnlock/nixos/fnlock.nix
+    ./modules/miracast
     # On trial (started Oct 2026): returns the EC to the patched RW firmware at
     # boot after an EC reset. Each jump is an unclean power-off that counts
     # toward the TPM lockout limit -- see modules/fnlock/README.md. Remove this
@@ -121,6 +122,9 @@
   # Miracast (Wi-Fi Direct): the TV connects back to the source's RTSP
   # control port.
   networking.firewall.allowedTCPPorts = [ 7236 ];
+  # Miracast discovery/link daemon (modules/miracast, see its README.md).
+  services.miracast.enable = true;
+  services.miracast.interface = "wlp1s0";
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
@@ -130,7 +134,12 @@
 
   # Personal server sshfs mount
   programs.fuse.userAllowOther = true;
-  fileSystems."/home/joelsgc/server" = {
+  #
+  # TEMPORARILY DISABLED (2026-11-06) while getting Fusion running: with the
+  # server unreachable the autofs mount went stale, and Wine stalls for
+  # seconds whenever it walks the host mount table (home/fusion360.nix).
+  # Flip to true to bring it back.
+  fileSystems."/home/joelsgc/server" = pkgs.lib.mkIf false {
     device = "sftp@jsgc-server:/upload";
     fsType = "fuse.sshfs";
     options = [

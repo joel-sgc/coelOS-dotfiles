@@ -56,6 +56,7 @@
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
     inputs.steam-config-nix.homeModules.default
     ./home/steam.nix
+    ./home/fusion360.nix
   ];
 
   ##############################################################################

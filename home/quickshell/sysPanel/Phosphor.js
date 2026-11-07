@@ -178,6 +178,13 @@ const codepoints = {
 
   // screenshare/ -- screen share picker
   screencast: 0xe404, // ph-screencast (picker header / requester tile)
+
+  // dropdowns/EthernetView.qml -- ethernet interface rows
+  "tree-structure": 0xe67c, // ph-tree-structure (vlan)
+  plug: 0xe946, // ph-plug (usb adapter)
+  plugs: 0xeb56, // ph-plugs (other)
+  "plugs-connected": 0xeb5a, // ph-plugs-connected
+  "globe-simple": 0xe28e, // ph-globe-simple (carries internet)
 };
 
 function icon(name) {

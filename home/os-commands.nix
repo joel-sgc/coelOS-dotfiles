@@ -92,9 +92,16 @@ let
     name = "coel-cast-scan";
     runtimeInputs = [
       pkgs.avahi
+      pkgs.coreutils
       pkgs.gawk
     ];
+    # `avahi-browse -t` only dumps avahi's cache and exits, so on a fresh
+    # network the first scan came back empty and the second worked. Browse
+    # live for a few seconds first (output discarded) to fill the cache, then
+    # read it. timeout kills the live browse on purpose, hence the silenced
+    # stderr ("Got SIGTERM, quitting.") and `|| true`.
     text = ''
+      timeout 3 avahi-browse -a -r -p >/dev/null 2>&1 || true
       avahi-browse -a -r -t -p \
         | awk -F';' '$1 == "=" && $5 ~ /_(googlecast|airplay|raop|display|androidtvremote2)\._tcp/ { print $5 "  " $4 "  " $8 ":" $9 }' \
         | sort -u

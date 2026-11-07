@@ -334,10 +334,12 @@ Scope {
           // way bluetooth's first guess was -- shifted right by one more
           // increment on top of that correction.
           rightMargin: 145
-          contentWidth: 500
+          // Follows the dropdown: the ethernet tab is wider than wifi/hotspot.
+          contentWidth: networkDropdown.implicitWidth + 32
           onCloseRequested: root.openPopup = ""
 
           NetworkDropdown {
+            id: networkDropdown
             fgColor: root.fgColor
             mutedColor: root.mutedColor
             hoverColor: root.hoverColor

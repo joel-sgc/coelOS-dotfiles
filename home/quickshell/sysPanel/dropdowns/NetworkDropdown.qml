@@ -76,6 +76,12 @@ Item {
 
   property string view: "main"
 
+  // "3 ethernet" tab: state/actions live in EthernetBackend, UI in EthernetView.
+  EthernetBackend {
+    id: eth
+    active: dropdownRoot.popupOpen && dropdownRoot.view === "eth"
+  }
+
   // ----- real wifi/wired device + network list -----
   readonly property var wifiDevice: {
     for (const dev of Networking.devices.values) {
@@ -824,6 +830,7 @@ Item {
     }
     if (event.key === Qt.Key_1) { view = "main"; draft = null; dropdownRoot.forceActiveFocus(); event.accepted = true; return; }
     if (event.key === Qt.Key_2) { view = "hotspot"; draft = null; dropdownRoot.forceActiveFocus(); event.accepted = true; return; }
+    if (event.key === Qt.Key_3) { view = "eth"; draft = null; dropdownRoot.forceActiveFocus(); event.accepted = true; return; }
 
     if (view === "main") {
       event.accepted = true;
@@ -874,10 +881,14 @@ Item {
       if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { saveDraft(); event.accepted = true; }
     } else if (view === "hotspot") {
       if (event.key === Qt.Key_Space) { toggleHotspot(); event.accepted = true; }
+    } else if (view === "eth") {
+      event.accepted = eth.handleKey(event);
     }
   }
 
-  implicitWidth: 468
+  // Never narrower than the header (title + three tabs + close), which the
+  // ethernet tab made longer than the old fixed 468.
+  implicitWidth: Math.max(view === "eth" ? 540 : 468, headerRow.implicitWidth)
   implicitHeight: column.implicitHeight
 
   Column {
@@ -887,6 +898,7 @@ Item {
 
     // ----- header -----
     RowLayout {
+      id: headerRow
       width: parent.width
       height: 28
 
@@ -932,6 +944,7 @@ Item {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.view = "main"; dropdownRoot.draft = null; dropdownRoot.forceActiveFocus(); } }
       }
       Rectangle {
+        id: hsTab
         implicitWidth: hsTabLabel.implicitWidth + 16
         implicitHeight: 20
         radius: Globals.eyeCandyOff ? 0 : 2
@@ -945,6 +958,21 @@ Item {
           font.pixelSize: 12
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.view = "hotspot"; dropdownRoot.draft = null; dropdownRoot.forceActiveFocus(); } }
+      }
+      Rectangle {
+        implicitWidth: ethTabLabel.implicitWidth + 16
+        implicitHeight: 20
+        radius: Globals.eyeCandyOff ? 0 : 2
+        color: dropdownRoot.view === "eth" ? dropdownRoot.hoverColor : "transparent"
+        Text {
+          id: ethTabLabel
+          anchors.centerIn: parent
+          text: "3 ethernet"
+          color: dropdownRoot.fgColor
+          font.family: "JetBrains Mono"
+          font.pixelSize: 12
+        }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.view = "eth"; dropdownRoot.draft = null; dropdownRoot.forceActiveFocus(); } }
       }
       Text {
         text: "[×]"
@@ -1740,6 +1768,18 @@ Item {
       }
     }
 
+    // ----- ethernet -----
+    EthernetView {
+      visible: dropdownRoot.view === "eth"
+      width: parent.width
+      height: visible ? implicitHeight : 0
+      be: eth
+      fgColor: dropdownRoot.fgColor
+      mutedColor: dropdownRoot.mutedColor
+      hoverColor: dropdownRoot.hoverColor
+      maxHeight: Math.max(300, Screen.height - 190)
+    }
+
     Item { width: 1; height: 12 }
 
     // ----- hints -----
@@ -1752,6 +1792,8 @@ Item {
           : [{ k: "tab", l: "vpn ↔ networks" }, { k: "j/k", l: "move" }, { k: "⏎/space", l: "toggle" }, { k: "esc", l: "close" }])
         : dropdownRoot.view === "edit"
           ? [{ k: "⏎", l: "save" }, { k: "esc", l: "cancel" }]
+          : dropdownRoot.view === "eth"
+          ? [{ k: "j/k", l: "port" }, { k: "u s h b o", l: "role" }, { k: "⏎", l: "apply" }, { k: "x", l: "revert" }, { k: "t", l: "test" }, { k: "v", l: "vlan" }, { k: "m", l: "advanced" }, { k: "esc", l: "back" }]
           : [{ k: "space", l: dropdownRoot.hsOn ? "stop" : "start" }, { k: "1", l: "wifi" }, { k: "esc", l: "back" }]
       Repeater {
         model: parent.hints
