@@ -46,6 +46,9 @@ IF_PROPS = "org.freedesktop.DBus.Properties"
 # dev_info 0x0010: primary role "source", session available.
 WFD_SOURCE_DEVINFO = 0x0010
 
+# P2P group capability bitmap bit 1: the device is already a group owner
+GROUP_CAPAB_GO = 0x02
+
 ROLE_NAMES = {0: "source", 1: "sink", 2: "secondary-sink", 3: "dual"}
 
 SYSTEMD = "org.freedesktop.systemd1"
@@ -230,6 +233,20 @@ class Daemon:
     async def get_prop(self, path, iface, name):
         r = await self.call(path, IF_PROPS, "Get", "ss", [iface, name])
         return unwrap(r.body[0])
+
+    async def station_frequency(self):
+        """MHz of the channel the normal Wi-Fi connection is on, or None. The adapter cannot hold the
+        access point and a Wi-Fi Direct group on two different channels at once: it drops the station
+        link (and NetworkManager may then give up reconnecting), so we ask for the same channel."""
+        try:
+            bss = await self.get_prop(self.path, IF_IFACE, "CurrentBSS")
+            if not bss or bss == "/":
+                print("station channel: not associated (CurrentBSS=%r)" % (bss,), flush=True)
+                return None
+            return int(await self.get_prop(bss, "fi.w1.wpa_supplicant1.BSS", "Frequency"))
+        except Exception as e:
+            print("station channel: lookup failed (%s)" % e, flush=True)
+            return None
 
     async def set_prop(self, path, iface, name, variant):
         await self.call(path, IF_PROPS, "Set", "ssv", [iface, name, variant])
@@ -496,12 +513,17 @@ class Daemon:
         if cmd == "connect":
             return await self.connect(req)
         if cmd == "disconnect":
-            if self.path:
-                try:
-                    await self.call(self.path, IF_P2P, "Disconnect")
-                except Exception as e:
-                    return {"ok": False, "error": str(e)}
+            # NEVER call P2PDevice.Disconnect on the main interface path: wpa_supplicant implements it as
+            # "deauthenticate this interface", which drops the normal Wi-Fi connection (and leaves it
+            # "disconnected, do not scan" until something reconnects it). End the group on the group's own
+            # interface, and cancel a formation in progress with Cancel.
             ifname = self.state.link.get("interface")
+            if self.state.link.get("state") == "connecting" and self.path:
+                try:
+                    await self.call(self.path, IF_P2P, "Cancel")
+                except Exception as e:
+                    print("cancel: %s" % e, flush=True)
+            await self.remove_groups()
             self.state.link = {"state": "idle"}
             self.touch()
             if ifname:
@@ -517,6 +539,8 @@ class Daemon:
         # wpa_supplicant turns the search into the negotiation by itself. Our own
         # scan timer must not call StopFind from here on: that cancels a pending
         # connection ("Removing pending group interface").
+        if self.state.link.get("state") not in ("connecting", "linked", "ready"):
+            await self.remove_groups()           # leftovers from an earlier cast block the next group
         self.want_scan = False
         self.state.scanning = False
         self.connect_addr = addr
@@ -528,6 +552,36 @@ class Daemon:
             return {"ok": False, "error": err}
         return {"ok": True, "link": self.state.link}
 
+    async def remove_groups(self):
+        """End every Wi-Fi Direct group interface (p2p-<ifname>-N), including ones we lost track of.
+        Each is disconnected on its *own* interface: P2PDevice.Disconnect on the main interface would
+        deauthenticate the normal Wi-Fi. A stale group also blocks the next one ("Device or resource
+        busy" when the driver cannot bring up another virtual interface)."""
+        try:
+            paths = await self.get_prop(WPA_ROOT, IF_ROOT, "Interfaces")
+        except Exception as e:
+            print("remove_groups: cannot list interfaces (%s)" % e, flush=True)
+            return
+        for path in paths or []:
+            if path == self.path:
+                continue
+            try:
+                name = await self.get_prop(path, IF_IFACE, "Ifname")
+                if not str(name).startswith("p2p-") or str(name).startswith("p2p-dev-"):
+                    continue
+                await self.call(path, IF_P2P, "Disconnect")
+                print("ended group interface %s" % name, flush=True)
+            except Exception as e:
+                print("remove_groups %s: %s" % (path, e), flush=True)
+
+    def should_join(self, req):
+        """A sink that already runs a group (Roku: group capability 0x03 = persistent + group owner)
+        cannot do GO negotiation; we must *join* its group. The Fire TV (capability 0) negotiates."""
+        if "join" in req:
+            return bool(req["join"])
+        peer = self.state.peers.get(self.connect_addr or "") or {}
+        return bool((peer.get("group_capability") or 0) & GROUP_CAPAB_GO)
+
     async def do_connect(self):
         """One P2P Connect call. Returns an error string, or None."""
         from dbus_fast import Variant
@@ -538,8 +592,14 @@ class Daemon:
             "wps_method": Variant("s", req.get("wps", "pbc")),
             "go_intent": Variant("i", int(req.get("go_intent", 0))),
             "persistent": Variant("b", False),
-            "join": Variant("b", False),
+            "join": Variant("b", self.should_join(req)),
         }
+        # First attempt: stay on the station's channel if we can. Retries leave the choice to the TV.
+        if self.args.match_station_channel and self.connect_attempt <= 1:
+            freq = await self.station_frequency()
+            if freq:
+                args["frequency"] = Variant("i", freq)
+                print("asking for the station's channel (%d MHz)" % freq, flush=True)
         self.connect_deadline = time.time() + self.args.connect_timeout
         self.touch()
         try:
@@ -697,6 +757,9 @@ def main(argv=None):
     p.add_argument("--dhcp-unit", default="miracast-dhcp@%s.service",
                    help="systemd unit (template) that runs the DHCP client for a group interface; %%s = interface")
     p.add_argument("--dhcp-timeout", type=int, default=20, help="seconds to wait for a lease")
+    p.add_argument("--match-station-channel", dest="match_station_channel", action="store_true",
+                   help="force the group onto the normal Wi-Fi connection's channel (off by default: the "
+                        "adapter has 2-channel concurrency, and the Fire TV did not answer forced-channel requests)")
     p.add_argument("--connect-retries", type=int, default=3, help="attempts before giving up on a connection")
     p.add_argument("--connect-timeout", type=int, default=60, help="seconds to wait for a group to form")
     p.add_argument("--rtsp-port", type=int, default=7236, help="RTSP port advertised in the WFD IE")

@@ -38,7 +38,11 @@ class Root(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def Interfaces(self) -> "ao":
-        return [IFACE]
+        return [IFACE, IFACE + "/group"]
+
+    @method()
+    def GetInterface(self, ifname: "s") -> "o":
+        return IFACE + "/group"
 
     @dbus_property()
     def WFDIEs(self) -> "ay":
@@ -50,17 +54,19 @@ class Root(ServiceInterface):
 
 
 class Iface(ServiceInterface):
-    def __init__(self):
+    def __init__(self, name="wlp1s0"):
         super().__init__("fi.w1.wpa_supplicant1.Interface")
+        self.ifname = name
 
     @dbus_property(access=PropertyAccess.READ)
     def Ifname(self) -> "s":
-        return "wlp1s0"
+        return self.ifname
 
 
 class P2P(ServiceInterface):
-    def __init__(self):
+    def __init__(self, label="main"):
         super().__init__("fi.w1.wpa_supplicant1.Interface.P2PDevice")
+        self.label = label
         self.found = []
         self.cfg = {"DeviceName": "mock"}
 
@@ -87,6 +93,14 @@ class P2P(ServiceInterface):
     @method()
     def Flush(self):
         pass
+
+    @method()
+    def Disconnect(self):
+        print("mock: Disconnect on %s" % self.label, flush=True)   # on "main" this would drop the station
+
+    @method()
+    def Cancel(self):
+        print("mock: Cancel on %s" % self.label, flush=True)
 
     @signal()
     def DeviceFoundProperties(self, path: "o", props: "a{sv}") -> "oa{sv}":
@@ -118,6 +132,8 @@ async def main():
     p2p = P2P()
     bus.export(IFACE, Iface())
     bus.export(IFACE, p2p)
+    bus.export(IFACE + "/group", Iface("p2p-wlp1s0-3"))     # a leftover group interface
+    bus.export(IFACE + "/group", P2P("group"))
     await bus.request_name("fi.w1.wpa_supplicant1")
     print("mock wpa ready", flush=True)
     await asyncio.get_event_loop().create_future()

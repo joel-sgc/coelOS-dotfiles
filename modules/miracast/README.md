@@ -474,3 +474,177 @@ modules/miracast/
   without `pixel-aspect-ratio=1/1` in the caps it stretches.
 - Remaining delay is mostly the TV's jitter buffer. Other knobs if needed: bitrate (`--bitrate`),
   `key-int-max`, 720p60 (`--preference 6`).
+
+## Latency / smoothness measurements (Nov 6, second pass)
+
+- Our side of the pipeline is not where the delay is: tracer latency ~17-34 ms (convert+scale+encode+mux),
+  frames at a steady 30 fps (a recording had 208 frames over 6.9 s, in step with audio).
+- mpegtsmux timestamps run ~125-165 ms ahead of the PCR (measured by parsing the TS); there is no mpegtsmux
+  property for that, so the TV's playout buffer starts there. The rest is the TV's own jitter buffer.
+- Bursts: an IDR at default x264 settings is ~260 KB (5x the average frame, ~170 ms of airtime at 12 Mbit/s),
+  which is a plausible once-per-second stutter on Wi-Fi Direct. `vbv-buf-capacity` bounds it:
+  600 ms -> IDR 260 KB, 150 -> 201 KB, 60 -> 83 KB (zone-plate test). Default is now `--vbv-ms 80`.
+  `intra-refresh=true` removes IDR spikes entirely (max 72 KB) but is riskier for sinks; not enabled.
+- Not implemented: honouring the sink's `wfd_idr_request` (needs engine control over the encoder; the gst-launch
+  subprocess cannot be signalled). Losses therefore heal at the next periodic IDR (<= 1 s).
+
+- `coel-miracast cast <name> --source portal [engine flags]` forwards any extra flags to the engine, e.g.
+  `--encoder va`, `--bitrate 8000`, `--vbv-ms 60`, `--preference 5`, `--no-audio`, `--strict-levels`.
+
+## Colour / sharpness investigation (Nov 6, third pass)
+
+- The stream itself is colour-accurate: solid colours through the real encode chain decode (per their VUI tags,
+  bt709 / limited range) to within 1-4 levels of the source. So "faded" on the TV points at how the TV treats the
+  range/matrix, or at softness, not at corrupted colours. The I420-first and vbv changes were reverted anyway.
+- New switches to test on the TV: `--color bt709|bt709-full|bt601` (changes both the conversion matrix and the
+  VUI tags), `--source test --pattern smpte|colors|gradient|ball` (known colour bars to judge colours against).
+  Example: `coel-miracast cast "Joel's Fire TV" --source test --pattern smpte --color bt709-full`
+- Sharpness: x264 `ultrafast` disables the deblocking filter and sub-pel motion search; default is now
+  `--preset veryfast` (same speed in a benchmark, ~12% smaller at equal settings) and the downscale uses
+  lanczos. Limits we cannot change: the TV only advertises Constrained Baseline (no CABAC / B-frames), 4:2:0
+  chroma, and the 3:2 panel is downscaled to 1620x1080.
+
+- TV test results (Fire TV): `--color bt601` looks washed out and `--color bt709-full` too contrasty, i.e. the
+  TV ignores the VUI tags and always decodes as BT.709 limited range, so the default (`bt709`) is the correct
+  encoding. Remaining flatness is the TV picture / source, so a look adjustment is available:
+  `--contrast 1.1 --saturation 1.15 --gamma 1.1 --brightness 0` (all default to "unchanged"; applied in YUV
+  just before the encoder, software encoder only).
+
+## Wi-Fi dropping after casting (Nov 6)
+
+- Symptom: after casting, the normal Wi-Fi stays disconnected until reboot. Logs: when the TV's group is on
+  another channel than the AP (TV chose 5200 MHz, AP is on 5745), mt7921 cannot hold both: the station is
+  deauthenticated "by local choice" (and `Could not set interface p2p-wlp1s0-N flags (UP): Device or resource busy`).
+  NetworkManager then logs `Activation: failed ... link timed out`; after its default 4 failures it **blocks
+  autoconnect** for that profile, so it never reconnects (only a restart/reboot resets it).
+- Fixes: (1) `services.miracast.keepStationAutoconnect` (default on) raises NetworkManager's
+  `[main] autoconnect-retries-default` from 4 to 100 (the first attempt used `[connection] connection.autoconnect-retries`,
+  which NetworkManager rejects as an unknown key). (2) linkd asks for the station's current channel in
+  the first P2P Connect (`frequency` arg, from wpa's CurrentBSS), so no channel switch is needed when the TV
+  accepts it; retries leave the channel to the TV. `--no-match-station-channel` disables it.
+- Immediate workaround without a rebuild:
+  `nmcli connection modify "Princess' Palace" connection.autoconnect-retries 0` (or `nmcli device connect wlp1s0`
+  to reconnect by hand).
+- Observed Nov 7: each P2P connect attempt (incl. each retry) deauthenticates the station "by local choice"
+  (~10 s outage, then NM reconnects); `WPS-PBC-ACTIVE` follows on wlp1s0. The channel-matching request did not
+  log "asking for the station's channel", so linkd now logs why the lookup failed. To see wpa_supplicant's reason:
+  `sudo busctl set-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 DebugLevel s debug`
+  then cast and read `journalctl -u wpa_supplicant-wlp1s0 | grep -i -E "conflict|disconnect"`; set it back to `info`.
+- Root cause of the Wi-Fi drops on disconnect/stop (Nov 7, from wpa_supplicant debug logs): linkd called
+  `P2PDevice.Disconnect` on the *main* interface (wlp1s0). wpa_supplicant implements that as "deauthenticate this
+  interface" (`wlp1s0: Disconnected - do not scan`), so every `coel-miracast stop/disconnect` knocked the normal
+  Wi-Fi off and left it waiting for NetworkManager. linkd now ends the group on the group's own interface
+  (`GetInterface(ifname)` then `P2PDevice.Disconnect` there) and cancels a formation in progress with
+  `P2PDevice.Cancel`. The mock + integration test assert that `Disconnect` never reaches the main interface.
+- The channel request works (log: `asking for the station's channel (5745 MHz)`; wpa: `num_MCC=2`, forced
+  freq 5745), so group formation itself no longer needs to move the station.
+- Reminder: `nixos-rebuild switch` restarts NetworkManager when its config changes, which briefly drops Wi-Fi
+  (that was the 00:06:42 disconnect).
+- Nov 7, forced channel backfired: with `frequency` forced to the station's 5745 MHz the Fire TV acknowledged our
+  GO Negotiation Requests (49 of 54 TX callbacks `success=1`) but never sent a Response, so the link sat in
+  "connecting". The adapter reports `num_MCC=2` (two-channel concurrency), so forcing is not needed. It is now
+  opt-in: `miracast-linkd --match-station-channel`. The real cause of the Wi-Fi drops was the Disconnect bug above.
+
+## Roku (Nov 8)
+
+- "Roku Express - 898" shows up as a sink (`group_capability` 3 = persistent + **already a group owner**,
+  WFD port 7236, content protection advertised). A GO cannot do GO negotiation (our request just timed out), so
+  linkd now **joins** its group (`P2PDevice.Connect` with `join=true`) whenever the peer's group capability has the
+  GO bit (0x02); the Fire TV (capability 0) still negotiates. `coel-miracast connect/cast` need no flags;
+  `{"join": true|false}` in the connect request overrides it.
+- Needs a rebuild to take effect; Roku side: Settings > System > Screen mirroring (leave it on "Prompt" and
+  accept the dialog, or "Always allow").
+- Roku, first contact: the link came up (we joined its group, got 172.29.243.x) and then our M3 was answered
+  `455 Method Not Valid In This State`. Strict sinks want their own M2 (OPTIONS) answered before the source's
+  M3 GET_PARAMETER; the Fire TV does not care. The engine now waits (max 5 s) for the sink's M2 after M1.
+- Roku blank screen (Nov 8): the stream itself is valid (local decode of the exact negotiated format: H.264 High 4.1
+  1080p30 + AAC, PIDs 0x1011/0x1100) and ~24 MB went out, but the Roku showed nothing and sent no IDR requests.
+  The Roku also wedges (`no response to SET_PARAMETER`) when M4 says `wfd_audio_codecs: none` (the `test`
+  source used to send none), so the test source now sends silent AAC too. M4 now says `wfd_content_protection: none`
+  when the sink advertises HDCP (Roku: `HDCP2.1 port=12000`), and the engine logs the M4 body and the SETUP headers.
+  Next experiment: `coel-miracast cast Roku --source test --pattern smpte` to see whether any video shows.
+- Stale groups (Nov 8): after the Disconnect fix, a cast that failed before the link was "ready" left its group
+  interface (`p2p-wlp1s0-5`, UP with an IP) behind, and every later attempt died with
+  `Could not set interface p2p-wlp1s0-N flags (UP): Device or resource busy` (the adapter has no free virtual
+  interface). linkd now ends *every* `p2p-*` group interface (each on its own path) on `disconnect`/`stop`, and
+  also before starting a new connection. Manual cleanup without a rebuild:
+  `sudo systemctl restart wpa_supplicant-wlp1s0` (brief Wi-Fi drop) or `sudo iw dev p2p-wlp1s0-5 del`.
+
+## Roku black screen with screen capture = oversized keyframes (Nov 8)
+
+- The test pattern played on the Roku but real screen capture stayed black. Capturing the real screen through the
+  same chain gave keyframes of **181 KB average** (a static desktop has ~11 KB P-frames, so the one keyframe per
+  second is 15x larger, ~140 RTP packets in one burst) versus 55 KB for the test pattern. A small stick on Wi-Fi
+  Direct drops part of that burst, so every IDR is damaged and nothing decodes (black). The Fire TV copes.
+- `vbv-buf-capacity` caps it: 600 ms (x264 default) -> IDR 181 KB, 60 -> 80 KB, **30 -> 45 KB** (max 46 KB), and a
+  static desktop is still crisp (later P-frames refine it). `--vbv-ms` now defaults to 30.
+- If a sink still shows black: `--vbv-ms 20` or `--bitrate 8000`; intra-refresh (no IDR at all) is the next step.
+- Regression (Nov 8): editing the `--vbv-ms` option with a slice replace deleted the neighbouring options
+  (`--color`, `--pattern`, `--preset`, `--contrast`, ...), so `build_pipeline` raised AttributeError at PLAY. The
+  read loop swallowed it, which looked like "sink closed the connection". Fixed: options restored, the parser is
+  now `build_parser()`, a unit test builds every pipeline from default args, and unexpected handler errors are
+  logged as `internal error: <traceback>` and set the engine status to error.
+- Roku portal black screen, hypothesis (Nov 8): variants `--audio-source silence`, `--bitrate 3000` and
+  `--preference 5` stayed black while the smpte test pattern played; stream parameters (profile/level/SPS/VUI/PIDs)
+  are identical. What differs is the *data rate*: smpte has a noise block, so it never goes below several Mbit/s,
+  whereas a static desktop is ~100-byte P-frames. A player that waits for a byte prebuffer never starts.
+  `--mux-bitrate N` pads the transport stream with null packets to a constant N kbit/s (verified: a static
+  smpte100 pattern goes from ~1 KB/frame to ~7.9 Mbit/s on the wire). Test: `--source test --pattern smpte100`
+  (static, expect black without padding) then the same with `--mux-bitrate 8000`, then `--source portal --mux-bitrate 8000`.
+- Static smpte100 (no padding) played fine on the Roku, so the low-data-rate theory is wrong (`--mux-bitrate` stays
+  as an option). New diagnostic source `--source testcap [--pattern P]`: a synthetic 2256x1504 BGRA picture (with
+  xdph's bogus pixel-aspect-ratio) through exactly the portal chain (videoconvert, capssetter, queue, lanczos
+  videoscale + borders, videorate, queue, x264), no portal and no capture. Black = a chain element upsets the
+  Roku; bars = the problem is specific to the real capture.
+- Roku testcap bisect (Nov 8): `--source testcap` is black even with every optional stage removed, while `--source test`
+  shows bars. Verified identical between the two: SPS/PPS bytes, NAL structure, PAT/PMT, PIDs, PTS-PCR, RTP headers
+  (PT 33, contiguous seq, monotonic ts), first-video-packet time (~0.1 s), throughput (~11 Mbit/s). What is left is the
+  picture path: BGRA vs I420, 2256x1504 vs 1920x1080, bogus PAR + `videoscale add-borders`.
+  Diagnostics: `--cap-format I420|BGRA`, `--cap-size WxH`, `--chain-skip all`.
+- Also seen: the Roku closes the RTSP connection exactly 60 s after PLAY in runs left running (session timeout=60
+  that we advertise); check whether a keep-alive is needed.
+- Keep-alive (Nov 8): the engine now sends M16 (`GET_PARAMETER` with the Session header) every 25 s while streaming.
+  Before this the Roku closed the connection at exactly 60 s (`session over: sink closed the connection`).
+- Start order hypothesis (Nov 8): in every stream the Roku plays (`--source test`) the first *video* timestamp is
+  ~12-15 ms before the first audio one; in every stream it blacks out (testcap, portal, 20-65 ms) audio comes first.
+  Everything else measured identical (see above). Switches to flip just that: `--video-ts-offset-ms N` /
+  `--audio-ts-offset-ms N` (a `clocksync ts-offset` stage; test sources / silent audio). Locally `test
+  --video-ts-offset-ms 100` becomes audio-first (+15 ms) and `testcap ... --audio-ts-offset-ms 100` becomes
+  video-first (-22 ms). Roku A/B: A = `--source test --video-ts-offset-ms 100` (black if the hypothesis holds),
+  B = `--source testcap --cap-format I420 --cap-size 1920x1080 --chain-skip all --audio-ts-offset-ms 100` (bars).
+
+## What the documentation says (Nov 8) and what we changed
+
+Sources: Wi-Fi Display spec as quoted in [GStreamer bug 729686](https://bugzilla.gnome.org/show_bug.cgi?id=729686)
+(PMT PID 0x100, PCR PID 0x1000, video 0x1011, audio from 0x1100, PAT/PMT repeated at most every 100 ms);
+gnome-network-displays' source (`wfd-media-factory.c`, `wfd-client.c`): M4 carries only video formats, audio
+codecs, presentation URL and client RTP ports; keep-alive GET_PARAMETER every 25 s with a 30 s session timeout;
+`mpegtsmux alignment=7`, `sink_4113`/`sink_4352`, `h264parse config-interval=-1`, x264 baseline/CBR/vbv 50 ms,
+pipeline latency 500 ms with 500 ms queues in front of the muxer; PCR/PTS clock recovery on the sink side
+(Miracast patents). Roku-specific protocol documentation does not exist publicly (Roku's support pages only cover
+the Prompt / Always allow settings).
+
+Our stream deviated from the spec in three ways, now fixed by default (`--no-ts-spec` reverts): PMT was on PID 0x20
+(now 0x100), PAT/PMT gaps were up to 133 ms (now <= 67 ms: `pat-interval=pmt-interval=4500`), and the PCR rode on the
+*audio* PID because that pad was created first (now `prog-map ... PCR_1=sink_4113`, i.e. video). `h264parse
+config-interval=-1` as in GND. Not possible with mpegtsmux: a dedicated PCR PID 0x1000.
+
+## Roku fix: start the audio after the video (Nov 8)
+
+- Correction: the "first video timestamp comes before audio" note above was wrong (I had keyed on ffprobe's stream
+  index, which swaps between runs). Measured by PID, audio's first PTS is earlier than video's in every stream.
+- The real, reproducible difference (Roku A/B, repeated: bars every time with it, black every time without):
+  holding the audio back ~100 ms (a `clocksync` stage) so that the **stream on the wire starts with video PES**
+  instead of audio. With a heavier chain (screen scaling) more delay is needed, and `clocksync` on live
+  PipeWire audio dropped ~85 % of the audio (78 of ~470 PES in 10 s), so it cannot be used for real audio.
+- Implemented instead: the audio is captured in a **separate process** (`build_audio_cmd`, AAC ADTS on stdout) that the
+  engine starts `--audio-start-delay-ms` (default 300) after the video pipeline; the main pipeline reads it with
+  `fdsrc do-timestamp=true ! aacparse ! mux.sink_4352`. Verified: stream starts with 7-9 video PES, full audio
+  (369 of ~375 PES in 8 s), a tone through the system sink decodes intact (peak ~9000), video flow unchanged.
+  Timestamps are arrival times, so lip-sync is unaffected.
+- Portal check (Nov 8): with the helper starting at 300 ms the real screen still blacked out on the Roku. Measured with the
+  real capture: first video TS packet at 0.45 s (pipewire connect + first frame), first audio 0.48 s, i.e. only ~2 video
+  frames ahead (PES order `VVAVAAVAAV`). The working bars case has >= 3 video frames before the first audio (`VVVA...`).
+  Default `--audio-start-delay-ms` is now 1000 (portal: 9+ video frames first). If the Roku still shows black, vary it
+  (`--audio-start-delay-ms 2000`) before looking elsewhere.
+- `--audio-source off`: AAC negotiated but no audio sent (the Roku hangs on M4 `wfd_audio_codecs: none`, i.e. `--no-audio`: 'no response to SET_PARAMETER'); for isolating audio from the video problem.

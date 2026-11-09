@@ -16,7 +16,7 @@ Quickshell modal, a keybind script) can use the same ones directly:
   coel-miracast watch              keep printing the peer list while scanning
   coel-miracast json               raw state.json
 
-  coel-miracast cast <name|address> [--source test|portal]
+  coel-miracast cast <name|address> [--source test|portal] [engine flags]
                                    the whole thing: start the source engine, scan,
                                    connect, wait for the stream to start
   coel-miracast stop               end the cast (drops the link, stops the engine)
@@ -116,10 +116,13 @@ def stop_engine():
 
 def cast(argv):
     if not argv:
-        sys.exit("usage: coel-miracast cast <name|address> [--source test|portal]")
+        sys.exit("usage: coel-miracast cast <name|address> [--source test|portal] [engine flags, e.g. --encoder va]")
     key, source = argv[0], "test"
-    if "--source" in argv:
-        source = argv[argv.index("--source") + 1]
+    extra = list(argv[1:])                  # everything else goes to the engine as-is
+    if "--source" in extra:
+        i = extra.index("--source")
+        source = extra[i + 1] if i + 1 < len(extra) else sys.exit("--source needs a value")
+        del extra[i:i + 2]
 
     print("starting the source engine (%s)" % source)
     stop_engine()
@@ -128,7 +131,7 @@ def cast(argv):
     except OSError:
         pass
     r = subprocess.run([SYSTEMD_RUN, "--user", "--collect", "--quiet", "--unit", ENGINE_UNIT,
-                        ENGINE, "--source", source, "--link-state", STATE, "--idle-timeout", "180"])
+                        ENGINE, "--source", source, "--link-state", STATE, "--idle-timeout", "180"] + extra)
     if r.returncode:
         sys.exit("could not start the engine")
     if source == "portal":

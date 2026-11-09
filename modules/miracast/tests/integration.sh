@@ -34,5 +34,9 @@ import sys, json
 l = json.load(sys.stdin)['link']
 print('link:', l)
 assert l['state'] == 'error' and 'gave up after 3 attempts' in l['reason'], l"
+echo "--- disconnect must not touch the main interface (it would drop the station's Wi-Fi)"
+$ctl disconnect >/dev/null
+! grep -q "Disconnect on main" "$work/mock.log"
+grep -q "Disconnect on group" "$work/mock.log"          # ...but a leftover group interface is ended
 echo "--- logs"; cat "$work/linkd.log"; cat "$work/mock.log"
 echo "OK"

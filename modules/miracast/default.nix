@@ -133,6 +133,17 @@ in
       '';
     };
 
+    keepStationAutoconnect = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Never let NetworkManager give up reconnecting to Wi-Fi. A Wi-Fi Direct group on a
+        different channel than the access point knocks the normal connection off; after
+        NetworkManager's default 4 failed attempts it stops auto-connecting until reboot.
+        This raises NetworkManager's default retry count (autoconnect-retries-default) from 4 to 100.
+      '';
+    };
+
     unmanageP2pInNetworkManager = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -260,6 +271,11 @@ in
         '';
       }
     ];
+
+    networking.networkmanager.settings.main = lib.mkIf cfg.keepStationAutoconnect {
+      # profiles with connection.autoconnect-retries = -1 (the default) use this instead of 4
+      autoconnect-retries-default = 100;
+    };
 
     networking.networkmanager.unmanaged =
       lib.mkIf cfg.unmanageP2pInNetworkManager [ "interface-name:p2p-*" ];

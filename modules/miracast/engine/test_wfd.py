@@ -133,5 +133,45 @@ class LenientAndAudio(unittest.TestCase):
         self.assertEqual(wfd.choose_audio(None), "none")
 
 
+class EngineArgsTests(unittest.TestCase):
+    """Every option build_pipeline reads must exist in the parser (a deleted option once crashed every
+    stream at PLAY and looked like the TV hanging up)."""
+
+    def test_pipelines_build_from_default_args(self):
+        import miracast_source as ms
+        mode = wfd.mode_of(7)
+        for source in ("test", "testcap", "portal"):
+            args = ms.build_parser().parse_args(["--source", source])
+            for hw in (False, True):
+                cmd = ms.build_pipeline(args, mode, wfd.PROFILE_CHP, 0x08, "127.0.0.1", 1028, 5000,
+                                        portal_fd=7, portal_node="62", audio_on=True, hw=hw)
+                self.assertEqual(cmd[0], "gst-launch-1.0")
+                self.assertIn("x264enc" if not (hw and source == "portal") else "vah264enc", cmd)
+
+    def test_look_flags_are_parsed(self):
+        import miracast_source as ms
+        a = ms.build_parser().parse_args(["--color", "bt709-full", "--pattern", "smpte", "--preset", "faster",
+                                          "--contrast", "1.1", "--saturation", "1.2", "--gamma", "1.1",
+                                          "--brightness", "0.05", "--vbv-ms", "20"])
+        cmd = ms.build_pipeline(a, wfd.mode_of(7), wfd.PROFILE_CBP, 0x04, "127.0.0.1", 1028, 5000, audio_on=False)
+        text = " ".join(cmd)
+        for needle in ("pattern=smpte", "speed-preset=faster", "videobalance", "gamma", "vbv-buf-capacity=20"):
+            self.assertIn(needle, text)
+
+
+class AudioPipeTests(unittest.TestCase):
+    def test_audio_comes_from_the_pipe_when_given_an_fd(self):
+        import miracast_source as ms
+        args = ms.build_parser().parse_args(["--source", "testcap"])
+        cmd = ms.build_pipeline(args, wfd.mode_of(7), wfd.PROFILE_CHP, 0x08, "127.0.0.1", 1028, 5000,
+                                audio_on=True, audio_fd=9)
+        text = " ".join(cmd)
+        self.assertIn("fdsrc fd=9 do-timestamp=true", text)
+        self.assertNotIn("fdkaacenc", text)                      # the encoder lives in the helper process
+        helper = " ".join(ms.build_audio_cmd(args))
+        self.assertIn("fdkaacenc", helper)
+        self.assertTrue(helper.endswith("fdsink fd=1"))
+
+
 if __name__ == "__main__":
     unittest.main()

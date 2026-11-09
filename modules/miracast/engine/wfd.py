@@ -268,14 +268,19 @@ M3_QUERY = CRLF.join([
 ]) + CRLF
 
 
-def build_m4_body(local_ip, rtp_ports_value, video_value, audio_value="none"):
-    """M4: the selection. rtp_ports_value is the sink's own (echoed back)."""
-    return CRLF.join([
+def build_m4_body(local_ip, rtp_ports_value, video_value, audio_value="none", content_protection=None):
+    """M4: the selection. rtp_ports_value is the sink's own (echoed back). content_protection:
+    pass "none" when the sink advertised HDCP, to say explicitly that we send unprotected video."""
+    lines = []
+    if content_protection:
+        lines.append("wfd_content_protection: %s" % content_protection)
+    lines += [
         "wfd_video_formats: %s" % video_value,
         "wfd_audio_codecs: %s" % audio_value,
         "wfd_presentation_URL: rtsp://%s/wfd1.0/streamid=0 none" % local_ip,
         "wfd_client_rtp_ports: %s" % rtp_ports_value,
-    ]) + CRLF
+    ]
+    return CRLF.join(lines) + CRLF
 
 
 def parse_client_rtp_port(value):

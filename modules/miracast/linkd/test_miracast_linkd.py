@@ -117,5 +117,27 @@ class StateTests(unittest.TestCase):
         self.assertEqual([p["name"] for p in s.to_json(now)["peers"]], ["Joel's Fire TV", "Phone"])
 
 
+class JoinTests(unittest.TestCase):
+    def daemon(self, capab):
+        d = m.Daemon.__new__(m.Daemon)
+        d.state = m.State(60)
+        d.state.peers["aa:bb"] = {"group_capability": capab}
+        d.connect_addr = "aa:bb"
+        return d
+
+    def test_group_owner_peer_is_joined(self):
+        self.assertTrue(self.daemon(3).should_join({}))          # Roku: persistent + GO
+        self.assertTrue(self.daemon(2).should_join({}))
+
+    def test_plain_peer_negotiates(self):
+        self.assertFalse(self.daemon(0).should_join({}))          # Fire TV
+        self.assertFalse(self.daemon(None).should_join({}))
+        self.assertFalse(self.daemon(1).should_join({}))          # persistent only
+
+    def test_request_overrides(self):
+        self.assertFalse(self.daemon(3).should_join({"join": False}))
+        self.assertTrue(self.daemon(0).should_join({"join": True}))
+
+
 if __name__ == "__main__":
     unittest.main()
