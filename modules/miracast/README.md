@@ -712,3 +712,21 @@ services.miracast.sinkProfiles.bedroom-tv = {
 
 Implemented as a sibling module, `modules/gcast` (`coel-gcast`), sharing only `modules/castlib/portal_capture.py` with this one.
 HLS-over-HTTP plus the CASTV2 control protocol, tested against a mock device only; see its README.
+
+## Choppy stream after the audio relay (Nov 8): bunched audio timestamps
+
+Symptom (Fire TV, after the Roku rework): choppier than before. Measured on the engine's real output (mock sink dump,
+system audio via the speakers' monitor): audio PTS steps were median 3.3 ms, p5 0.1 ms, p95 71 ms (ideal 21.3 ms),
+and only ~27 audio PES/s instead of 47. Video was a clean 33.3 ms. Two causes, both mine:
+
+1. PipeWire's default quantum hands the capture over several frames at once: `stream-properties ...,node.latency=1024/48000`
+   gives one AAC frame per buffer (helper stdout gaps: p95 42 ms -> 21.8 ms).
+2. `mpegtsmux` is an aggregator and holds back its audio input while it waits for video; without a queue that blocks
+   `udpsrc`'s thread, which then stamps all the datagrams it finds waiting with the same time. A `queue` (1 s) between
+   `udpsrc` and the muxer fixes it. Result: PTS steps median 21.3 ms (p5 19, p95 23.5), 505 PES in 12 s, first PMT still lists both streams.
+
+The engine also logs `audio relay timing: ... gap ms median/p95/max` when a session ends (relay side only).
+Lip-sync note: audio is stamped when it reaches the muxer (capture quantum + AAC encoder delay: roughly 20-60 ms after the
+sound was captured), video when its frame is captured, so audio can trail the picture by that much. mpegtsmux offers no
+per-stream timestamp offset (`sink_N::offset` does not exist), so this is uncompensated; 45 ms is about the limit of what is
+noticeable. If it is, the fix is to carry capture timestamps from the helper to the muxer (RTP) instead of arrival times.

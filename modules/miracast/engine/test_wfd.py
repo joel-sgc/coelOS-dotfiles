@@ -168,10 +168,19 @@ class AudioPipeTests(unittest.TestCase):
         text = " ".join(cmd)
         self.assertIn("udpsrc address=127.0.0.1 port=9 do-timestamp=true", text)
         self.assertIn("framed=(boolean)true", text)             # caps known up front -> audio is in the first PMT
+        # a queue between udpsrc and the muxer: without it the aggregator's back-pressure blocks udpsrc's thread and
+        # the audio timestamps bunch up (PTS steps of 0.1 ms / 70 ms instead of 21 ms)
+        self.assertRegex(text, r"udpsrc [^!]*! queue max-size-buffers=0 max-size-bytes=0 max-size-time=\d+ ! mux\.sink_4352")
+
         self.assertNotIn("fdkaacenc", text)                      # the encoder lives in the helper process
         helper = " ".join(ms.build_audio_cmd(args))
         self.assertIn("fdkaacenc", helper)
         self.assertTrue(helper.endswith("fdsink fd=1"))
+
+    def test_system_audio_asks_for_one_frame_buffers(self):
+        import miracast_source as ms
+        helper = " ".join(ms.build_audio_cmd(ms.build_parser().parse_args(["--source", "portal"])))
+        self.assertIn("node.latency=1024/48000", helper)
 
 
 class AdtsTests(unittest.TestCase):

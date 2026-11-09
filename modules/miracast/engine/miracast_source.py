@@ -79,11 +79,13 @@ def build_audio_chain(args, codec="AAC"):
     (or big-endian 16-bit PCM for LPCM)."""
     if args.audio_source == "tone":
         src = ["audiotestsrc", "is-live=true", "wave=sine", "freq=440", "volume=0.3"]
-    elif args.source in ("test", "testcap") or args.audio_source == "silence":
+    elif args.audio_source != "monitor" and (args.source in ("test", "testcap") or args.audio_source == "silence"):
         src = ["audiotestsrc", "is-live=true", "wave=silence"]
     else:
+        # node.latency: one AAC frame (1024 samples) per capture buffer; PipeWire's default quantum hands over
+        # several frames at once, which gave the relay bunched arrival times (the audio clock stuttered).
         src = ["pipewiresrc", "provide-clock=false", "do-timestamp=true",
-               "stream-properties=props,stream.capture.sink=true"]
+               "stream-properties=props,stream.capture.sink=true,node.latency=1024/48000"]
     chain = src + ["!", "audio/x-raw,rate=48000,channels=2", "!", "audioconvert", "!", "audioresample", "!"]
     if codec == "LPCM":
         return chain + ["audio/x-raw,format=S16BE,rate=48000,channels=2,layout=interleaved"]
@@ -156,8 +158,13 @@ def build_pipeline(args, mode, profile, level, sink_ip, client_port, server_port
             # AAC frames arrive one per UDP datagram from the relay in the engine, with the format declared up
             # front: the muxer then lists the audio stream in the *first* program table (the Roku reads that
             # table once and ignores streams that appear later; a late audio start used to leave it out).
+            # The queue matters: mpegtsmux is an aggregator and holds back its audio input while it waits for video;
+            # without a queue that blocks udpsrc's thread, which then stamps the datagrams it finds waiting with one
+            # and the same time (measured: audio PTS steps of 0.1 ms and 70 ms instead of 21 ms -> stuttering).
             audio = ["udpsrc", "address=127.0.0.1", "port=%d" % audio_port, "do-timestamp=true",
-                     "caps=%s" % (LPCM_CAPS if audio_codec == "LPCM" else AAC_CAPS), "!", "mux.sink_%d" % PID_AUDIO]
+                     "caps=%s" % (LPCM_CAPS if audio_codec == "LPCM" else AAC_CAPS), "!",
+                     "queue", "max-size-buffers=0", "max-size-bytes=0", "max-size-time=1000000000", "!",
+                     "mux.sink_%d" % PID_AUDIO]
         else:
             audio = build_audio_chain(args, audio_codec) + (
                 ["!", "aacparse"] if audio_codec != "LPCM" else []) + ["!", "mux.sink_%d" % PID_AUDIO]
@@ -462,6 +469,7 @@ class Session:
         to the main pipeline. Timestamps are arrival times, so lip-sync is unaffected. The headers' ID bit is
         switched to MPEG-2 (`FF F9`), the form AOSP's Wi-Fi Display source sends."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sent_at = []
         try:
             await asyncio.sleep(self.args.audio_start_delay_ms / 1000.0)
             cmd = build_audio_cmd(self.args, codec)
@@ -473,6 +481,7 @@ class Session:
                 chunk = await self.audio_proc.stdout.read(4096)
                 if not chunk:
                     break
+                sent_at.append(time.monotonic())
                 if codec == "LPCM":                         # fixed-size PCM frames, one per datagram
                     rest += chunk
                     while len(rest) >= LPCM_DATAGRAM:
@@ -489,6 +498,10 @@ class Session:
             self.log("audio relay failed: %s" % traceback.format_exc().strip().replace("\n", " | "))
         finally:
             sock.close()
+            if len(sent_at) > 20:                           # how evenly the audio reached the muxer
+                gaps = sorted(1000 * (b - a) for a, b in zip(sent_at, sent_at[1:]))
+                self.log("audio relay timing: %d reads, gap ms median %.1f p95 %.1f max %.1f" % (
+                    len(gaps), gaps[len(gaps) // 2], gaps[int(len(gaps) * .95)], gaps[-1]))
 
     async def keepalive(self):
         """M16: the source sends GET_PARAMETER every ~25 s (the SETUP reply promises timeout=60). Strict
@@ -661,9 +674,10 @@ def build_parser():
     p.add_argument("--no-ts-spec", action="store_true",
                    help="do not apply the Wi-Fi Display transport-stream layout (PMT PID 0x100, PAT/PMT every 50 ms, "
                         "PCR on the video PID)")
-    p.add_argument("--audio-source", choices=["system", "silence", "tone", "off"], default="system",
+    p.add_argument("--audio-source", choices=["system", "silence", "tone", "monitor", "off"], default="system",
                    help="what to send as audio: the speakers' monitor (default), silence, or 'off' = AAC is "
-                        "negotiated (the Roku stops answering if told 'no audio') but no audio is sent (diagnostics)")
+                        "negotiated (the Roku stops answering if told 'no audio') but no audio is sent (diagnostics); "
+                        "'monitor' = the speakers' monitor even with a test video source")
     p.add_argument("--color", choices=sorted(COLORIMETRY), default="bt709",
                    help="how the picture is encoded/tagged: bt709 (HD standard, limited range; what the TVs "
                         "decode as), bt709-full or bt601. The Fire TV ignores the tags and always uses bt709")
