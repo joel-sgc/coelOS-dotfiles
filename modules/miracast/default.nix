@@ -63,6 +63,7 @@ let
   engine = pkgs.writeShellScript "miracast-source" ''
     export PATH=${lib.makeBinPath [ pkgs.gst_all_1.gstreamer.bin ]}:$PATH
     export GST_PLUGIN_SYSTEM_PATH_1_0=${lib.makeSearchPath "lib/gstreamer-1.0" gstPlugins}
+    export PYTHONPATH=${../castlib}''${PYTHONPATH:+:$PYTHONPATH}
     exec ${python}/bin/python3 ${./engine}/miracast_source.py "$@"
   '';
 

@@ -17,6 +17,7 @@
     ./modules/tty.nix
     ./modules/fnlock/nixos/fnlock.nix
     ./modules/miracast
+    ./modules/gcast
     # On trial (started Oct 2026): returns the EC to the patched RW firmware at
     # boot after an EC reset. Each jump is an unclean power-off that counts
     # toward the TPM lockout limit -- see modules/fnlock/README.md. Remove this
@@ -125,6 +126,9 @@
   # Miracast discovery/link daemon (modules/miracast, see its README.md).
   services.miracast.enable = true;
   services.miracast.interface = "wlp1s0";
+
+  # Google Cast sender (modules/gcast, see its README.md): coel-gcast scan / cast / stop.
+  services.gcast.enable = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

@@ -32,6 +32,11 @@ import time
 import profiles
 import wfd
 
+# Shared capture code (modules/castlib). Nix puts it on PYTHONPATH; in a checkout it is a sibling directory.
+_castlib = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "castlib")
+if os.path.isdir(_castlib):
+    sys.path.insert(0, _castlib)
+
 SESSION_ID = "6B8B4567"
 # The WFD spec fixes the transport-stream PIDs; some sinks only look there.
 # GPU fit: scale with black borders into BGRx (borders in NV12 come out green on this

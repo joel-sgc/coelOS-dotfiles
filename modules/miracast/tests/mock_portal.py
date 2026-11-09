@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A fake xdg-desktop-portal ScreenCast service on the *session* bus, for testing
-engine/portal_capture.py without a compositor or a human.
+castlib/portal_capture.py without a compositor or a human.
 
   python3 mock_portal.py [--cancel]     --cancel makes Start answer "user cancelled"
 """

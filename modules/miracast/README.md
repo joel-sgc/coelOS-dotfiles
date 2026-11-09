@@ -422,7 +422,7 @@ modules/miracast/
   tests/mock_sink.py        fake Miracast TV for engine tests
   tests/engine_e2e.sh       engine vs mock TV (`gst` argument also streams)
   tests/mock_portal.py      fake ScreenCast portal;  run-portal-test.sh runs it
-  engine/portal_capture.py  xdg-desktop-portal ScreenCast client
+  ../castlib/portal_capture.py  xdg-desktop-portal ScreenCast client (shared with the Google Cast module)
   tests/integration.sh      end-to-end test; run-integration.sh sets up the bus
 ```
 
@@ -707,3 +707,8 @@ services.miracast.sinkProfiles.bedroom-tv = {
   pipeline runs (verified with the mock sink), but no real display has been tried. So it is only used when you put it
   in the preference list.
 - Both displays so far offer AAC, which is what they get; the audio format was never the Roku/Fire TV difference.
+
+## Google Cast
+
+Implemented as a sibling module, `modules/gcast` (`coel-gcast`), sharing only `modules/castlib/portal_capture.py` with this one.
+HLS-over-HTTP plus the CASTV2 control protocol, tested against a mock device only; see its README.

@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "castlib"))
 import portal_capture  # noqa: E402
 
 here = os.path.dirname(os.path.abspath(__file__))
