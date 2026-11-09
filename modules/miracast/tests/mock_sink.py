@@ -31,6 +31,7 @@ async def main():
     p.add_argument("--port", type=int, default=7236)
     p.add_argument("--rtp-port", type=int, default=19000)
     p.add_argument("--listen-seconds", type=float, default=3.0)
+    p.add_argument("--dump", default=None, help="write the MPEG-TS bytes of the received RTP packets to this file")
     p.add_argument("--video-formats", default=None)
     args = p.parse_args()
 
@@ -114,6 +115,9 @@ async def main():
                 await asyncio.sleep(0.05)
                 continue
             report["udp_packets"] += 1
+            if args.dump:
+                with open(args.dump, "ab") as dump:
+                    dump.write(data[12:])                       # strip the 12-byte RTP header
             if report["first_payload_sync"] is None and len(data) > 12:
                 report["first_payload_sync"] = data[12] == 0x47        # RTP header is 12 bytes
         r = await req("TEARDOWN", "rtsp://%s/wfd1.0/streamid=0" % args.host)

@@ -160,17 +160,54 @@ class EngineArgsTests(unittest.TestCase):
 
 
 class AudioPipeTests(unittest.TestCase):
-    def test_audio_comes_from_the_pipe_when_given_an_fd(self):
+    def test_audio_comes_from_udp_when_given_a_port(self):
         import miracast_source as ms
         args = ms.build_parser().parse_args(["--source", "testcap"])
         cmd = ms.build_pipeline(args, wfd.mode_of(7), wfd.PROFILE_CHP, 0x08, "127.0.0.1", 1028, 5000,
-                                audio_on=True, audio_fd=9)
+                                audio_on=True, audio_port=9)
         text = " ".join(cmd)
-        self.assertIn("fdsrc fd=9 do-timestamp=true", text)
+        self.assertIn("udpsrc address=127.0.0.1 port=9 do-timestamp=true", text)
+        self.assertIn("framed=(boolean)true", text)             # caps known up front -> audio is in the first PMT
         self.assertNotIn("fdkaacenc", text)                      # the encoder lives in the helper process
         helper = " ".join(ms.build_audio_cmd(args))
         self.assertIn("fdkaacenc", helper)
         self.assertTrue(helper.endswith("fdsink fd=1"))
+
+
+class AdtsTests(unittest.TestCase):
+    def frame(self, length, id_bit=0):
+        h = bytearray([0xFF, 0xF0 | (id_bit << 3) | 0x01, 0x4C, 0x80, 0, 0, 0xFC])
+        h[3] = (h[3] & 0xFC) | ((length >> 11) & 3)
+        h[4] = (length >> 3) & 0xFF
+        h[5] = ((length & 7) << 5) | 0x1F
+        return bytes(h) + bytes(length - 7)
+
+    def test_sets_the_mpeg2_id_bit_and_keeps_everything_else(self):
+        f = self.frame(40)
+        out, rest = wfd.adts_to_mpeg2(f + f)
+        self.assertEqual(rest, b"")
+        self.assertEqual(out[:2], bytes([0xFF, 0xF9]))
+        self.assertEqual(out[7:40], f[7:40])
+        self.assertEqual(out[40:42], bytes([0xFF, 0xF9]))
+
+    def test_keeps_a_partial_frame_for_later(self):
+        f = self.frame(50)
+        out, rest = wfd.adts_to_mpeg2(f + f[:20])
+        self.assertEqual(len(out), 50)
+        self.assertEqual(rest, f[:20])
+        out2, rest2 = wfd.adts_to_mpeg2(rest + f[20:])
+        self.assertEqual((len(out2), rest2), (50, b""))
+
+    def test_resyncs_after_garbage(self):
+        out, rest = wfd.adts_to_mpeg2(b"\x12\x34" + self.frame(30))
+        self.assertEqual(out[:2], bytes([0xFF, 0xF9]))
+
+
+class SplitAdtsTests(unittest.TestCase):
+    def test_splits_into_single_frames(self):
+        f = AdtsTests.frame(AdtsTests(), 33)
+        g = AdtsTests.frame(AdtsTests(), 70)
+        self.assertEqual(wfd.split_adts(f + g + f), [f, g, f])
 
 
 if __name__ == "__main__":

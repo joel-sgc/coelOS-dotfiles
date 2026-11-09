@@ -648,3 +648,34 @@ config-interval=-1` as in GND. Not possible with mpegtsmux: a dedicated PCR PID 
   Default `--audio-start-delay-ms` is now 1000 (portal: 9+ video frames first). If the Roku still shows black, vary it
   (`--audio-start-delay-ms 2000`) before looking elsewhere.
 - `--audio-source off`: AAC negotiated but no audio sent (the Roku hangs on M4 `wfd_audio_codecs: none`, i.e. `--no-audio`: 'no response to SET_PARAMETER'); for isolating audio from the video problem.
+- Status (Nov 8): the Roku shows the screen with `--audio-source off` and with the default (audio helper started 1 s
+  after the video), but no sound is heard. `--audio-source tone` (440 Hz) added to tell "Roku does not play our AAC"
+  apart from "system capture / timing problem": `--source test --pattern smpte --audio-source tone`.
+- Roku audio (Nov 8): the 440 Hz tone is not played, so the Roku does not accept our AAC as packaged. AOSP's Wi-Fi Display
+  source ([TSPacketizer.cpp](https://android.googlesource.com/platform/frameworks/av/+/refs/tags/android-8.1.0_r1/media/libstagefright/wifi-display/source/TSPacketizer.cpp),
+  the reference Android phones cast to Roku with): AAC = stream_type 0x0F, stream_id 0xC0, 7-byte ADTS header `FF F9`
+  (ID=1 MPEG-2, protection_absent=1), PES with data_alignment, one access unit per PES, PTS only; PCR on its own PID with
+  adaptation-only packets; LPCM = stream_type 0x83, stream_id 0xBD, a 2-byte PMT descriptor (tag 0x83: sampling-frequency
+  code<<5 | 3<<1, then 0x2f for stereo), no extra PES header in that version. Ours differed in the ADTS ID bit
+  (fdkaacenc writes `FF F1`; aacparse cannot convert it). The engine now relays the audio helper's output and sets the
+  ID bit (`wfd.adts_to_mpeg2`, `--aac-mpeg4-adts` keeps the old form). Verified in the real stream: header `fff94c80...`,
+  tone decodes (6.4 s, peak ~9900). Next if still silent: LPCM per the AOSP layout (needs a custom PMT descriptor).
+
+## Root cause of the Roku black screen and missing audio: the first PMT (Nov 8)
+
+The Roku reads the program map table (PMT) **once, at the start**, and only plays the elementary streams listed in it.
+`mpegtsmux` lists a stream only once its pad has caps, so the first PMT contained whichever stream produced data first:
+
+| stream | first PMT (`scripts`: pmtscan) | Roku |
+|---|---|---|
+| `--source test` (both pads ready immediately) | video + audio, packet #3 | plays |
+| in-process audio, portal/testcap (audio data first) | **audio only** (video added in v1 later) | black screen |
+| audio started late via helper + `aacparse` (caps only after the first frame) | **video only** (audio added in v1 ~0.5 s later) | picture, no sound |
+| audio relayed one-ADTS-frame-per-UDP-datagram into `udpsrc caps=...adts,framed=true` | **video + audio, version 0** | expected: picture and sound |
+
+That also explains every earlier "experiment" (audio delay via `clocksync`, `--audio-source off`, start order): they
+only changed which stream was in the first table. Fix: the audio branch is `udpsrc ... caps=audio/mpeg,mpegversion=2,
+stream-format=adts,framed=true,rate=48000,channels=2 ! mux.sink_4352`; the engine relays the capture process' AAC
+(MPEG-2 ADTS) frames to it. Verified with the mock sink (`--dump`): first PMT lists `0x1b@0x1011` and `0x0f@0x1100` for audio start
+delays of 0 and 1000 ms, tone decodes, video intact. `--audio-start-delay-ms` stays at 1000 so the first *data* is video (a
+data-first stream may still list only itself).

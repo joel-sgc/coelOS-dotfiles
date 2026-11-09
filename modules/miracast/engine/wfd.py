@@ -302,3 +302,42 @@ def parse_transport_client_port(transport):
 
 
 PUBLIC_M2 = "org.wfa.wfd1.0, GET_PARAMETER, SET_PARAMETER"
+
+
+# ---------------------------------------------------------------------------
+# AAC ADTS
+# ---------------------------------------------------------------------------
+
+def adts_to_mpeg2(buf):
+    """Rewrite ADTS headers from the MPEG-4 form (ID bit 0, `FF F1`) to the MPEG-2 form (ID bit 1, `FF F9`)
+    that AOSP's Wi-Fi Display source sends (0xff, 0xf9). Takes a byte buffer that may end mid-frame and returns
+    (converted_complete_frames, remainder)."""
+    out = bytearray()
+    i, n = 0, len(buf)
+    while i + 7 <= n:
+        if buf[i] != 0xFF or (buf[i + 1] & 0xF0) != 0xF0:       # resync: not at a frame start
+            i += 1
+            continue
+        length = ((buf[i + 3] & 0x03) << 11) | (buf[i + 4] << 3) | (buf[i + 5] >> 5)
+        if length < 7:
+            i += 1
+            continue
+        if i + length > n:
+            break                                              # incomplete frame, wait for more
+        frame = bytearray(buf[i:i + length])
+        frame[1] |= 0x08                                       # ID = 1 (MPEG-2)
+        out += frame
+        i += length
+    return bytes(out), bytes(buf[i:])
+
+
+def split_adts(data):
+    """Split a buffer of complete ADTS frames (as returned by adts_to_mpeg2) into single frames."""
+    frames, i = [], 0
+    while i + 7 <= len(data):
+        length = ((data[i + 3] & 0x03) << 11) | (data[i + 4] << 3) | (data[i + 5] >> 5)
+        if length < 7 or i + length > len(data):
+            break
+        frames.append(data[i:i + length])
+        i += length
+    return frames

@@ -24,6 +24,7 @@ import asyncio
 import json
 import os
 import signal
+import socket
 import sys
 import tempfile
 import time
@@ -59,11 +60,14 @@ def hw_encoder_available():
 
 
 def build_audio_chain(args):
-    """System audio (the default sink's monitor) or silence, encoded as AAC-LC 48 kHz stereo ADTS."""
-    src = (["audiotestsrc", "is-live=true", "wave=silence"] if (args.source in ("test", "testcap") or
-                                                               args.audio_source == "silence") else
-           ["pipewiresrc", "provide-clock=false", "do-timestamp=true",
-            "stream-properties=props,stream.capture.sink=true"])
+    """System audio (the default sink's monitor), silence or a test tone, encoded as AAC-LC 48 kHz stereo ADTS."""
+    if args.audio_source == "tone":
+        src = ["audiotestsrc", "is-live=true", "wave=sine", "freq=440", "volume=0.3"]
+    elif args.source in ("test", "testcap") or args.audio_source == "silence":
+        src = ["audiotestsrc", "is-live=true", "wave=silence"]
+    else:
+        src = ["pipewiresrc", "provide-clock=false", "do-timestamp=true",
+               "stream-properties=props,stream.capture.sink=true"]
     return src + ["!", "audio/x-raw,rate=48000,channels=2", "!", "audioconvert", "!", "audioresample", "!",
                   "fdkaacenc", "bitrate=128000", "!", "audio/mpeg,mpegversion=4,stream-format=adts"]
 
@@ -74,7 +78,7 @@ def build_audio_cmd(args):
 
 
 def build_pipeline(args, mode, profile, level, sink_ip, client_port, server_port, portal_fd=None, portal_node=None,
-                   audio_on=False, hw=False, audio_fd=None):
+                   audio_on=False, hw=False, audio_port=None):
     """The gst-launch-1.0 argv for one stream. hw=True: scale/convert/encode on the GPU (VA-API)."""
     w, h, fps = mode["width"], mode["height"], mode["fps"]
     skip = set(filter(None, (getattr(args, "chain_skip", "") or "").split(",")))   # diagnostics only
@@ -130,11 +134,12 @@ def build_pipeline(args, mode, profile, level, sink_ip, client_port, server_port
     caps = "video/x-h264,profile=%s,level=(string)%s" % (prof, LEVEL_CAPS.get(enc_level, "4.1"))
     audio = []
     if audio_on:
-        if audio_fd is not None:
-            # AAC arrives from a separate capture process (build_audio_cmd) started a little after the
-            # video, through a pipe; timestamps are the arrival time.
-            audio = ["fdsrc", "fd=%d" % audio_fd, "do-timestamp=true", "blocksize=4096", "!",
-                     "aacparse", "!", "mux.sink_%d" % PID_AUDIO]
+        if audio_port is not None:
+            # AAC frames arrive one per UDP datagram from the relay in the engine, with the format declared up
+            # front: the muxer then lists the audio stream in the *first* program table (the Roku reads that
+            # table once and ignores streams that appear later; a late audio start used to leave it out).
+            audio = ["udpsrc", "address=127.0.0.1", "port=%d" % audio_port, "do-timestamp=true",
+                     "caps=audio/mpeg,mpegversion=(int)2,stream-format=(string)adts,framed=(boolean)true,rate=(int)48000,channels=(int)2,level=(string)2,profile=(string)lc", "!", "mux.sink_%d" % PID_AUDIO]
         else:
             audio = build_audio_chain(args) + ["!", "aacparse", "!", "mux.sink_%d" % PID_AUDIO]
     if hw and args.source == "portal":
@@ -374,37 +379,51 @@ class Session:
         portal_fd = self.capture.fd if self.capture else None
         portal_node = self.capture.node if self.capture else None
         audio_on = getattr(self, "audio", False) and self.args.audio_source != "off"
-        pipe_r = pipe_w = None
+        sock = None
+        port = None
         if audio_on:
-            pipe_r, pipe_w = os.pipe()
-            os.set_inheritable(pipe_r, True)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            sock.close()                                   # udpsrc binds it next; the relay only sends to it
         cmd = build_pipeline(self.args, self.mode, self.profile, self.level, self.sink_ip,
                              self.client_port, self.args.rtp_port, portal_fd, portal_node,
-                             audio_on=audio_on, hw=self.use_hw(), audio_fd=pipe_r)
+                             audio_on=audio_on, hw=self.use_hw(), audio_port=port)
         self.log("starting: %s" % " ".join(cmd))
-        pass_fds = tuple(fd for fd in (portal_fd, pipe_r) if fd is not None)
+        pass_fds = (portal_fd,) if portal_fd is not None else ()
         self.proc = await asyncio.create_subprocess_exec(*cmd, stderr=asyncio.subprocess.PIPE, pass_fds=pass_fds)
         if audio_on:
-            os.close(pipe_r)
-            self.audio_task = asyncio.ensure_future(self.start_audio(pipe_w))
+            self.audio_task = asyncio.ensure_future(self.start_audio(port))
         self.status.set(state="streaming", pipeline=" ".join(cmd))
         asyncio.ensure_future(self.watch_proc())
         self.keepalive_task = asyncio.ensure_future(self.keepalive())
 
-    async def start_audio(self, pipe_w):
-        """Start the audio capture shortly after the video pipeline. The Roku shows black when the stream
-        begins with audio (verified: identical streams differing only by this start order); a stream that
-        begins with video plays. Audio timestamps are arrival times, so lip-sync is unaffected."""
+    async def start_audio(self, port):
+        """Start the audio capture shortly after the video pipeline and relay it, one AAC frame per UDP datagram,
+        to the main pipeline. Timestamps are arrival times, so lip-sync is unaffected. The headers' ID bit is
+        switched to MPEG-2 (`FF F9`), the form AOSP's Wi-Fi Display source sends."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             await asyncio.sleep(self.args.audio_start_delay_ms / 1000.0)
             cmd = build_audio_cmd(self.args)
             self.log("audio: %s" % " ".join(cmd))
             self.audio_proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=pipe_w, stderr=asyncio.subprocess.DEVNULL)
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+            rest = b""
+            while True:
+                chunk = await self.audio_proc.stdout.read(4096)
+                if not chunk:
+                    break
+                data, rest = wfd.adts_to_mpeg2(rest + chunk) if not self.args.aac_mpeg4_adts else (chunk, b"")
+                for frame in wfd.split_adts(data):
+                    sock.sendto(frame, ("127.0.0.1", port))
         except asyncio.CancelledError:
             pass
+        except Exception:
+            import traceback
+            self.log("audio relay failed: %s" % traceback.format_exc().strip().replace("\n", " | "))
         finally:
-            os.close(pipe_w)
+            sock.close()
 
     async def keepalive(self):
         """M16: the source sends GET_PARAMETER every ~25 s (the SETUP reply promises timeout=60). Strict
@@ -563,13 +582,16 @@ def build_parser():
                         "(capssetter, queues, lanczos, videorate)")
     p.add_argument("--cap-format", default="BGRA", help="diagnostics (--source testcap): pixel format of the fake capture")
     p.add_argument("--cap-size", default="2256x1504", help="diagnostics (--source testcap): size of the fake capture")
+    p.add_argument("--aac-mpeg4-adts", action="store_true",
+                   help="leave the AAC frame headers in the encoder's MPEG-4 form (FF F1) instead of the MPEG-2 form "
+                        "(FF F9) that AOSP's Wi-Fi Display source sends")
     p.add_argument("--audio-start-delay-ms", type=int, default=1000,
                    help="start the audio capture this many ms after the video pipeline so the stream begins "
                         "with video (the Roku shows black otherwise)")
     p.add_argument("--no-ts-spec", action="store_true",
                    help="do not apply the Wi-Fi Display transport-stream layout (PMT PID 0x100, PAT/PMT every 50 ms, "
                         "PCR on the video PID)")
-    p.add_argument("--audio-source", choices=["system", "silence", "off"], default="system",
+    p.add_argument("--audio-source", choices=["system", "silence", "tone", "off"], default="system",
                    help="what to send as audio: the speakers' monitor (default), silence, or 'off' = AAC is "
                         "negotiated (the Roku stops answering if told 'no audio') but no audio is sent (diagnostics)")
     p.add_argument("--color", choices=sorted(COLORIMETRY), default="bt709",
