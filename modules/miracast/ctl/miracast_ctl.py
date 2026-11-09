@@ -119,6 +119,9 @@ def cast(argv):
         sys.exit("usage: coel-miracast cast <name|address> [--source test|portal] [engine flags, e.g. --encoder va]")
     key, source = argv[0], "test"
     extra = list(argv[1:])                  # everything else goes to the engine as-is
+    profiles = os.environ.get("MIRACAST_PROFILES")           # services.miracast.sinkProfiles, as a JSON file
+    if profiles and "--profiles" not in extra:
+        extra += ["--profiles", profiles]
     if "--source" in extra:
         i = extra.index("--source")
         source = extra[i + 1] if i + 1 < len(extra) else sys.exit("--source needs a value")

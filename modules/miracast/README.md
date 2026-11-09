@@ -679,3 +679,31 @@ stream-format=adts,framed=true,rate=48000,channels=2 ! mux.sink_4352`; the engin
 (MPEG-2 ADTS) frames to it. Verified with the mock sink (`--dump`): first PMT lists `0x1b@0x1011` and `0x0f@0x1100` for audio start
 delays of 0 and 1000 ms, tone decodes, video intact. `--audio-start-delay-ms` stays at 1000 so the first *data* is video (a
 data-first stream may still list only itself).
+
+## Display profiles and audio codec negotiation (Nov 8)
+
+**Capabilities are negotiated, quirks are declared.** Video and audio formats come from what the display advertises in
+M3 (`wfd_video_formats`, `wfd_audio_codecs`). What a display needs *beyond* that cannot be discovered, so it lives in
+per-display **profiles** (`engine/profiles.py`), plain data matched after M3:
+
+```
+services.miracast.sinkProfiles.bedroom-tv = {
+  match    = { name = "bedroom"; };                      # regexes (case-insensitive), ANDed
+  settings = { bitrate = 8000; audio_preference = "AAC,LPCM"; };   # engine options by argparse name
+};
+```
+
+- Match fields: `name`, `manufacturer`, `model`, `device_type` (Wi-Fi Direct peer record from miracast-linkd's
+  state.json), `content_protection`, `audio_codecs` (the display's advert). Empty `match` = every display.
+- Order: your profiles, then the built-ins (`roku`, `fire-tv`: documented, currently no overrides because the engine
+  defaults already encode what we learned: first-PMT audio+video, M16 keep-alive, M2-before-M3, ...). First match wins.
+- Command-line options beat a profile. JSON file: `coel-miracast cast ... --profiles FILE` or `$MIRACAST_PROFILES` (the
+  Nix option sets it for `coel-miracast`). The engine logs `profile: <name> (applied {...})` and publishes
+  `sink_profile` in its status.
+- **Audio**: `--audio-preference AAC,LPCM` (default `AAC`): the first codec in the list that the display offers *in a mode we
+  can produce* (AAC-LC 48 kHz stereo; LPCM 16-bit 48 kHz stereo) is negotiated; none -> `wfd_audio_codecs: none`.
+  **LPCM is experimental**: it goes through `mpegtsmux`'s `audio/x-lpcm` (Blu-ray style, PMT stream_type 0x8b here),
+  while AOSP's source uses stream_type 0x83 with a 2-byte PMT descriptor. The first PMT lists the stream and the
+  pipeline runs (verified with the mock sink), but no real display has been tried. So it is only used when you put it
+  in the preference list.
+- Both displays so far offer AAC, which is what they get; the audio format was never the Roku/Fire TV difference.

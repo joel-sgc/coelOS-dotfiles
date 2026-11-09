@@ -236,14 +236,41 @@ def level_for_mode(mode, at_least):
     return max(LEVEL_MAX_MBPS)
 
 
-def choose_audio(value):
-    """M4 wfd_audio_codecs value: AAC-LC 48k stereo if the sink offers it, else 'none'."""
-    if value and "AAC" in value:
-        for part in value.split(","):
-            f = part.split()
-            if len(f) >= 2 and f[0] == "AAC" and int(f[1], 16) & 1:
-                return "AAC 00000001 00"
-    return "none"
+# WFD audio codec mode bits we can produce: AAC-LC 48 kHz stereo (bit 0); LPCM 16-bit stereo 48 kHz (bit 1; the
+# 44.1 kHz mode, bit 0, is not produced).
+AUDIO_MODES = {"AAC": 0x1, "LPCM": 0x2}
+
+
+def parse_audio_codecs(value):
+    """'LPCM 00000002 00, AAC 00000001 00' -> [{'codec': 'LPCM', 'modes': 2, 'latency': 0}, ...]"""
+    out = []
+    for part in (value or "").split(","):
+        f = part.split()
+        if len(f) >= 2 and f[0].upper() in ("LPCM", "AAC", "AC3"):
+            try:
+                out.append({"codec": f[0].upper(), "modes": int(f[1], 16),
+                            "latency": int(f[2], 16) if len(f) > 2 else 0})
+            except ValueError:
+                continue
+    return out
+
+
+def choose_audio_codec(value, preference=("AAC",)):
+    """Pick the first codec in `preference` that the sink offers in a mode we can produce.
+    Returns (codec, M4 value), or (None, 'none')."""
+    offered = {e["codec"]: e for e in parse_audio_codecs(value)}
+    for codec in preference:
+        codec = codec.upper()
+        e = offered.get(codec)
+        if e and e["modes"] & AUDIO_MODES.get(codec, 0):
+            bit = AUDIO_MODES[codec]
+            return codec, "%s %08X 00" % (codec, bit)
+    return None, "none"
+
+
+def choose_audio(value, preference=("AAC",)):
+    """M4 wfd_audio_codecs value (AAC-LC 48k stereo by default), or 'none'."""
+    return choose_audio_codec(value, preference)[1]
 
 
 def format_video_selection(profile, level, cea_bit):

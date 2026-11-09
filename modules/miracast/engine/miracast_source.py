@@ -29,6 +29,7 @@ import sys
 import tempfile
 import time
 
+import profiles
 import wfd
 
 SESSION_ID = "6B8B4567"
@@ -59,8 +60,18 @@ def hw_encoder_available():
         return False
 
 
-def build_audio_chain(args):
-    """System audio (the default sink's monitor), silence or a test tone, encoded as AAC-LC 48 kHz stereo ADTS."""
+AAC_CAPS = ("audio/mpeg,mpegversion=(int)2,stream-format=(string)adts,framed=(boolean)true,"
+            "rate=(int)48000,channels=(int)2,level=(string)2,profile=(string)lc")
+# Blu-ray/DVD style LPCM as mpegtsmux knows it. EXPERIMENTAL: AOSP's WFD source sends LPCM as stream_type 0x83 with a
+# 2-byte PMT descriptor; mpegtsmux writes stream_type 0x80. Not verified on a real display.
+LPCM_CAPS = ("audio/x-lpcm,width=(int)16,rate=(int)48000,channels=(int)2,dynamic_range=(int)0,"
+             "emphasis=(boolean)false,mute=(boolean)false")
+LPCM_DATAGRAM = 1920                      # 10 ms of 48 kHz 16-bit stereo
+
+
+def build_audio_chain(args, codec="AAC"):
+    """System audio (the default sink's monitor), silence or a test tone, encoded as AAC-LC 48 kHz stereo ADTS
+    (or big-endian 16-bit PCM for LPCM)."""
     if args.audio_source == "tone":
         src = ["audiotestsrc", "is-live=true", "wave=sine", "freq=440", "volume=0.3"]
     elif args.source in ("test", "testcap") or args.audio_source == "silence":
@@ -68,17 +79,19 @@ def build_audio_chain(args):
     else:
         src = ["pipewiresrc", "provide-clock=false", "do-timestamp=true",
                "stream-properties=props,stream.capture.sink=true"]
-    return src + ["!", "audio/x-raw,rate=48000,channels=2", "!", "audioconvert", "!", "audioresample", "!",
-                  "fdkaacenc", "bitrate=128000", "!", "audio/mpeg,mpegversion=4,stream-format=adts"]
+    chain = src + ["!", "audio/x-raw,rate=48000,channels=2", "!", "audioconvert", "!", "audioresample", "!"]
+    if codec == "LPCM":
+        return chain + ["audio/x-raw,format=S16BE,rate=48000,channels=2,layout=interleaved"]
+    return chain + ["fdkaacenc", "bitrate=128000", "!", "audio/mpeg,mpegversion=4,stream-format=adts"]
 
 
-def build_audio_cmd(args):
-    """The audio capture process: AAC ADTS on stdout, read by the main pipeline's fdsrc."""
-    return ["gst-launch-1.0", "-q"] + build_audio_chain(args) + ["!", "fdsink", "fd=1"]
+def build_audio_cmd(args, codec="AAC"):
+    """The audio capture process: AAC ADTS (or raw PCM) on stdout, relayed by the engine."""
+    return ["gst-launch-1.0", "-q"] + build_audio_chain(args, codec) + ["!", "fdsink", "fd=1"]
 
 
 def build_pipeline(args, mode, profile, level, sink_ip, client_port, server_port, portal_fd=None, portal_node=None,
-                   audio_on=False, hw=False, audio_port=None):
+                   audio_on=False, hw=False, audio_port=None, audio_codec="AAC"):
     """The gst-launch-1.0 argv for one stream. hw=True: scale/convert/encode on the GPU (VA-API)."""
     w, h, fps = mode["width"], mode["height"], mode["fps"]
     skip = set(filter(None, (getattr(args, "chain_skip", "") or "").split(",")))   # diagnostics only
@@ -139,9 +152,10 @@ def build_pipeline(args, mode, profile, level, sink_ip, client_port, server_port
             # front: the muxer then lists the audio stream in the *first* program table (the Roku reads that
             # table once and ignores streams that appear later; a late audio start used to leave it out).
             audio = ["udpsrc", "address=127.0.0.1", "port=%d" % audio_port, "do-timestamp=true",
-                     "caps=audio/mpeg,mpegversion=(int)2,stream-format=(string)adts,framed=(boolean)true,rate=(int)48000,channels=(int)2,level=(string)2,profile=(string)lc", "!", "mux.sink_%d" % PID_AUDIO]
+                     "caps=%s" % (LPCM_CAPS if audio_codec == "LPCM" else AAC_CAPS), "!", "mux.sink_%d" % PID_AUDIO]
         else:
-            audio = build_audio_chain(args) + ["!", "aacparse", "!", "mux.sink_%d" % PID_AUDIO]
+            audio = build_audio_chain(args, audio_codec) + (
+                ["!", "aacparse"] if audio_codec != "LPCM" else []) + ["!", "mux.sink_%d" % PID_AUDIO]
     if hw and args.source == "portal":
         enc = ["vah264enc", "rate-control=cbr", "bitrate=%d" % args.bitrate, "b-frames=0",
                "key-int-max=%d" % fps, "target-usage=7", "!", "video/x-h264,profile=%s" % prof, "!"]
@@ -212,6 +226,9 @@ class Session:
         self.done = loop.create_future()
         self.playing = False
         self.got_m2 = asyncio.Event()
+        self.profiles = profiles.load(getattr(args, "profiles", None)) + profiles.BUILTIN
+        self.sink_profile = None
+        self.audio_codec = None
         self.capture = capture            # portal screencast chosen before the TV connected, or None
 
     # --- plumbing ------------------------------------------------------
@@ -317,6 +334,36 @@ class Session:
         if not self.done.done():
             self.done.set_result("sink sent TEARDOWN")
 
+    def peer_record(self):
+        """What the daemon knows about the display we are linked to (name, manufacturer, model, ...)."""
+        if not self.args.link_state:
+            return {}
+        try:
+            with open(self.args.link_state) as f:
+                state = json.load(f)
+        except (OSError, ValueError):
+            return {}
+        addr = (state.get("link") or {}).get("peer")
+        peers = state.get("peers") or []
+        if isinstance(peers, dict):
+            return peers.get(addr) or {}
+        return next((p for p in peers if isinstance(p, dict) and p.get("address") == addr), {})
+
+    def apply_sink_profile(self, caps):
+        """Find the quirk profile for this display (profiles.py) and apply its settings."""
+        info = dict(self.peer_record())
+        info["content_protection"] = caps.get("wfd_content_protection", "")
+        info["audio_codecs"] = [e["codec"] for e in wfd.parse_audio_codecs(caps.get("wfd_audio_codecs"))]
+        found = profiles.match(self.profiles, info)
+        self.sink_profile = found["name"] if found else None
+        if not found:
+            self.log("profile: none matched (%s); engine defaults" % json.dumps(
+                {k: info.get(k) for k in ("name", "manufacturer", "model")}))
+            return
+        applied = profiles.apply(self.args, getattr(self.args, "explicit", set()), found.get("settings"))
+        self.log("profile: %s%s" % (found["name"], (" (applied %s)" % json.dumps(applied)) if applied else ""))
+        self.status.set(sink_profile=found["name"])
+
     # --- negotiation (we are the RTSP client here) ----------------------
     async def negotiate(self):
         self.status.set(state="negotiating", sink_ip=self.sink_ip, local_ip=self.local_ip, error="")
@@ -336,6 +383,7 @@ class Session:
             raise wfd.RtspError("M3 rejected: %s" % r.start)
         caps = wfd.parse_params(r.body)
         self.log("sink capabilities: %s" % json.dumps(caps))
+        self.apply_sink_profile(caps)
         entries = wfd.parse_video_formats(caps.get("wfd_video_formats", "none"))
         choice = wfd.choose_video(entries, self.args.preference, strict=self.args.strict_levels)
         if not choice:
@@ -343,10 +391,15 @@ class Session:
         self.profile, self.level, bit = choice
         self.mode = wfd.mode_of(bit)
         ports = caps.get("wfd_client_rtp_ports", "RTP/AVP/UDP;unicast 19000 0 mode=play")
-        self.audio = (self.args.source in ("portal", "test", "testcap") and not self.args.no_audio and
-                      wfd.choose_audio(caps.get("wfd_audio_codecs")) != "none")
-        body = wfd.build_m4_body(self.local_ip, ports, wfd.format_video_selection(*choice),
-                                 wfd.choose_audio(caps.get("wfd_audio_codecs")) if self.audio else "none",
+        preference = [c.strip() for c in str(self.args.audio_preference).split(",") if c.strip()]
+        codec, audio_value = wfd.choose_audio_codec(caps.get("wfd_audio_codecs"), preference)
+        self.audio_codec = codec
+        self.audio = (self.args.source in ("portal", "test", "testcap") and not self.args.no_audio and codec is not None)
+        if not self.audio:
+            audio_value = "none"
+        self.log("audio: sink offers %s; using %s" % (caps.get("wfd_audio_codecs", "nothing"),
+                                                   codec if self.audio else "none"))
+        body = wfd.build_m4_body(self.local_ip, ports, wfd.format_video_selection(*choice), audio_value,
                                  content_protection="none" if caps.get("wfd_content_protection", "none")
                                  .strip().lower() not in ("none", "") else None)
         self.log("M4: %s" % body.strip().replace("\r\n", " | "))
@@ -388,24 +441,25 @@ class Session:
             sock.close()                                   # udpsrc binds it next; the relay only sends to it
         cmd = build_pipeline(self.args, self.mode, self.profile, self.level, self.sink_ip,
                              self.client_port, self.args.rtp_port, portal_fd, portal_node,
-                             audio_on=audio_on, hw=self.use_hw(), audio_port=port)
+                             audio_on=audio_on, hw=self.use_hw(), audio_port=port,
+                             audio_codec=self.audio_codec or "AAC")
         self.log("starting: %s" % " ".join(cmd))
         pass_fds = (portal_fd,) if portal_fd is not None else ()
         self.proc = await asyncio.create_subprocess_exec(*cmd, stderr=asyncio.subprocess.PIPE, pass_fds=pass_fds)
         if audio_on:
-            self.audio_task = asyncio.ensure_future(self.start_audio(port))
+            self.audio_task = asyncio.ensure_future(self.start_audio(port, self.audio_codec or "AAC"))
         self.status.set(state="streaming", pipeline=" ".join(cmd))
         asyncio.ensure_future(self.watch_proc())
         self.keepalive_task = asyncio.ensure_future(self.keepalive())
 
-    async def start_audio(self, port):
+    async def start_audio(self, port, codec="AAC"):
         """Start the audio capture shortly after the video pipeline and relay it, one AAC frame per UDP datagram,
         to the main pipeline. Timestamps are arrival times, so lip-sync is unaffected. The headers' ID bit is
         switched to MPEG-2 (`FF F9`), the form AOSP's Wi-Fi Display source sends."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             await asyncio.sleep(self.args.audio_start_delay_ms / 1000.0)
-            cmd = build_audio_cmd(self.args)
+            cmd = build_audio_cmd(self.args, codec)
             self.log("audio: %s" % " ".join(cmd))
             self.audio_proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
@@ -414,6 +468,12 @@ class Session:
                 chunk = await self.audio_proc.stdout.read(4096)
                 if not chunk:
                     break
+                if codec == "LPCM":                         # fixed-size PCM frames, one per datagram
+                    rest += chunk
+                    while len(rest) >= LPCM_DATAGRAM:
+                        sock.sendto(rest[:LPCM_DATAGRAM], ("127.0.0.1", port))
+                        rest = rest[LPCM_DATAGRAM:]
+                    continue
                 data, rest = wfd.adts_to_mpeg2(rest + chunk) if not self.args.aac_mpeg4_adts else (chunk, b"")
                 for frame in wfd.split_adts(data):
                     sock.sendto(frame, ("127.0.0.1", port))
@@ -585,6 +645,11 @@ def build_parser():
     p.add_argument("--aac-mpeg4-adts", action="store_true",
                    help="leave the AAC frame headers in the encoder's MPEG-4 form (FF F1) instead of the MPEG-2 form "
                         "(FF F9) that AOSP's Wi-Fi Display source sends")
+    p.add_argument("--profiles", default=os.environ.get("MIRACAST_PROFILES"),
+                   help="JSON file with per-display quirk profiles (profiles.py); default $MIRACAST_PROFILES")
+    p.add_argument("--audio-preference", default="AAC",
+                   help="comma list of audio codecs to use, best first, among what the display offers: AAC, "
+                        "LPCM (LPCM is experimental: stream layout unverified on real displays)")
     p.add_argument("--audio-start-delay-ms", type=int, default=1000,
                    help="start the audio capture this many ms after the video pipeline so the stream begins "
                         "with video (the Roku shows black otherwise)")
@@ -622,6 +687,7 @@ def build_parser():
 def main(argv=None):
     p = build_parser()
     args = p.parse_args(argv)
+    args.explicit = {k for k, v in vars(args).items() if v != p.get_default(k)}   # options given on the command line
     return asyncio.run(serve(args))
 
 

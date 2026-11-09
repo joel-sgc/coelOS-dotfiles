@@ -66,11 +66,14 @@ let
     exec ${python}/bin/python3 ${./engine}/miracast_source.py "$@"
   '';
 
+  profilesFile = pkgs.writeText "miracast-profiles.json" (builtins.toJSON cfg.sinkProfiles);
+
   # Stdlib-only client; deliberately a separate package from the daemon.
   ctl = pkgs.writeShellScriptBin "coel-miracast" ''
     export MIRACAST_STATE=${lib.escapeShellArg "${cfg.runtimeDir}/state.json"}
     export MIRACAST_SOCKET=${lib.escapeShellArg "${cfg.runtimeDir}/linkd.sock"}
     export MIRACAST_ENGINE=${engine}
+    ${lib.optionalString (cfg.sinkProfiles != { }) "export MIRACAST_PROFILES=${profilesFile}"}
     export MIRACAST_SYSTEMD_RUN=${pkgs.systemd}/bin/systemd-run
     export MIRACAST_SYSTEMCTL=${pkgs.systemd}/bin/systemctl
     export MIRACAST_JOURNALCTL=${pkgs.systemd}/bin/journalctl
@@ -141,6 +144,45 @@ in
         different channel than the access point knocks the normal connection off; after
         NetworkManager's default 4 failed attempts it stops auto-connecting until reboot.
         This raises NetworkManager's default retry count (autoconnect-retries-default) from 4 to 100.
+      '';
+    };
+
+    sinkProfiles = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          match = lib.mkOption {
+            type = lib.types.attrsOf lib.types.str;
+            default = { };
+            description = ''
+              Conditions, ANDed. Each value is a case-insensitive regular expression searched in the field:
+              name, manufacturer, model, device_type (Wi-Fi Direct peer record), content_protection,
+              audio_codecs (what the display advertises). Empty = matches every display.
+            '';
+          };
+          settings = lib.mkOption {
+            type = lib.types.attrsOf lib.types.anything;
+            default = { };
+            description = ''
+              Engine options (argparse names, e.g. vbv_ms, bitrate, preset, audio_start_delay_ms,
+              audio_preference, preference, color) applied when the profile matches, unless the same option
+              was given on the command line.
+            '';
+          };
+        };
+      });
+      default = { };
+      example = lib.literalExpression ''
+        {
+          bedroom-tv = {
+            match = { name = "bedroom"; };
+            settings = { bitrate = 8000; audio_preference = "AAC,LPCM"; };
+          };
+        }
+      '';
+      description = ''
+        Per-display quirk profiles, as data (see modules/miracast/engine/profiles.py). Written to a JSON file that
+        `coel-miracast cast` hands to the engine; matched against the display after its capabilities are known.
+        User profiles are tried before the built-in ones (roku, fire-tv); the first match wins.
       '';
     };
 
