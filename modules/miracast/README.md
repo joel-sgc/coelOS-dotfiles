@@ -4,8 +4,11 @@ Casting this laptop's screen to a Miracast sink (Amazon Fire TV Stick, smart
 TVs) from a Quickshell modal, declared in NixOS, built from separate pieces so
 no single front end or back end is baked in.
 
-Written 2026-11-06/07 after a long debugging session. This file is the
-reference for what we learned, how the pieces fit, and what is left.
+Started 2026-11-06/07 after a long debugging session, extended through 2026-11-09
+(Roku support, audio, profiles). This file is the reference for what we learned,
+how the pieces fit, and what is left. **Start with "Current state" below**; the
+sections after "Investigation log" are the chronological notes it was distilled
+from, and where an old note disagrees with "Current state", the latter wins.
 
 ## Ground rules
 
@@ -17,14 +20,129 @@ reference for what we learned, how the pieces fit, and what is left.
    the discovery back end, or the front end without touching the others.
 4. **No dependency on NetworkManager's Wi-Fi P2P** (see "Why not NetworkManager").
 
-## Status
+## Current state (2026-11-09)
 
-| Phase | What | State |
+### Displays
+
+| Display | Link | Stream | Verified |
+|---|---|---|---|
+| Amazon Fire TV Stick ("Joel's Fire TV") | Wi-Fi Direct GO negotiation, we are the client (`192.168.49.x`) | 1080p30 H.264 + AAC | Screen + audio worked on 11-06/07 and again on 11-08 (after the Fire TV was power-cycled), but a bit choppy. The audio-timestamp fix (`29e0b98`) and the PMT/relay rework (below) have **not been re-tested on it yet** |
+| Roku Express 898 | We *join* the Roku's existing group (it is a group owner, capability `0x03`); `172.29.243.x` | 1080p30 High 4.1 + AAC | Screen, test pattern and audio worked on 11-08. `29e0b98` (smoother audio timestamps) came after and is **not re-tested on it yet** |
+| Other TVs / sinks | untested | | |
+
+Google Cast is a separate module (`modules/gcast`, `coel-gcast`), mock-tested only; see its README.
+
+### What exists
+
+| Part | Where | State |
 |---|---|---|
-| 1 | Discovery: find Miracast sinks, publish them | **Working on the real radio** |
-| 2 | Link: Wi-Fi Direct group with the TV, IP on the group interface | **Working** with the Fire TV: group forms, DHCP lease (`192.168.49.x`), link `ready` |
-| 3 | Source engine: WFD RTSP negotiation, capture, encode, stream | **Working on the Fire TV** with a test pattern (2026-11-06, 720p30). Screen capture through the portal is written and tested against a mock portal; **not yet run on the real desktop** |
-| 4 | Front ends: CLI (done), Quickshell modal, keybinds | CLI done (`coel-miracast cast`); modal not started |
+| Discovery + link daemon `miracast-linkd` (root, hardened) | `linkd/` | Works on the real radio with both displays. Tests: 15 unit + mock-wpa integration |
+| Source engine (user, one per cast) | `engine/` | Works with both displays. Tests: 46 unit + mock-sink end to end + mock-portal |
+| CLI `coel-miracast` | `ctl/` | scan / peers / cast / stop / disconnect / engine / logs; forwards engine flags (`cast <name> --source portal --vbv-ms 20`) |
+| Per-display profiles | `engine/profiles.py`, `services.miracast.sinkProfiles` | Done; the two built-ins (`roku`, `fire-tv`) change nothing yet |
+| Quickshell modal | n/a | **Not started.** The state files below are its interface |
+| Shared screen-capture code | `../castlib/portal_capture.py` | Shared with `modules/gcast` |
+
+### How a cast works now (data path)
+
+1. `coel-miracast cast "<name>" --source portal` starts `miracast-source` as a transient user unit. For `portal` it
+   asks the xdg-desktop-portal (our Quickshell share picker) what to share *first*, then listens on TCP 7236.
+2. It scans, then asks `miracast-linkd` to connect. The daemon forms the group (GO negotiation, or `join` for a
+   display that is already a group owner), runs `udhcpc` on the group interface and publishes `link: ready`.
+3. The display connects to our RTSP port. Engine negotiation: M1, wait for the display's own M2 (the Roku requires
+   it before M3), M3 capabilities, **profile match** (`profiles.py`), M4 selection (one video mode; AAC if offered, else
+   nothing; `wfd_content_protection: none` when the display advertises HDCP), M5 trigger, then the display's SETUP and
+   PLAY. A keep-alive `GET_PARAMETER` (M16) goes out every 25 s (the Roku drops the session at exactly 60 s without it).
+4. Video: `pipewiresrc` (`provide-clock=false`) -> `videoconvert` -> `capssetter` (fixes xdph's bogus
+   pixel-aspect-ratio) -> leaky queue -> `videoscale` (lanczos, borders: a 3:2 panel is pillarboxed into 16:9) ->
+   `videorate` -> leaky queue -> `videoconvert` -> `x264enc` (veryfast, 12 Mbit/s, GOP 30, no B-frames,
+   `vbv-buf-capacity=30` to keep keyframes small, BT.709) -> `h264parse config-interval=-1` -> `mpegtsmux`.
+5. Audio: a **separate capture process** (speakers' monitor, one-frame buffers `node.latency=1024/48000`, AAC-LC
+   48 kHz stereo) started `--audio-start-delay-ms` (1000) after the video. The engine relays its output one AAC
+   frame per UDP datagram, rewriting the ADTS header to the MPEG-2 form (`FF F9`, as AOSP sends), into the main pipeline:
+   `udpsrc caps=audio/mpeg,...adts,framed=true ! queue ! mux.sink_4352`.
+6. Muxer layout follows the Wi-Fi Display spec as far as `mpegtsmux` allows: video PID 0x1011, audio PID 0x1100,
+   **PMT on PID 0x100**, PAT/PMT every 50 ms, PCR on the video PID. Then `rtpmp2tpay` (7 TS packets per RTP packet)
+   -> `udpsink` to the display's RTP port, `sync=false`.
+
+### Commands
+
+```sh
+coel-miracast scan 30                  # the display must be on its mirroring screen
+coel-miracast peers --all
+coel-miracast cast "Joel's Fire TV" --source portal      # your screen + system audio
+coel-miracast cast "Roku" --source test --pattern smpte  # colour bars, no portal picker
+coel-miracast stop; coel-miracast disconnect             # between attempts (always do both)
+coel-miracast engine; coel-miracast logs
+```
+
+Useful engine flags (all go through `cast`): `--bitrate 8000`, `--vbv-ms N` (0 = x264 default), `--preference 5`
+(force 720p30), `--preset`, `--color`, `--contrast/--saturation/--gamma`, `--audio-source system|silence|tone|monitor|off`,
+`--audio-preference AAC,LPCM`, `--audio-start-delay-ms`, `--profiles FILE`, `--encoder va` (GPU; experimental),
+`--no-ts-spec`, `--aac-mpeg4-adts`, `--no-audio` (**do not use on the Roku**: it stops answering `M4`).
+Diagnostics: `--source testcap` (a synthetic screen through the exact capture chain), `--chain-skip`, `--cap-format`, `--cap-size`, `--mux-bitrate`.
+
+NixOS (`services.miracast`): `enable`, `interface`, `sinkProfiles`, `keepStationAutoconnect` (default on), `deviceName`,
+`scanSeconds`, `peerTtl`, `rtspPort`, `unmanageP2pInNetworkManager`, `protectWpaSupplicantFromP2pInterfaces`, `openFirewall`.
+
+### Rules we learned the hard way (keep these true)
+
+- **The Roku reads the first PMT once and only plays streams listed in it.** `mpegtsmux` lists a stream only after its
+  pad has caps, so whichever stream produced data first is alone in the first PMT. That caused *every* Roku symptom:
+  audio first -> black screen; video first -> picture without sound. The audio branch therefore has its caps declared up
+  front (`udpsrc caps=...`) and the first PMT lists both. Check with a stream dump (`tests/mock_sink.py --dump f.ts`).
+- The Roku **stops answering when told there is no audio** (`wfd_audio_codecs: none`); negotiate AAC and send silence/nothing
+  instead (`--audio-source silence|off`).
+- Never call `P2PDevice.Disconnect` on the *main* interface: wpa_supplicant treats it as "deauthenticate this interface"
+  and drops the normal Wi-Fi. End a group on its own `p2p-*` interface; `miracast-linkd` ends every group interface on
+  `disconnect` and before each new connect (a stale one makes the next group fail with "Device or resource busy").
+- NetworkManager stops auto-connecting after 4 failures; `keepStationAutoconnect` raises `autoconnect-retries-default`.
+  A rebuild that changes NM's config restarts NM and briefly drops Wi-Fi (expected).
+- Do **not** force the P2P channel to the station's (`--match-station-channel` is opt-in): the Fire TV then stopped answering
+  and the adapter already does two-channel concurrency (`num_MCC=2`).
+- Audio timestamps must be smooth. Measured on real output: without the `queue` after `udpsrc` and the one-frame capture
+  buffers, audio PTS steps were 0.1 ms / 70 ms instead of 21.3 ms and the stream stuttered (fixed in `29e0b98`).
+- `pipewiresrc` must not provide the pipeline clock (it stalls on a static screen: black TV). `videoconvert` must come
+  before `capssetter` (directly behind `pipewiresrc` it breaks negotiation: "target not found").
+- Keep keyframes small (`vbv-buf-capacity=30`): a static desktop makes a 180 KB keyframe (15x a normal frame), a large
+  burst for a small stick on Wi-Fi Direct. (Not what blacked out the Roku, but it smooths delivery.)
+- Between attempts: `stop` **and** `disconnect`, then close and reopen the display's mirroring screen. A display that stays on
+  the waiting screen for minutes, or has seen many failed attempts, can stop answering negotiation requests: the radio still
+  acknowledges our frames (`ack=1` in wpa debug) but nothing replies. **Power-cycle the Fire TV** (this fixed it on 11-08).
+- `wpa_supplicant` debug: `sudo busctl set-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 DebugLevel s debug`
+  (set back to `info` afterwards), then `journalctl -u wpa_supplicant-wlp1s0`.
+
+### Known issues and open items
+
+- **Re-test on both displays after `29e0b98`** (audio timing) and after the audio relay change: Fire TV first, then Roku.
+- **Lip-sync**: audio is stamped when it reaches the muxer, video when the frame is captured; audio can trail by roughly
+  20-60 ms (capture quantum + AAC encoder delay). `mpegtsmux` has no per-stream offset. If noticeable, carry capture
+  timestamps from the audio process to the muxer (RTP).
+- **Delay**: a few hundred ms to ~1 s end to end; mostly the display's own buffer plus our 125-165 ms PTS-to-PCR lead.
+- **LPCM is experimental** (`--audio-preference AAC,LPCM`): `mpegtsmux` writes stream_type 0x8b, AOSP uses 0x83 with a
+  custom PMT descriptor. Unverified on real hardware, so it is only used when listed.
+- Fire TV advertises only Constrained Baseline and 1080p30 at level 3.1; we encode at the level 1080p30 really needs (4.0) and say 3.1 in M4 (it decodes it).
+  Colours may look flat next to the panel: the TV ignores range/matrix tags and always decodes BT.709 limited, so the default
+  is correct; use `--contrast/--saturation/--gamma` to taste.
+- Hardware encoding (`--encoder va`) was ~2x faster but produced flat images from a PipeWire source; off by default.
+- The portal picker can be cancelled (`screen sharing was cancelled`); rerun the cast.
+- The firewall rule for 7236 still lives in `configuration.nix` and is not scoped to `p2p-*`.
+- No Quickshell modal yet. No HDCP (content-protected sinks may refuse us). The per-display profiles are in place but empty.
+- Wireless Display discovery needs the display on its mirroring screen; scanning a busy 2.4/5 GHz environment can take 10-30 s.
+
+### Dead ends (so nobody repeats them)
+
+Several explanations were tried and **disproved**; the investigation log still contains them as written at the time:
+"audio-first start order" (an ffprobe stream-index mix-up; the real cause was the first PMT), "oversized keyframes blacked
+out the Roku", "static screen = too little data" (`--mux-bitrate` stays as an option), delaying audio with `clocksync`
+(it only changed what was in the first PMT, and drops live audio), forcing the P2P channel, and "scanning drops the
+Wi-Fi" (it was our own `Disconnect` call). The MPEG-2 ADTS header was applied together with the PMT fix and was never
+tested separately, so we do not know whether the Roku needs it.
+
+## Investigation log (chronological, partly superseded)
+
+The rest of this file keeps the notes as they were written. Older sections describe earlier states (e.g. "not yet run on
+real hardware"); where they conflict with "Current state", trust "Current state".
 
 ## What we learned
 
@@ -264,6 +382,9 @@ coel-miracast json
 
 ## What is left
 
+> Written 2026-11-07 while phases 2-4 were open. Phase 2 (link + DHCP) and phase 3 (engine) are done; the open items are in
+> "Known issues and open items" under "Current state".
+
 ### Phase 2: link
 
 Group formation works. **Addressing** is built but not yet run on hardware: on
@@ -350,6 +471,8 @@ talk to the *interfaces above*, not to the Miracast daemon's internals.
 
 ## Risks and open questions
 
+> Written 2026-11-07; phase 1 has long since run on the real radio. The current list is under "Current state".
+
 - Phase 1 has only run against a mock. The first real run may show wpa_supplicant
   behaviours the mock does not (e.g. signal paths, `Find` argument handling).
 - Scanning briefly disturbs the normal Wi-Fi link (observed). Keep scans short.
@@ -381,49 +504,40 @@ sudo busctl --system tree fi.w1.wpa_supplicant1 | grep -i peers
 
 ## Tests
 
-`linkd/test_miracast_linkd.py`: unit tests for the pure helpers (WFD IE
-parsing, MAC/device-type decoding, state expiry/ordering), using the Fire TV and
-`bedroom tv` records captured from this machine.
+All of these run without hardware, root or a TV.
 
 ```sh
-cd modules/miracast/linkd && python3 -m unittest test_miracast_linkd
+cd modules/miracast
+python3 -m unittest discover -s engine -p 'test_*.py'      # 46: framing, negotiation, profiles, ADTS, pipelines
+python3 -m unittest discover -s linkd -p 'test_*.py'       # 15 (needs dbus-fast on the path, see below)
+bash tests/engine_e2e.sh            # engine vs a mock TV on localhost (negotiation only)
+bash tests/engine_e2e.sh gst        # ... and stream a test pattern (gst-launch-1.0 + plugins on PATH)
+bash tests/run-integration.sh       # daemon + CLI vs mock_wpa.py on a private session bus (needs dbus-fast)
+bash tests/run-portal-test.sh       # ../castlib/portal_capture.py vs mock_portal.py (session, fd passing, cancel)
 ```
 
-`engine/test_wfd.py` (16 tests): framing, format parsing and selection.
-`tests/engine_e2e.sh [gst]`: the engine against a mock TV on localhost.
-`tests/run-portal-test.sh`: `portal_capture.py` against `mock_portal.py`
-(session sequence, fd passing, user cancel).
-(`gst` needs gst-launch-1.0 and the plugins on PATH; the Nix-built engine
-already has them.)
+- `tests/mock_sink.py` is a fake TV (`--dump f.ts` writes the MPEG-TS it received: use it to check PIDs, PMT contents,
+  timestamp steps). Handy one-liners for stream checks live in this README's investigation log (PMT scan, PTS steps).
+- `tests/mock_wpa.py` is a fake wpa_supplicant (a leftover group interface, `Disconnect` on the main interface is asserted never to happen).
+- The portal picker cannot be automated here; real-screen runs need a human to pick a monitor.
 
-`tests/`: an end-to-end check of the daemon and CLI against `mock_wpa.py`, a
-fake wpa_supplicant on a private session bus (no root, no hardware):
-
-```sh
-cd modules/miracast/tests
-nix shell --impure nixpkgs#dbus \
-  --expr '(builtins.getFlake "nixpkgs").legacyPackages.x86_64-linux.python3.withPackages (ps: [ ps.dbus-fast ])' \
-  -c ./run-integration.sh
-```
+To get dbus-fast for the daemon tests: `nix shell --impure nixpkgs#dbus --expr
+'(builtins.getFlake "nixpkgs").legacyPackages.x86_64-linux.python3.withPackages (ps: [ ps.dbus-fast ])' -c <command>`.
 
 ## File map
 
 ```
 modules/miracast/
   README.md                 this file
-  default.nix               NixOS module: services.miracast.*
-  linkd/miracast_linkd.py   the root daemon (wpa_supplicant D-Bus <-> state/socket)
-  linkd/test_miracast_linkd.py
-  engine/miracast_source.py the source engine (RTSP session + GStreamer)
-  engine/wfd.py             WFD protocol logic (pure, unit tested)
-  engine/test_wfd.py
+  default.nix               NixOS module: services.miracast.* (link daemon, DHCP template unit, CLI, sinkProfiles, NM settings)
+  linkd/miracast_linkd.py   the root daemon (wpa_supplicant D-Bus <-> state.json / socket)
+  engine/miracast_source.py the source engine: RTSP session, profile match, GStreamer pipelines, audio relay
+  engine/wfd.py             WFD protocol logic: framing, format/audio negotiation, ADTS helpers (pure, unit tested)
+  engine/profiles.py        per-display quirk profiles (match + settings)
+  engine/test_wfd.py, engine/test_profiles.py, linkd/test_miracast_linkd.py
   ctl/miracast_ctl.py       coel-miracast CLI (stdlib only)
-  tests/mock_wpa.py         fake wpa_supplicant for tests
-  tests/mock_sink.py        fake Miracast TV for engine tests
-  tests/engine_e2e.sh       engine vs mock TV (`gst` argument also streams)
-  tests/mock_portal.py      fake ScreenCast portal;  run-portal-test.sh runs it
-  ../castlib/portal_capture.py  xdg-desktop-portal ScreenCast client (shared with the Google Cast module)
-  tests/integration.sh      end-to-end test; run-integration.sh sets up the bus
+  tests/                    mock_wpa.py, mock_sink.py, mock_portal.py, engine_e2e.sh, integration.sh, run-*.sh, portal_e2e.py
+../castlib/portal_capture.py  xdg-desktop-portal ScreenCast client (shared with ../gcast)
 ```
 
 ## Quality and audio (Nov 6)
@@ -492,6 +606,8 @@ modules/miracast/
   `--encoder va`, `--bitrate 8000`, `--vbv-ms 60`, `--preference 5`, `--no-audio`, `--strict-levels`.
 
 ## Colour / sharpness investigation (Nov 6, third pass)
+
+> Still current: the TVs ignore range/matrix tags and decode BT.709 limited; the default encoding is right.
 
 - The stream itself is colour-accurate: solid colours through the real encode chain decode (per their VUI tags,
   bt709 / limited range) to within 1-4 levels of the source. So "faded" on the TV points at how the TV treats the
@@ -572,6 +688,9 @@ modules/miracast/
 
 ## Roku black screen with screen capture = oversized keyframes (Nov 8)
 
+> **Superseded.** Oversized keyframes were *not* what blacked out the Roku (the first PMT was; see "Root cause ... the first PMT").
+> The measurements and `--vbv-ms` remain useful for smoothing delivery.
+
 - The test pattern played on the Roku but real screen capture stayed black. Capturing the real screen through the
   same chain gave keyframes of **181 KB average** (a static desktop has ~11 KB P-frames, so the one keyframe per
   second is 15x larger, ~140 RTP packets in one burst) versus 55 KB for the test pattern. A small stick on Wi-Fi
@@ -630,6 +749,9 @@ Our stream deviated from the spec in three ways, now fixed by default (`--no-ts-
 config-interval=-1` as in GND. Not possible with mpegtsmux: a dedicated PCR PID 0x1000.
 
 ## Roku fix: start the audio after the video (Nov 8)
+
+> **Superseded.** The start-order explanation below was an ffprobe stream-index mix-up. The audio start delay stayed (so the first
+> *data* is video) but the cause was the first PMT; see the next-but-one section.
 
 - Correction: the "first video timestamp comes before audio" note above was wrong (I had keyed on ffprobe's stream
   index, which swaps between runs). Measured by PID, audio's first PTS is earlier than video's in every stream.
