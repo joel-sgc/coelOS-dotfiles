@@ -1229,3 +1229,174 @@ Symptom: a keyring unlock prompt kept appearing. Two causes, both fixed:
    ~/.local/share/keyrings/default). The old Default_keyring.keyring is left
    untouched on disk -- items in it (e.g. the GlobalProtect password) are not
    visible through the default alias; re-store them (`coel-vpn-set-password`).
+
+## Session hub: one login screen that is also the lock screen
+
+modules/session-hub.nix (enabled in configuration.nix), scripts/coel-hub.py,
+scripts/coel-vt-guard.py. Headless VM test: modules/session-hub-test.nix.
+
+Shape: the login screen (the Quickshell greeter, the main greetd) lives on VT1
+permanently and never starts a session itself. Sessions run on "hosts": idle
+greetd instances on VT7 and VT8 (VT2-6 stay plain recovery consoles; logind
+only auto-spawns gettys on VT1-6, so one can never land on a host).
+
+- New session: the greeter runs `coel-hub auth USER --host auto --cmd ...`:
+  PAM conversation against a free host's greetd socket, then the host starts
+  the session on its own VT and the screen follows.
+- Lock (Super+L, power menu, launcher, idle timer, before-sleep):
+  `coel-hub lock` starts the in-session lock screen, waits until the
+  compositor CONFIRMS the lock (Lock.qml drops a marker on
+  WlSessionLock.secure), then switches to VT1. Only if that session is the one
+  on screen: an idle session in the background is locked but never pulls you
+  away from the one you are using. The login screen is already running, so
+  nothing starts and the lock screen is never shown on the way out.
+- Resume: pick the user and the desktop; the stepper says "running" and the
+  password (and fingerprint, if enrolled) resumes it. The check runs on the
+  main greetd, then `coel-hub resume` writes /run/coel-hub/unlock/<session>
+  and switches to the session's VT. The lock screen waits for that file to
+  be NEWER than its own lock confirmation (a leftover grant can never unlock a
+  later lock). /run/coel-hub is writable only by the greeter user, so nothing
+  running as you can forge a grant or a VT-switch authorisation. (logind's
+  unlock-session would not do: it lets a session's owner unlock their own
+  session.)
+- coel-vt-guard (root): a guarded VT (7, 8) may be on screen only while a
+  session the hub let in owns it. A switch into a live session without the hub
+  is bounced at once (a brief black flash, then the login screen; nothing of
+  the session is shown). A VT with nothing on it (an idle host greeter, or a
+  session that just ended) gets 0.8s of grace, then goes back to the login
+  screen -- which is how logout lands there. While a guarded VT is on screen
+  it re-checks logind's state files every ~2s (a session ending is not a VT
+  switch). The guard never waits on VT_WAITACTIVE (it would hang forever if
+  something switched away meanwhile).
+- Hosts start ONE AT A TIME, the hub last (explicit greetd-host-7/-8 units
+  chained with After=, each finishing only once its idle greeter is up and the
+  screen has moved on: `coel-hub wait-host`). greetd switches to its VT and
+  then BLOCKS until that VT is on screen; hosts started together race, the
+  loser waits for a VT that never comes and can never hold a session (the VM
+  test hung at boot ~2 runs in 5 before this).
+- The lock card's "switch" button goes to the login screen too.
+
+Limits: one account with several sessions shares one systemd user manager and
+D-Bus, so single-instance apps (VS Code, Zen) forward to the running instance,
+and only the first session gets notifications/portals. Sessions are expected
+one at a time for now (Hyprland); a second session works but has those limits.
+
+Recovery: Ctrl+Alt+F2 is a plain console; or pick the previous generation in
+the boot menu; or remove `services.coel-hub.enable` from configuration.nix.
+After the first rebuild, log out and back in (or reboot) so the new login
+screen takes over; until then the old greetd keeps running the old greeter.
+
+## Guest account, and one session per account
+
+modules/guest.nix (enabled in configuration.nix), home/guest.nix. A guest whose
+every change is undone at logout.
+
+- Home is a tmpfs (RAM, 4G cap): nothing the guest does reaches the disk.
+  `coel-guest-reset` (a oneshot started by a path unit on /run/systemd/sessions,
+  so nothing polls) wipes the home and /tmp files, then restarts
+  home-manager-guest.service to put the profile back, once the guest's last
+  session has ended. Seen-in-use clears the "clean" marker so the next logout
+  always wipes. The hub waits for a running wipe before starting a guest session.
+- No password, one click: empty password, accepted only by greetd (the login
+  screen; users.json carries `passwordless` so Enter alone works). The console
+  login (`login`) is switched to refuse empty passwords (NixOS allows them by
+  default), so there is no text login for guest; ssh/sudo/lock PAM already refuse.
+- Blocked: sudo/wheel, Nix builds (`nix.settings.allowed-users`), your files
+  (homes are 0700), VPN (nftables: guest uid may not send out gpd0/tun*/wg*/proton*),
+  and every NetworkManager polkit action (no saving/editing/toggling networks).
+  Printing, USB and the rest are left alone.
+- The desktop is the same Hyprland + Quickshell, built from the SAME modules
+  minus the personal ones (git, calendar sync, webapps, VPN, server mount,
+  Steam, KiCad, editors). The shared modules reach Quickshell via
+  ~/.nixos/home/quickshell; for the guest that path is a symlink to the
+  read-only store copy, so nothing needed changing.
+
+One session per account (the hub enforces it, in `coel-hub auth`, not just the
+UI): an account that is already signed in resumes its running session whichever
+desktop is picked; a second session is refused. This is what GNOME and macOS do,
+and it removes every shared-bus/profile-lock/forwarding conflict between two
+sessions of one account (two accounts have separate homes and buses).
+Limits: a console you are sitting on (Ctrl+Alt+F3) is pulled back to the login
+screen when a session ends elsewhere (greetd re-activates its host VT; the guard
+sends the screen to the hub).
+
+## Autolock and login-screen idle
+
+Timeline of a machine left alone (defaults, all adjustable):
+  10 min idle in your session  -> hypridle runs `coel-hub lock`: session locks,
+                                  login screen takes over (home/hypridle.nix)
+  +2 min idle at the login screen  -> laptop backlight to 0
+  +10 min idle at the login screen -> machine suspends
+(so about 20 minutes in total, as before). Any input at the login screen wakes
+the backlight and restarts those clocks.
+
+Why the guard does it (scripts/coel-vt-guard.py, services.coel-hub.hubBlankAfter
+/ hubSuspendAfter; 0 disables a step): the login screen runs in `cage`, a kiosk
+compositor with no way to switch a screen off, and it has no idle timers of its
+own. The guard is root, always running and already knows when VT1 is on screen.
+- Activity = raw input events, watched only while the login screen is on
+  screen. Events are only counted: nothing typed is read, kept or logged. A
+  touchpad, keyboard, mouse or media key counts; lid/jack switches do not.
+- Blank = every /sys/class/backlight/* to 0 (external monitors have no
+  backlight and stay lit). The previous brightness is saved under
+  /run/coel-vt-guard and restored on: any input, leaving the login screen,
+  waking from suspend (a CLOCK_BOOTTIME vs CLOCK_MONOTONIC jump), the daemon
+  stopping (ExecStopPost --restore), and its startup after a crash. A dead
+  daemon must never leave the laptop dark.
+- Suspend runs `systemctl suspend`; if something inhibits it, it retries every
+  minute.
+
+The session's own idle timer keeps lock (10 min) and dpms-off (15 min), but its
+suspend (20 min) is now `coel-hub suspend-fallback`: it suspends only if that
+session is still the one on screen (locked in place because the login screen is
+not running). With the login screen or another session on screen it does
+nothing, so a session in the background can never suspend the machine under
+someone else. The guest session has the same timers.
+
+Tested in the VM with a fake backlight, a fake input pipe and short timers:
+dark after idle, wakes on input, restored on leaving the login screen, never
+blanked or suspended with a session on screen, suspends after the long idle,
+input defers it, and the fallback only fires for the session on screen.
+Not testable there: the real amdgpu backlight, real input devices, and the
+real suspend/resume cycle (the wake-up detection).
+
+### "Staying awake" notice on the login screen
+
+While something holds the machine awake, the login screen neither dims nor
+suspends (see above), and a screen that just stays lit looks like a bug. So it
+says so, at the top centre: "staying awake · keep awake (joelsgc)". `coel-hub
+holds` lists logind's `block` inhibitors on idle/sleep with their owner (the
+inhibitor file's UID, resolved to a name), the greeter polls it with the
+sessions list, and a notice component (lock/components/AwakeNotice.qml) shows up
+to two holders and "+N more". The launcher's keep-awake toggle appears as "keep
+awake"; anything else (a call, a backup) by its own name. Delay inhibitors
+(NetworkManager, UPower) and the power-key block are not holds. Preview it with
+QS_GREETER_DEMO_HOLD=1 quickshell -p greeter-shell.qml.
+
+Dimming limits (from the amdgpu source): brightness 0 is rescaled to the panel's
+MINIMUM level and bl_power is ignored, so the login screen can only get as dim
+as the driver allows; suspend is what really turns the panel off. A real
+"screen off" at the login screen would need a compositor with output power
+control (cage has none) or a console-blank trick.
+
+## Login speed, names and cleanups (Nov 2026)
+
+- **Login was 5 s slow, now instant.** After `start_session` greetd waits for the
+  host's idle greeter to exit and only kills it after ~5 s; the placeholder
+  (`sleep infinity`) never exits. `coel-hub auth` now ends the host's greeter
+  session processes right after greetd accepts `start_session`
+  (`release_host_greeter`). The VM test asserts the session reaches the screen
+  in under 3 s. (A startup-progress "hold" screen was built and removed again
+  once this made it unnecessary.)
+- **Display names.** The login screen shows each account's `description`
+  (JoelSGC, Guest) and falls back to the username.
+- **Guest is always last** in the user list (passwordless accounts sort last).
+- **Ghost cursor** after leaving the login screen: cage now runs with
+  `WLR_NO_HARDWARE_CURSORS=1` (modules/greeter.nix).
+- **VT guard** no longer re-issues the switch to the login screen dozens of
+  times a second (it waits for the switch to land).
+- **Idle timings** match the old schedule: lock 10 min, login screen dims 5 min
+  after, suspends 10 min after (`hubBlankAfter` 300, `hubSuspendAfter` 600).
+- **QML cache** is on for normal logins and wiped on every rebuild
+  (home/hyprland.nix `clearQuickshellQmlCache`); the manual restart script still
+  bypasses it.

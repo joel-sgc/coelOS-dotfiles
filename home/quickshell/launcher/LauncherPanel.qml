@@ -154,7 +154,7 @@ Item {
         { label: "Purge", sub: "nix-collect-garbage", icon: "trash", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-purge"] },
         { label: "Rebuild", sub: "nixos-rebuild switch", icon: "arrow-counter-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-rebuild"] },
         { label: "Update", sub: "+ upgrade flake inputs", icon: "arrows-clockwise", right: "", command: ["ghostty", "--class=com.joelsgc.floating", "-e", "coel-update"] },
-        { label: "Lock", sub: "", icon: "lock", right: "super+l", command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"] },
+        { label: "Lock", sub: "", icon: "lock", right: "super+l", command: ["coel-hub", "lock"] },
         { id: "suspend", label: "Suspend", sub: "", icon: "moon", right: "", danger: true, command: ["systemctl", "suspend"] },
         { id: "reboot", label: "Reboot", sub: "", icon: "arrow-clockwise", right: "", danger: true, command: ["systemctl", "reboot"] },
         { id: "poweroff", label: "Shut down", sub: "", icon: "power", right: "", danger: true, command: ["systemctl", "poweroff"] },

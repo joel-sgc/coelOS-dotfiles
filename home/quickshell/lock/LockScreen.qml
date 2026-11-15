@@ -21,6 +21,8 @@ Item {
   property var colors: ["#61afef", "#ef596f", "#e5c07b", "#89ca78", "#d55fde"]
 
   property string ssid: "home-5g"
+  // "staying awake: ..." shown at the top centre; empty hides it (the login screen sets it).
+  property string awakeText: ""
 
   property bool playing: true
   property string mediaTitle: ""
@@ -76,6 +78,14 @@ Item {
     onPrevRequested: root.mediaPrevRequested()
     onNextRequested: root.mediaNextRequested()
     onToggleRequested: root.mediaToggleRequested()
+  }
+
+  AwakeNotice {
+    anchors.top: parent.top
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.topMargin: 30
+    text: root.awakeText
+    color: root.colors[2]
   }
 
   NetworkBattery {

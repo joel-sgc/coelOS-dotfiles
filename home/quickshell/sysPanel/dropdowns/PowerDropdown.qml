@@ -215,7 +215,7 @@ Item {
 
   // ----- session actions -----
   readonly property var sessionActions: [
-    { id: "lock", icon: "lock", label: "lock", command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"] },
+    { id: "lock", icon: "lock", label: "lock", command: ["coel-hub", "lock"] },
     // Same coel-logout (home/os-commands.nix) the $mainMod+M keybind
     // already runs (home/hyprland.nix) -- works regardless of session
     // type (plain or uwsm-managed Hyprland), unlike a

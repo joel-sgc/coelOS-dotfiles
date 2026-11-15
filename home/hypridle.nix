@@ -15,7 +15,13 @@ let
   # silently point at a stale pre-lock-screen generation. Trade-off: an
   # in-progress edit here would hot-reload into a real, currently-held
   # session lock -- don't edit lock/*.qml while actually locked.
-  lockCmd = "quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml";
+  #
+  # `coel-hub lock` (modules/session-hub.nix) locks this session, then goes to
+  # the login screen -- only if this session is the one on screen, so an idle
+  # session in the background is locked but never pulls you away from the one
+  # you are using. The Quickshell lock screen itself is still the in-session
+  # lock (started by coel-hub).
+  lockCmd = "/run/current-system/sw/bin/coel-hub lock";
 in
 {
   # Idle + lock screen. Timings match the old Arch/Omarchy setup:
@@ -43,8 +49,15 @@ in
           on-resume = "hyprctl dispatch dpms on";
         }
         {
+          # Last resort only. Normally the lock at 10 minutes has already gone to
+          # the login screen, which blanks and suspends the machine itself
+          # (modules/session-hub.nix). This one suspends only if THIS session is
+          # still the one on screen (locked in place because the login screen is
+          # not running); with the login screen or another session on screen it
+          # does nothing, so a session in the background never suspends the
+          # machine while someone is using another.
           timeout = 1200;
-          on-timeout = "systemctl suspend";
+          on-timeout = "/run/current-system/sw/bin/coel-hub suspend-fallback";
         }
       ];
     };

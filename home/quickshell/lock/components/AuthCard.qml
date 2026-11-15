@@ -118,7 +118,7 @@ Item {
               }
             }
             Text {
-              text: userChip.modelData.name
+              text: userChip.modelData.label || userChip.modelData.name
               color: userChip.selected ? root.brightColor : root.fgColor
               font.family: "JetBrains Mono"
               font.pixelSize: 12
@@ -175,7 +175,7 @@ Item {
           spacing: 2
 
           Text {
-            text: root.users.length > 0 ? root.users[root.selectedUser].name : ""
+            text: root.users.length > 0 ? (root.users[root.selectedUser].label || root.users[root.selectedUser].name) : ""
             color: root.brightColor
             font.family: "JetBrains Mono"
             font.pixelSize: 15

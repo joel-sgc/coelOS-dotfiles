@@ -79,6 +79,13 @@ in
   # the file for how to switch over.
   xdg.configFile."hypr/custom.lua".source = ./hyprland/custom.lua;
 
+  # Start every rebuild with an empty compiled-QML cache, so a stale compile can
+  # never survive an edit; the first login after a rebuild recompiles once, the
+  # ones after it start from the cache.
+  home.activation.clearQuickshellQmlCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    rm -rf "$HOME/.cache/quickshell/qmlcache"
+  '';
+
   wayland.windowManager.hyprland = {
     enable = true;
     # Use the Hyprland package/session registered by programs.hyprland.enable
@@ -229,6 +236,9 @@ in
       ];
 
       exec-once = [
+        # Before the session target starts hypridle: lets `coel-hub lock` know
+        # which session the idle timer belongs to.
+        "systemctl --user import-environment XDG_SESSION_ID"
         "systemctl --user start hyprland-session.target"
         # Quickshell's own Polkit.qml is the authentication agent (only one
         # agent can register per session, so don't start another).
@@ -247,11 +257,11 @@ in
         # hot-reloads on edit while developing the panel; home-manager's
         # deployed copy doesn't.
         #
-        # QML_DISABLE_DISK_CACHE=1: Qt's compiled-QML bytecode cache is
-        # keyed loosely enough that it can serve a stale compile straight
-        # through a kill+relaunch. The config here is small enough that
-        # losing the cache's JIT-skip benefit isn't a real cost.
-        "env QML_DISABLE_DISK_CACHE=1 ${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
+        # Normal logins use Qt's compiled-QML cache, so the panel starts fast.
+        # That cache can serve a stale compile after an edit, so it is wiped on
+        # every rebuild (home.activation below) and bypassed by the manual
+        # restart script above (restartQuickshell).
+        "${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
       ];
 
       bind = [
@@ -280,11 +290,11 @@ in
         # Opens the launcher restricted to emoji-only search
         # (LauncherPanel.qml's searchScope) -- emoji is search-only, no chip.
         "$mainMod, period, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openEmoji"
-        # The real Quickshell lock screen (home/quickshell/lock/), same
-        # repo-path reasoning as home/hypridle.nix's lockCmd. hyprlock's own
-        # config is left in place, unused, as a manual fallback -- see
-        # home/hypridle.nix's comment on programs.hyprlock.
-        "$mainMod, L, exec, ${pkgs.quickshell}/bin/quickshell -p ~/.nixos/home/quickshell/lock-real-shell.qml"
+        # Lock this session, then go to the login screen (the session hub,
+        # modules/session-hub.nix): the session's own lock screen is not
+        # shown. hyprlock's config is left in place, unused, as a manual
+        # fallback -- see home/hypridle.nix's comment on programs.hyprlock.
+        "$mainMod, L, exec, coel-hub lock"
         "$mainMod, W, killactive"
         "$mainMod, M, exec, coel-logout"
         "$mainMod, B, exec, coel-random-wallpaper"

@@ -79,7 +79,7 @@ Item {
 
   readonly property var acts: [
     { k: "lock", label: "lock", icon: "lock-simple", key: "k", safe: true,
-      command: ["quickshell", "-p", "/home/joelsgc/.nixos/home/quickshell/lock-real-shell.qml"], cmdText: "quickshell -p lock-real-shell.qml" },
+      command: ["coel-hub", "lock"], cmdText: "coel-hub lock" },
     { k: "suspend", label: "suspend", icon: "moon", key: "s", safe: true,
       command: ["systemctl", "suspend"], cmdText: "systemctl suspend" },
     { k: "logout", label: "log out", icon: "sign-out", key: "l", safe: false,

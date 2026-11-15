@@ -14,6 +14,8 @@
     ./modules/filesystems.nix
     ./modules/ultraleap.nix
     ./modules/greeter.nix
+    ./modules/session-hub.nix
+    ./modules/guest.nix
     ./modules/tty.nix
     ./modules/fnlock/nixos/fnlock.nix
     ./modules/miracast
@@ -28,6 +30,18 @@
   # The Quickshell/greetd login screen (modules/greeter.nix is a no-op
   # until this is set).
   services.qs-greeter.enable = true;
+
+  # The login screen stays on VT1 and is also the lock screen; sessions run on
+  # their own VTs (7, 8) behind it. Locking (Super+L, the menus, the idle timer)
+  # goes to the login screen, and coming back means signing in there. See
+  # modules/session-hub.nix. Needs services.qs-greeter above (that is the
+  # login screen); to switch back to the plain login, remove this line.
+  services.coel-hub.enable = true;
+
+  # A guest account (login screen: "guest", no password) whose home lives in RAM
+  # and is wiped when it logs out. Not an admin, no Nix builds, no VPN, no
+  # network changes. See modules/guest.nix and home/guest.nix.
+  services.coel-guest.enable = true;
 
   ##############################################################################
   # Boot / Bootloader

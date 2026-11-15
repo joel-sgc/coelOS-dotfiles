@@ -10,10 +10,12 @@ let
   # greeter never reads /etc/passwd or anyone's home directory itself,
   # matching the "declared in Nix, read-only at runtime" goal.
   usersJson = pkgs.writeText "qs-greeter-users.json" (builtins.toJSON (
-    lib.mapAttrsToList (name: u: {
+    lib.sort (a: b: (if a.passwordless then 1 else 0) < (if b.passwordless then 1 else 0) || (a.passwordless == b.passwordless && a.name < b.name)) (lib.mapAttrsToList (name: u: {
       inherit name;
       displayName = if (u.description or "") != "" then u.description else name;
-    }) (lib.filterAttrs (_: u: u.isNormalUser) config.users.users)
+      # An empty password (the guest): the login screen lets Enter through.
+      passwordless = (u.hashedPassword or null) == "";
+    }) (lib.filterAttrs (_: u: u.isNormalUser) config.users.users))
   ));
 
   # Sessions discovered from the real wayland-sessions/*.desktop files NixOS
@@ -83,6 +85,11 @@ let
     # zero real outputs instead. logind is what this laptop's Hyprland/
     # Hyprland sessions already use successfully every day.
     export LIBSEAT_BACKEND=logind
+    # Software cursor only: with the hardware cursor plane, cage leaves the
+    # cursor sprite programmed on the display after the VT switch (its CRTC
+    # disable fails), and the session's compositor never clears it, so a ghost
+    # pointer stays on screen.
+    export WLR_NO_HARDWARE_CURSORS=1
     # Brief delay before the client connects: cage execs its child right
     # after starting its own backend, but wlroots' DRM connector
     # enumeration (the real eDP-1 discovery) may not finish until a later

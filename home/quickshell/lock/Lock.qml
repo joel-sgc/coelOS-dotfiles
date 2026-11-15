@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 
@@ -133,8 +134,13 @@ Scope {
     if (m === mode) return;
     // Real mode never exposes the login-mode preview -- see the demo-data
     // comment above for why (no real backend behind it, and a real
-    // session lock shouldn't dead-end into one).
-    if (real && m === "login") return;
+    // session lock shouldn't dead-end into one). The "switch" button is
+    // real though: it goes to the login screen (the session hub), where the
+    // other sessions, users and desktops live.
+    if (real && m === "login") {
+      Quickshell.execDetached(["/run/current-system/sw/bin/coel-hub", "hub"]);
+      return;
+    }
     mode = m;
     if (m === "lock") selectedUser = 0;
     freshAuth();
@@ -299,9 +305,38 @@ Scope {
   Timer { id: quitTimer; interval: 80; onTriggered: Qt.quit() }
 
   // ----- real session lock (real === true only) -----
+  // ----- the session hub (modules/session-hub.nix, scripts/coel-hub.py) -----
+  // Locking goes through `coel-hub lock`: it starts this process, waits until
+  // the compositor has CONFIRMED the lock, then switches to the login screen
+  // (VT1). Coming back means signing in there; the hub then lets this lock go
+  // by writing /run/coel-hub/unlock/<session id>, a directory only the hub can
+  // write to (so nothing running as you can forge it).
+  //
+  // 1. Confirmed lock: `secure` flips true only when the compositor says so.
+  //    Drop the marker coel-hub waits for. Leaving the VT any earlier would
+  //    leave the session unlocked in the background.
+  // 2. Grant: wait for a grant file NEWER than that marker, so a leftover one
+  //    from an earlier resume can never unlock a later lock. The password
+  //    prompt on this screen keeps working as the fallback (for instance when
+  //    the login screen is not running).
+  readonly property string hubSession: Quickshell.env("XDG_SESSION_ID") || ""
+
+  Process {
+    id: hubGrantWatch
+    running: lockRoot.real && lockRoot.hubSession !== "" && sessionLock.secure
+    command: ["sh", "-c",
+      'f="${COEL_HUB_DIR:-/run/coel-hub}/unlock/$XDG_SESSION_ID"; m="$XDG_RUNTIME_DIR/coel-lock-ready-$XDG_SESSION_ID"; ' +
+      'while :; do [ -n "$(find "$f" -newer "$m" 2>/dev/null)" ] && exit 0; sleep 0.3; done']
+    onExited: (code) => { if (code === 0) lockRoot.succeedAuth(); }
+  }
+
   WlSessionLock {
     id: sessionLock
     locked: lockRoot.real
+    onSecureChanged: {
+      if (secure && lockRoot.real && lockRoot.hubSession !== "")
+        Quickshell.execDetached(["sh", "-c", ': > "$XDG_RUNTIME_DIR/coel-lock-ready-$XDG_SESSION_ID"']);
+    }
 
     surface: Component {
       WlSessionLockSurface {

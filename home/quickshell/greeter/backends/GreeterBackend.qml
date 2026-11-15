@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Greetd
 import QtQuick
 
 // ===== GREETER BACKEND =====
@@ -35,7 +34,10 @@ import QtQuick
 Item {
   id: root
 
-  readonly property bool mock: !Greetd.available
+  // Real when running as the login screen: greetd hands its greeter
+  // $GREETD_SOCK. By hand (greeter-shell.qml) there is none, so the whole UI
+  // runs on fake data.
+  readonly property bool mock: !Quickshell.env("GREETD_SOCK")
 
   property var users: []           // [{name, init}]
   property int selectedUserIndex: 0
@@ -44,7 +46,7 @@ Item {
 
   property bool busy: false
   property var msg: null           // {icon, text, color}, same shape Lock.qml uses
-  signal launchRequested()
+  signal finished()   // a login attempt is over (success): the UI resets
 
   readonly property var demoUsers: [
     { name: "joelsgc", init: "J" },
@@ -55,6 +57,9 @@ Item {
   Component.onCompleted: {
     users = demoUsers;
     sessions = demoSessions;
+    // Dev preview only: QS_GREETER_DEMO_HOLD=1 shows the "staying awake" notice.
+    if (mock && Quickshell.env("QS_GREETER_DEMO_HOLD"))
+      holds = [{ user: "joelsgc", who: "CoelOS launcher", why: "keep awake toggled from launcher", blocks: ["idle", "sleep"] }];
     checkEnrollment();
   }
 
@@ -66,7 +71,9 @@ Item {
         if (parsed.length > 0) {
           root.users = parsed.map(u => ({
             name: u.name,
+            label: u.displayName || u.name,
             init: (u.displayName || u.name).charAt(0).toUpperCase(),
+            passwordless: !!u.passwordless,
           }));
         }
       } catch (e) {
@@ -151,113 +158,194 @@ Item {
   }
   onSelectedUserChanged: checkEnrollment()
 
+  // ===== signing in, through coel-hub (scripts/coel-hub.py) =====
+  // This screen lives on VT1 for good and never starts a session itself. It
+  // asks `coel-hub` to either
+  //   - start a NEW session on a free session host (another VT), or
+  //   - RESUME a running session of the same user and desktop: check the
+  //     password, then unlock that session and switch to it.
+  // Which one it is follows from the selection: a running session for this
+  // user + desktop means a correct password resumes it.
+  readonly property string hubBin: Quickshell.env("COEL_HUB_BIN") || "/run/current-system/sw/bin/coel-hub"
+
+  // Live sessions on the session VTs: [{id, user, tty, desktop, active}].
+  property var liveSessions: []
+  // One session per account (like GNOME and macOS): an account that is already
+  // signed in resumes its running session, whichever desktop is selected.
+  readonly property var resumeTarget:
+    liveSessions.find(l => l.user === selectedUser) || null
+  // An account with no password (the guest): Enter alone signs in.
+  readonly property bool selectedPasswordless:
+    users.length > 0 && !!users[selectedUserIndex] && !!users[selectedUserIndex].passwordless
+  // The stepper shows "running" for a desktop that a password would resume.
+  function sessionLabel(s) {
+    const running = liveSessions.some(l => l.user === selectedUser && l.desktop === s.id);
+    return running ? s.name + " \u00b7 running" : s.name;
+  }
+  Process {
+    id: sessionsProc
+    command: [root.hubBin, "sessions"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try { root.liveSessions = JSON.parse(text); } catch (err) { root.liveSessions = []; }
+      }
+    }
+  }
+  Timer {
+    interval: 2500
+    repeat: true
+    running: !root.mock
+    triggeredOnStart: true
+    onTriggered: {
+      if (!sessionsProc.running) sessionsProc.running = true;
+      if (!holdsProc.running) holdsProc.running = true;
+    }
+  }
+
+  // What is keeping the machine awake (coel-hub holds): while something is, the
+  // login screen neither dims nor suspends, and it should say so and whose it
+  // is -- otherwise a screen that stays lit looks like a bug.
+  property var holds: []   // [{user, who, why, blocks}]
+  Process {
+    id: holdsProc
+    command: [root.hubBin, "holds"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try { root.holds = JSON.parse(text); } catch (err) { root.holds = []; }
+      }
+    }
+  }
+  readonly property string holdText: {
+    if (holds.length === 0) return "";
+    const label = h => (h.who === "CoelOS launcher" ? "keep awake" : h.who) + " (" + h.user + ")";
+    const shown = holds.slice(0, 2).map(label).join(", ");
+    return "staying awake \u00b7 " + shown + (holds.length > 2 ? " +" + (holds.length - 2) + " more" : "");
+  }
+
   function submit(pw) {
     if (busy) return;
     busy = true;
     msg = null;
     _pendingPw = pw;
     if (mock) { mockTimer.restart(); return; }
-    Greetd.createSession(selectedUser);
-  }
-
-  // The greetd PAM stack (modules/greeter.nix) asks for the password FIRST
-  // (so pam_gnome_keyring can unlock the keyring with it), then requires a
-  // fingerprint as well when one is enrolled. `responseRequired` below
-  // answers that single password prompt; the fingerprint step then arrives
-  // as plain info text ("place your finger...") shown as a status line.
-  // A wrong password re-prompts once more (pam_unix try_first_pass), which
-  // gets the already-cleared empty _pendingPw and fails -- by design.
-  Connections {
-    target: Greetd
-    enabled: !root.mock
-    function onAuthMessage(message, error, responseRequired, echoResponse) {
-      if (responseRequired) {
-        Greetd.respond(root._pendingPw);
-        root._pendingPw = "";
-      } else if (message) {
-        root.msg = { icon: error ? "x" : "info", text: message, color: error ? "#ef596f" : "#5c6370" };
-      }
-    }
-    function onAuthFailure(message) {
-      root.busy = false;
-      root.msg = { icon: "x", text: message || "authentication failed", color: "#ef596f" };
-    }
-    function onError(err) {
-      root.busy = false;
-      root.msg = { icon: "x", text: "greeter backend error: " + err, color: "#ef596f" };
-    }
-    function onReadyToLaunch() { root.launchRequested(); }
-  }
-
-  function doLaunch() {
-    const s = sessions[selectedSessionIndex];
-    if (mock) {
-      console.log("MOCK launch:", s.exec);
-      busy = false;
+    if (resumeTarget) {
+      startAuth([hubBin, "auth", selectedUser], resumeTarget.id);
       return;
     }
+    prepareLaunch();
+  }
+
+  // The PAM conversation runs inside `coel-hub auth` (JSON lines on stdio).
+  // The greetd PAM stack (modules/greeter.nix) asks for the password FIRST
+  // (so pam_gnome_keyring can unlock the keyring with it), then requires a
+  // fingerprint as well when one is enrolled. Only the first prompt gets the
+  // typed password; the fingerprint step arrives as plain info text ("place
+  // your finger...") shown as a status line. A wrong password re-prompts
+  // once more (pam_unix try_first_pass), which gets the already-cleared empty
+  // _pendingPw and fails -- by design.
+  property string _resumeId: ""
+  property bool _authEnded: false
+  Process {
+    id: authProc
+    stdinEnabled: true
+    stdout: SplitParser { onRead: line => root.onAuthEvent(line) }
+    onExited: (code) => {
+      if (!root._authEnded) {
+        root.busy = false;
+        root.msg = { icon: "x", text: "login helper stopped (" + code + ")", color: "#ef596f" };
+      }
+    }
+  }
+  function startAuth(argv, resumeId) {
+    _resumeId = resumeId;
+    _authEnded = false;
+    authProc.command = argv;
+    authProc.running = true;
+  }
+  function onAuthEvent(line) {
+    let e = null;
+    try { e = JSON.parse(line); } catch (err) { return; }
+    if (e.event === "prompt") {
+      authProc.write(JSON.stringify({ response: root._pendingPw }) + "\n");
+      root._pendingPw = "";
+    } else if (e.event === "info" || e.event === "error") {
+      if (e.text) root.msg = { icon: e.event === "error" ? "x" : "info", text: e.text, color: e.event === "error" ? "#ef596f" : "#5c6370" };
+    } else if (e.event === "fail") {
+      root._authEnded = true;
+      root.busy = false;
+      root.msg = { icon: "x", text: e.text || "authentication failed", color: "#ef596f" };
+    } else if (e.event === "ok") {
+      root._authEnded = true;
+      if (root._resumeId !== "") {
+        resumeProc.command = [root.hubBin, "resume", root._resumeId];
+        resumeProc.running = true;
+      } else {
+        root.finish();
+      }
+    }
+  }
+  Process {
+    id: resumeProc
+    onExited: root.finish()
+  }
+  function finish() {
+    busy = false;
+    msg = null;
+    finished();
+  }
+
+  // New session: write the launch script first, then ask the hub to start it
+  // on a host. The session runs it as the real user.
+  function prepareLaunch() {
+    const s = sessions[selectedSessionIndex];
     // XDG_CURRENT_DESKTOP set from the session's own real DesktopNames=
     // value, not our own filename-derived s.id -- portals and Qt platform
-    // theming key off the real value. PATH is explicit
-    // since Greetd.launch() doesn't inherit a normal login shell's PATH,
-    // and session scripts that exec bare command names (not full store
-    // paths) need it to find them. stdout/stderr redirected to a log file
-    // so a session's own startup logging doesn't flash on the bare
-    // console during the cage-to-session VT handoff.
+    // theming key off the real value. PATH is explicit since the session
+    // does not inherit a normal login shell's PATH, and session scripts that
+    // exec bare command names (not full store paths) need it to find them.
+    // XDG_SESSION_DESKTOP is what `coel-hub sessions` reports, so the next
+    // login can tell "this desktop is already running".
     const envArgs = [
       "XDG_SESSION_TYPE=wayland",
       "XDG_SESSION_DESKTOP=" + s.id,
       "XDG_CURRENT_DESKTOP=" + (s.desktopNames || s.id),
       "PATH=/run/current-system/sw/bin",
     ];
-
-    // Every session launches through a script file written to disk
-    // first, then Greetd.launch() just runs that short file path --
-    // confirmed live (a phone video of the real console during a failed
-    // attempt) that a long inline `/bin/sh -c "<giant string>"`
-    // argument never actually ran at all: the console showed NixOS's
-    // normal environment setup finish, then sat on a bare, blinking
-    // interactive /bin/sh prompt with no script/argument, meaning the
-    // command string was getting lost somewhere before the shell actually
-    // executed, not failing inside whatever it would have run. This
-    // failure hit the uwsm-managed Hyprland entry too (a few words longer
-    // than plain Hyprland's single bare path) on the old inline-command
-    // path. A short, fixed-size argv regardless of session avoids the
-    // whole class of bug.
+    // Every session launches through a script file written to disk first and
+    // only that short path is the command: a long inline `/bin/sh -c "..."`
+    // argument was confirmed on real hardware to get lost before the shell
+    // ran it. stdout/stderr go to a log file so a session's startup logging
+    // does not flash on the bare console. The log is per user: /tmp is sticky,
+    // so one shared file would not be writable for the next user to log in.
     const scriptContent =
       "#!/bin/sh\n" +
-      "exec " + s.exec.trim() + " >/tmp/qs-greeter-session.log 2>&1\n";
+      "exec " + s.exec.trim() + " >/tmp/qs-greeter-session-" + selectedUser + ".log 2>&1\n";
     const safeScript = scriptContent.replace(/'/g, "'\\''");
-    // Remembers this session as the one to default to next time, read
-    // back by the FileView above on the greeter's next start. Written
-    // here, not as a line inside scriptContent above -- confirmed live
-    // (a real "Permission denied" flash on the console) that scriptContent
-    // runs as the real target user once Greetd.launch() execs it, but
-    // /var/lib/qs-greeter is owned by the unprivileged greeter user
-    // (mode 0755, not world-writable). This command, by contrast, is run
-    // directly by the greeter process itself (same as the script-file
-    // write right after it), which does own that directory.
+    const scriptPath = "/tmp/qs-greeter-launch-" + selectedUser + ".sh";
+    // Remembers this session as the one to default to next time (read back by
+    // the FileView above). Written here, by the greeter user that owns
+    // /var/lib/qs-greeter, not from the launch script, which runs as the
+    // target user and has no write access there.
+    const argv = [hubBin, "auth", selectedUser, "--host", "auto"];
+    envArgs.forEach(e => { argv.push("--env"); argv.push(e); });
+    argv.push("--cmd", "/bin/sh", scriptPath);
     launchScriptWriterComponent.createObject(root, {
       command: ["/bin/sh", "-c",
         "echo -n " + s.id + " > /var/lib/qs-greeter/last-session; " +
-        "printf '%s' '" + safeScript + "' > /tmp/qs-greeter-launch.sh && chmod +x /tmp/qs-greeter-launch.sh"],
+        "printf '%s' '" + safeScript + "' > " + scriptPath + " && chmod +x " + scriptPath],
       running: true,
-      _launchEnv: envArgs,
+      _argv: argv,
     });
   }
 
-  // Writes the launch script, then (only once that write process has
-  // actually exited, so the file is guaranteed complete) runs it via
-  // Greetd.launch() with just its short path -- see doLaunch()'s own
-  // comment for why this two-step indirection replaced a single long
-  // inline command string.
+  // Starts the login only once the script file is completely written.
   Component {
     id: launchScriptWriterComponent
     Process {
-      property var _launchEnv: []
+      property var _argv: []
       stdout: StdioCollector {}
       onExited: {
-        Greetd.launch(["/bin/sh", "/tmp/qs-greeter-launch.sh"], _launchEnv);
+        root.startAuth(_argv, "");
         destroy();
       }
     }
@@ -271,7 +359,7 @@ Item {
     onTriggered: {
       if (root._pendingPw === "test") {
         root._pendingPw = "";
-        root.launchRequested();
+        root.finish();
       } else {
         root._pendingPw = "";
         root.busy = false;

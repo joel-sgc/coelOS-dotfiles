@@ -46,9 +46,15 @@ Scope {
   property int shakeSeq: 0
   function triggerShake() { shakeSeq++; }
 
-  readonly property var statusLine: backend.msg || {
+  readonly property var statusLine: backend.msg || (backend.resumeTarget ? {
+    icon: "", color: "#5c6370",
+    text: (backend.selectedPasswordless ? "press enter to resume it (" : "password resumes it (")
+      + (backend.resumeTarget.tty || "running") + ")",
+  } : backend.selectedPasswordless ? {
+    icon: "", text: "no password needed \u2014 press enter", color: "#5c6370",
+  } : {
     icon: "", text: "choose a user and session", color: "#5c6370",
-  }
+  })
 
   property string armedPower: ""
   readonly property var powerActions: [
@@ -69,21 +75,19 @@ Scope {
   }
 
   function submitPassword() {
-    if (pw.length === 0) { triggerShake(); return; }
+    if (pw.length === 0 && !backend.selectedPasswordless) { triggerShake(); return; }
     backend.submit(pw);
   }
 
-  // Calls doLaunch() immediately, no deliberate delay -- confirmed live
-  // (real hardware, auth debug log) that a 150ms Timer here (originally
-  // added for a fade transition that was never actually wired to any
-  // visible animation -- pure delay, zero cosmetic payoff) let the whole
-  // greeter process get killed before the timer fired in 2 of 3 real
-  // login attempts, meaning Greetd.launch() was never even called.
-  // Collapsing the gap between "auth succeeded" and "launch requested"
-  // to zero removes that window entirely.
+  // A login went through (a new session was started, or an existing one
+  // resumed). This screen stays up on VT1 for the next time, so wipe what was
+  // typed: nothing may be left in the password field for whoever comes back.
   Connections {
     target: backend
-    function onLaunchRequested() { backend.doLaunch(); }
+    function onFinished() {
+      root.pw = "";
+      root.showPw = false;
+    }
   }
 
   // Sized to the FULL combined canvas, with the actual UI positioned
@@ -180,7 +184,7 @@ Scope {
       mode: "login"
       users: backend.users
       selectedUser: backend.selectedUserIndex
-      sessions: backend.sessions.map(s => s.name)
+      sessions: backend.sessions.map(s => backend.sessionLabel(s))
       selectedSession: backend.selectedSessionIndex
       pw: root.pw
       showPw: root.showPw
@@ -188,6 +192,7 @@ Scope {
       statusLine: root.statusLine
       armedPower: root.armedPower
       powerActions: root.powerActions
+      awakeText: backend.holdText
       shakeSeq: root.shakeSeq
       fpOn: backend.fingerprintEnrolled
 
