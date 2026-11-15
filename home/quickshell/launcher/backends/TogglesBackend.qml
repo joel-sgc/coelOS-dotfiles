@@ -83,7 +83,8 @@ Item {
     }
   }
   function toggleMonochrome() {
-    monochromeSetProc.command = ["hyprctl", "keyword", "decoration:screen_shader", monochromeOn ? "" : monochromeShaderPath];
+    // Hyprland's config is Lua: runtime changes go through `hyprctl eval`.
+    monochromeSetProc.command = ["hyprctl", "eval", "hl.config({ decoration = { screen_shader = '" + (monochromeOn ? "" : monochromeShaderPath) + "' } })"];
     monochromeSetProc.running = true;
   }
   Process {
@@ -106,10 +107,10 @@ Item {
     // reach Hyprland's own window decoration, not anything Quickshell
     // paints itself.
     Globals.eyeCandyOff = off;
-    const cmds = off
-      ? ["animations:enabled 0", "decoration:blur:enabled 0", "decoration:rounding 0", 'general:col.active_border "rgba(5c6370ee)"']
-      : ["animations:enabled 1", "decoration:blur:enabled 1", "decoration:rounding 8", 'general:col.active_border "rgba(61afefee) rgba(e5c07bee) 45deg"'];
-    eyeCandyProc.command = ["sh", "-c", cmds.map(c => "hyprctl keyword " + c).join(" && ")];
+    const cfg = off
+      ? "animations = { enabled = false }, decoration = { blur = { enabled = false }, rounding = 0 }, general = { col = { active_border = 'rgba(5c6370ee)' } }"
+      : "animations = { enabled = true }, decoration = { blur = { enabled = true }, rounding = 8 }, general = { col = { active_border = { colors = { 'rgba(61afefee)', 'rgba(e5c07bee)' }, angle = 45 } } }";
+    eyeCandyProc.command = ["hyprctl", "eval", "hl.config({ " + cfg + " })"];
     eyeCandyProc.running = true;
   }
   function toggleEyeCandy() { setEyeCandy(!eyeCandyOff); }

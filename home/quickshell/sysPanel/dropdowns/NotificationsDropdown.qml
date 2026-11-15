@@ -127,7 +127,7 @@ Item {
             (c.class || "").toLowerCase() === target || (c.initialClass || "").toLowerCase() === target);
         } catch (e) {}
         if (matched) {
-          Quickshell.execDetached(["hyprctl", "dispatch", "focuswindow", "address:" + matched.address]);
+          Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + matched.address + "' })"]);
           dropdownRoot.say("→ focused " + dropdownRoot.pendingOpenTarget);
         } else {
           dropdownRoot.say("no window found for " + dropdownRoot.pendingOpenTarget);

@@ -35,7 +35,7 @@ in
       general = {
         lock_cmd = lockCmd;
         before_sleep_cmd = lockCmd;
-        after_sleep_cmd = "hyprctl dispatch dpms on";
+        after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
       };
 
       listener = [
@@ -45,8 +45,8 @@ in
         }
         {
           timeout = 900;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
+          on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"off\" })'";
+          on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
         }
         {
           # Last resort only. Normally the lock at 10 minutes has already gone to

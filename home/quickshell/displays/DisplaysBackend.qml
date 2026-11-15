@@ -13,7 +13,7 @@ import "../widgets"
 // outward from the anchor by `seq`, so [ ] just swaps seq with the
 // neighbour.
 //
-// Applying runs `hyprctl keyword monitor` in one batch -- runtime only, so
+// Applying runs `hyprctl eval hl.monitor(...)` in one batch -- runtime only, so
 // a config reload goes back to home/hyprland.nix's rules. While the "keep
 // this layout?" countdown runs, a detached watchdog restores the previous
 // layout on its own, in case this process dies before answering.
@@ -213,15 +213,23 @@ QtObject {
     return on + " on" + (parts.length ? " · " + parts.join(" · ") : "")
       + (L.mirrored.length ? " · ⧉ " + L.mirrored.length : "") + (cfg.lap ? "" : " · laptop off");
   }
-  function trArg(m) { return m.transform ? ",transform," + m.transform : ""; }
+  // Hyprland's config is Lua, so a monitor change is `hyprctl eval` of an
+  // hl.monitor() call (Lua strings in single quotes: the watchdog below wraps a
+  // whole batch in double quotes).
+  function monitorCmd(id, mode, pos, scale, m, mirrorId) {
+    return "eval hl.monitor({ output = '" + id + "', mode = '" + mode + "', position = '" + pos + "', scale = " + scale
+      + (m.transform ? ", transform = " + m.transform : "")
+      + (mirrorId ? ", mirror = '" + mirrorId + "'" : "") + " })";
+  }
+  function monitorOffCmd(id) { return "eval hl.monitor({ output = '" + id + "', disabled = true })"; }
   // `hyprctl --batch` commands for a layout. Outputs that stay on come first
   // so there is never a moment with nothing enabled.
   function commands(cfg) {
     const L = layout(cfg), out = [];
-    L.placed.forEach(p => out.push("keyword monitor " + p.m.id + "," + p.mode.str + "," + p.x + "x" + p.y + "," + p.m.scale + trArg(p.m)));
-    L.mirrored.forEach(m => out.push("keyword monitor " + m.id + "," + modeOf(m, cfg).str + ",auto," + m.scale + trArg(m) + ",mirror," + laptop.id));
-    if (!cfg.lap) out.push("keyword monitor " + laptop.id + ",disable");
-    L.off.forEach(m => out.push("keyword monitor " + m.id + ",disable"));
+    L.placed.forEach(p => out.push(monitorCmd(p.m.id, p.mode.str, p.x + "x" + p.y, p.m.scale, p.m, "")));
+    L.mirrored.forEach(m => out.push(monitorCmd(m.id, modeOf(m, cfg).str, "auto", m.scale, m, laptop.id)));
+    if (!cfg.lap) out.push(monitorOffCmd(laptop.id));
+    L.off.forEach(m => out.push(monitorOffCmd(m.id)));
     return out;
   }
   // The layout as it was when the modal opened, from the raw positions.
@@ -229,9 +237,9 @@ QtObject {
     const on = [], mirrors = [], offs = [];
     monitors.forEach(m => {
       const r = m.raw;
-      if (r.disabled) offs.push("keyword monitor " + m.id + ",disable");
-      else if (isMirror(r)) mirrors.push("keyword monitor " + m.id + "," + m.mode + ",auto," + m.scale + trArg(m) + ",mirror," + mirrorTarget(r));
-      else on.push("keyword monitor " + m.id + "," + m.mode + "," + r.x + "x" + r.y + "," + m.scale + trArg(m));
+      if (r.disabled) offs.push(monitorOffCmd(m.id));
+      else if (isMirror(r)) mirrors.push(monitorCmd(m.id, m.mode, "auto", m.scale, m, mirrorTarget(r)));
+      else on.push(monitorCmd(m.id, m.mode, r.x + "x" + r.y, m.scale, m, ""));
     });
     return [...on, ...mirrors, ...offs];
   }

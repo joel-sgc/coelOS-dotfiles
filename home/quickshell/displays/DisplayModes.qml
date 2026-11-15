@@ -46,7 +46,7 @@ PanelWindow {
     const scr = root.screen;
     if (!scr || !primaryBtn.visible) return;
     const p = primaryBtn.mapToItem(null, primaryBtn.width / 2, primaryBtn.height / 2);
-    cursorProc.command = ["hyprctl", "dispatch", "movecursor", String(Math.round(scr.x + p.x)), String(Math.round(scr.y + p.y))];
+    cursorProc.command = ["hyprctl", "dispatch", "hl.dsp.cursor.move({ x = " + Math.round(scr.x + p.x) + ", y = " + Math.round(scr.y + p.y) + " })"];
     cursorProc.running = true;
   }
   Connections {

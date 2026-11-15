@@ -133,12 +133,19 @@ Scope {
           }
         }
 
+        // Workspaces are a grid in rows of 100 (see home/hyprland/hyprland.lua): row 0 is
+        // 1..100, row 1 is 101..200. The bar shows the focused workspace's row.
+        property int workspaceRow: {
+          const f = Hyprland.focusedWorkspace;
+          return f && f.id >= 1 ? Math.floor((f.id - 1) / 100) : 0;
+        }
         property int workspaceCount: {
-          let maxWs = 5;
+          let maxCol = 5;
           for (const ws of Hyprland.workspaces.values) {
-            if (ws.id > maxWs) maxWs = ws.id;
+            if (ws.id >= 1 && Math.floor((ws.id - 1) / 100) === workspaceRow)
+              maxCol = Math.max(maxCol, (ws.id - 1) % 100 + 1);
           }
-          return maxWs;
+          return maxCol;
         }
 
         anchors {

@@ -11,13 +11,26 @@ import QtQuick.Layouts
 RowLayout {
   spacing: 2
 
+  // Which row of the workspace grid this is; only shown below the first row.
+  Text {
+    visible: root.workspaceRow > 0
+    Layout.alignment: Qt.AlignVCenter
+    Layout.rightMargin: 4
+    text: "row " + (root.workspaceRow + 1)
+    color: root.mutedColor
+    font.family: "JetBrains Mono"
+    font.pixelSize: 12
+  }
+
   Repeater {
     model: root.workspaceCount
 
     delegate: Rectangle {
       id: wsDelegate
       required property int index
-      property int wsNum: index + 1
+      // Column within the row (what the chip shows) and the real workspace id.
+      property int wsCol: index + 1
+      property int wsNum: root.workspaceRow * 100 + index + 1
       property var wsData: {
         for (const ws of Hyprland.workspaces.values) {
           if (ws.id === wsNum) return ws
@@ -35,7 +48,7 @@ RowLayout {
       MouseArea {
         id: wsMouseArea
         anchors.fill: parent
-        onClicked: Hyprland.dispatch("workspace " + wsDelegate.wsNum)
+        onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = " + wsDelegate.wsNum + " })")
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
       }
@@ -43,7 +56,7 @@ RowLayout {
       Text {
         id: wsText
         anchors.centerIn: parent
-        text: wsDelegate.wsNum
+        text: wsDelegate.wsCol
         color: root.colors[wsDelegate.index % root.colors.length]
         font.family: "JetBrains Mono"
         font.pixelSize: 14

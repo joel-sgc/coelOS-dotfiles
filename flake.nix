@@ -77,6 +77,20 @@
       };
     in
     {
+      # `nix flake check` (or `nix build .#checks.x86_64-linux.hyprland-grid`) runs
+      # the unit tests for the workspace grid logic (home/hyprland/grid_test.lua)
+      # under Lua 5.5, the version Hyprland embeds.
+      checks.${system}.hyprland-grid =
+        let
+          checkPkgs = nixpkgs.legacyPackages.${system};
+        in
+        checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; } ''
+          cd ${./home/hyprland}
+          lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+          cat "$TMPDIR/results.txt"
+          cp "$TMPDIR/results.txt" $out
+        '';
+
       nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {

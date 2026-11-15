@@ -73,11 +73,9 @@ in
   # Hyprland module adds it on its own.)
   home.packages = [ pkgs.xdg-desktop-portal-gtk ];
 
-  # Lua config scratch file: examples only, deliberately NOT named
-  # hyprland.lua -- Hyprland would then use it instead of the hyprland.conf
-  # generated below, and it contains no live settings. See the header of
-  # the file for how to switch over.
-  xdg.configFile."hypr/custom.lua".source = ./hyprland/custom.lua;
+  # The workspace grid logic that hyprland.lua requires (a plain module, with unit
+  # tests in home/hyprland/grid_test.lua). Lives next to hyprland.lua.
+  xdg.configFile."hypr/grid.lua".source = ./hyprland/grid.lua;
 
   # Start every rebuild with an empty compiled-QML cache, so a stale compile can
   # never survive an edit; the first login after a rebuild recompiles once, the
@@ -91,281 +89,39 @@ in
     # Use the Hyprland package/session registered by programs.hyprland.enable
     # in configuration.nix instead of installing a second copy here.
     package = null;
-    configType = "hyprlang";
+
+    # The whole config is Lua (home/hyprland/hyprland.lua): Hyprland reads
+    # ~/.config/hypr/hyprland.lua instead of a hyprland.conf. Lua is what lets the
+    # workspace grid (rows that remember their column, vertical/sideways slide)
+    # live inside Hyprland instead of in an external script. The placeholders in
+    # the file are filled in here.
+    configType = "lua";
 
     # UWSM owns the systemd session (env import, graphical-session.target,
     # XDG autostart via wayland-session-xdg-autostart@.target). Home
     # Manager's own integration would double-start all of that.
     systemd.enable = false;
 
-    settings = {
-      monitor = [
-        "eDP-1,2256x1504@59.999,0x0,1"
-        # Empty name -- a wildcard Hyprland falls back to for any monitor
-        # without its own explicit rule above, so this applies to whatever
-        # external monitor connects, not just today's specific one. Was a
-        # hardcoded "DP-9, preferred, 0x-1080, 1" (one specific monitor
-        # name, and a fixed -1080 y-offset that only centered it because
-        # that particular monitor happened to be exactly 1080px tall at
-        # scale 1 -- left-aligned otherwise, and wrong for any other
-        # resolution). auto-center-up is Hyprland's own built-in for
-        # exactly this: stacks above whatever's already placed (eDP-1) and
-        # centers horizontally against it, computed from the connecting
-        # monitor's own actual logical size, not a hardcoded number.
-        ",preferred,auto-center-up,1"
-      ];
-
-      # Also set here (not just home.sessionVariables) per the Hyprland
-      # wiki's own recommendation -- Hyprland's env directive guarantees
-      # this reaches everything it execs, rather than depending on how
-      # session-startup environment inheritance happens to work.
-      env = [
-        "NIXOS_OZONE_WL,1"
-        "MOZ_ENABLE_WAYLAND,1"
-        # Gives Qt6 apps under Hyprland (e.g. hyprland-share-picker,
-        # Dolphin) a real color source instead of falling back to plain
-        # light Qt defaults. See home/qt-theme.nix.
-        "QT_QPA_PLATFORMTHEME,qt6ct"
-        # Without this, QT_QPA_PLATFORMTHEME=qt6ct is a silent no-op for
-        # any Qt app whose own Nix wrapper bakes in its own QT_PLUGIN_PATH
-        # (every kdePackages app, e.g. Dolphin -- confirmed live: its
-        # wrapper's baked-in path list has no qt6ct anywhere in it, so
-        # libqt6ct.so is simply never found and it falls straight back to
-        # stock/unthemed). Those wrappers append the *inherited*
-        # QT_PLUGIN_PATH to their own list rather than replacing it, so
-        # pointing this at the home-manager profile's merged plugin dir
-        # (where qt6ct's own plugins already get symlinked to, since it's
-        # installed via home.packages in home/qt-theme.nix) is enough --
-        # confirmed live via the fixed process's own /proc/<pid>/maps
-        # actually loading libqt6ct.so, it didn't before this.
-        "QT_PLUGIN_PATH,${config.home.profileDirectory}/lib/qt-6/plugins"
-      ];
-
-      "$terminal" = "ghostty";
-      "$mainMod" = "SUPER";
-
-      # After suspend/lock the hardware cursor plane sometimes isn't
-      # restored, leaving the lock screen with no pointer until a VT
-      # switch re-inits the display. A software cursor avoids that.
-      cursor.no_hardware_cursors = true;
-
-      general = {
-        gaps_in = 4;
-        gaps_out = "8, 12, 12, 12";
-        border_size = 2;
-
-        # Blue -> yellow gradient on focus, matching the primary/secondary/
-        # error scheme in home/theme.nix -- red is reserved for errors
-        # (theme.error), not general emphasis. Muted comment-grey when idle.
-        "col.active_border" = "rgba(${strip theme.blue}ee) rgba(${strip theme.yellow}ee) 45deg";
-        "col.inactive_border" = "rgba(${strip theme.comment}aa)";
-      };
-
-      input = {
-        touchpad = {
-          natural_scroll = true;
-          clickfinger_behavior = 1;
-        };
-      };
-
-      # workspace_swipe/workspace_swipe_fingers were removed upstream in 0.51 —
-      # gestures are now declared with the top-level `gesture` directive instead.
-      gesture = [
-        "3, horizontal, workspace"
-      ];
-
-      decoration = {
-        rounding = 8;
-      };
-
-      windowrule = [
-        {
-          # `ghostty --class=com.joelsgc.floating -e <cmd>` opens a one-off
-          # utility terminal (fingerprint enroll/delete, coel-update,
-          # pulsemixer, btop, ...) that should float instead of tiling.
-          # Sized in pixels (ghostty's own cell-based window-width/height is
-          # documented as buggy under GTK decorations) -- 1556x925 measures
-          # to ~140x41 cols at this system's font (FiraCode Nerd Font Mono,
-          # size 10), comfortable for btop-style TUI panes.
-          name = "float-utility-terminal";
-          "match:class" = "^com\\.joelsgc\\.floating$";
-          float = true;
-          size = "1556 925";
-        }
-        {
-          # Same idea, but for the fastfetch "About" popup.
-          name = "float-info-terminal";
-          "match:class" = "^com\\.joelsgc\\.info$";
-          float = true;
-          size = "832 502";
-        }
-        {
-          # Ignore maximize requests from all apps.
-          name = "suppress-maximize-events";
-          "match:class" = ".*";
-          suppress_event = "maximize";
-        }
-        {
-          # Works around an XWayland dragging bug.
-          name = "fix-xwayland-drags";
-          "match:class" = "^$";
-          "match:title" = "^$";
-          "match:xwayland" = true;
-          "match:float" = true;
-          "match:fullscreen" = false;
-          "match:pin" = false;
-          no_focus = true;
-        }
-      ];
-
-      # See home/quickshell/sysPanel/Popup.qml's WlrLayershell.namespace
-      # comment -- stops Hyprland's default layer fade from animating this
-      # popup's open/close, which could otherwise get caught mid-fade by a
-      # screenshot taken right as HyprlandFocusGrab closes it.
-      #
-      # Hyprland 0.55 moved layerrule onto the same structured syntax as
-      # the windowrule block above -- comma-separated "field value" pairs,
-      # not the old "rule, namespace" positional form. Confirmed against
-      # Hyprland's own source (handleLayerrule in
-      # src/config/legacy/ConfigManager.cpp): the old form fails with
-      # "invalid field noanim: missing a value" because "noanim" has no
-      # space, and the real effect name is "no_anim" (underscored),
-      # taking a truthy value, not a bare flag.
-      layerrule = [
-        "match:namespace coel-sys-popup, no_anim 1"
-      ];
-
-      exec-once = [
-        # Before the session target starts hypridle: lets `coel-hub lock` know
-        # which session the idle timer belongs to.
-        "systemctl --user import-environment XDG_SESSION_ID"
-        "systemctl --user start hyprland-session.target"
-        # Quickshell's own Polkit.qml is the authentication agent (only one
-        # agent can register per session, so don't start another).
-        # mako retired -- Quickshell's own NotificationsBackend.qml is now
-        # the real org.freedesktop.Notifications server (see
-        # home/quickshell/notifications/).
-        # Blocks logind's default hardware-power-key handling so the
-        # XF86PowerOff bind below (-> coel-power-menu) is what actually
-        # fires, instead of an immediate shutdown racing the menu.
-        "${pkgs.systemd}/bin/systemd-inhibit --what=handle-power-key --who=Hyprland --why='Custom power menu' --mode=block sleep infinity"
-        # Random wallpaper on every login (home/wallpaper.nix).
-        # The script itself retries for a few seconds in case it races the
-        # awww daemon's systemd-user startup.
-        "coel-random-wallpaper"
-        # -c straight at this repo (not ~/.config/quickshell) so quickshell
-        # hot-reloads on edit while developing the panel; home-manager's
-        # deployed copy doesn't.
-        #
-        # Normal logins use Qt's compiled-QML cache, so the panel starts fast.
-        # That cache can serve a stale compile after an edit, so it is wiped on
-        # every rebuild (home.activation below) and bypassed by the manual
-        # restart script above (restartQuickshell).
-        "${pkgs.quickshell}/bin/quickshell -c ~/.nixos/home/quickshell"
-      ];
-
-      bind = [
-        "$mainMod, T, exec, $terminal"
-        # Fn lock OSD. The patched Framework EC taps KEY_F13 when Fn lock turns
-        # on and KEY_F14 when it turns off (confirmed with evtest). xkb's us
-        # layout maps those keycodes (191/192) to XF86Tools / XF86Launch5, not
-        # F13/F14, so that is what Hyprland sees and what is bound here. The
-        # initial state is read at startup from /run/fnlock/state (Osd.qml).
-        ", XF86Tools, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOn"
-        ", XF86Launch5, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd fnLockOff"
-        # F4: kill any running panel and relaunch it (same command as the
-        # exec-once above).
-        ", F4, exec, ${restartQuickshell}"
-        # `quickshell ipc call` talks to the IpcHandler in Launcher.qml --
-        # needs `-p ~/.nixos/home/quickshell` (a path) to target the
-        # instance launched above with `-c` (a named XDG config); with no
-        # path/config flag it looks for the default
-        # ~/.config/quickshell/shell.qml instance instead and silently
-        # no-ops.
-        "$mainMod, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
-        # The laptop's dedicated launcher key (KEY_MEDIA, evtest scancode ed;
-        # xkb calls it XF86AudioMedia) opens the same launcher as super+space.
-        ", XF86AudioMedia, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
-        "$mainMod SHIFT, space, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher toggle"
-        # Opens the launcher restricted to emoji-only search
-        # (LauncherPanel.qml's searchScope) -- emoji is search-only, no chip.
-        "$mainMod, period, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openEmoji"
-        # Lock this session, then go to the login screen (the session hub,
-        # modules/session-hub.nix): the session's own lock screen is not
-        # shown. hyprlock's config is left in place, unused, as a manual
-        # fallback -- see home/hypridle.nix's comment on programs.hyprlock.
-        "$mainMod, L, exec, coel-hub lock"
-        "$mainMod, W, killactive"
-        "$mainMod, M, exec, coel-logout"
-        "$mainMod, B, exec, coel-random-wallpaper"
-        "$mainMod, F, togglefloating"
-        "$mainMod SHIFT, F, fullscreen"
-        "$mainMod, left, movefocus, l"
-        "$mainMod, right, movefocus, r"
-        "$mainMod, up, movefocus, u"
-        "$mainMod, down, movefocus, d"
-        "$mainMod SHIFT, left, resizeactive, 10"
-        "$mainMod SHIFT, right, resizeactive, -10"
-        "$mainMod SHIFT, up, resizeactive, 0 -10"
-        "$mainMod SHIFT, down, resizeactive, 0 10"
-        # Launcher's own clipboard tab (LauncherPanel.qml) -- real preview
-        # (formatted text / actual images), reachable via openClipboard()'s
-        # IpcHandler function.
-        "$mainMod, V, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call launcher openClipboard"
-        # Notifications.qml's own IpcHandler -- toggles the notification
-        # dropdown on whichever screen currently has focus, same as clicking
-        # the bar's bell button. $mainMod-based (not the design mock's bare
-        # "ctrl shift n") to match every other bind here and avoid shadowing
-        # some app's own ctrl+shift+n.
-        "$mainMod CTRL SHIFT, N, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call notifications toggle"
-        # Osd.qml's own IpcHandler -- real volume/brightness changes plus
-        # the real OSD popup, replacing swayosd-client entirely.
-        ", XF86AudioRaiseVolume, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeUp"
-        ", XF86AudioLowerVolume, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeDown"
-        ", XF86AudioMute, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd volumeMuteToggle"
-        ", XF86MonBrightnessUp, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd brightnessUp"
-        ", XF86MonBrightnessDown, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd brightnessDown"
-        ", Print, exec, coel-screenshot"
-        ", XF86PowerOff, exec, coel-power-menu"
-        # The laptop's F9 display key sends Super+P, not an XF86 keysym.
-        "$mainMod, P, exec, coel-displays"
-      ]
-      ++ builtins.concatLists (
-        builtins.genList (
-          i:
-          let
-            ws = i + 1;
-            key = if ws == 10 then "0" else toString ws;
-            wsStr = toString ws;
-          in
-          [
-            "$mainMod, ${key}, workspace, ${wsStr}"
-            "$mainMod SHIFT, ${key}, movetoworkspace, ${wsStr}"
-          ]
-        ) 10
-      );
-
-      bindm = [
-        "$mainMod, mouse:272, movewindow"
-        "$mainMod, mouse:273, resizewindow"
-      ];
-
-      bindl = [
-        # Real MPRIS control via Osd.qml now, not a playerctl subprocess +
-        # a fake notify-send toast (there was never a real media OSD
-        # before this -- that notify-send was standing in for one).
-        ", XF86AudioPrev, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPrevious"
-        ", XF86AudioNext, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaNext"
-        ", XF86AudioPlay, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
-        ", XF86AudioPause, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd mediaPlayPause"
-      ];
-
-      # Caps lock OSD. `bindn` doesn't consume the key, so Caps Lock still
-      # toggles normally; Osd.qml reads the keyboard LED a moment later to
-      # learn the new state (the bind itself can't know it).
-      bindn = [
-        ", Caps_Lock, exec, ${pkgs.quickshell}/bin/quickshell ipc -p ~/.nixos/home/quickshell call osd capsLock"
-      ];
-    };
+    extraConfig =
+      lib.replaceStrings
+        [
+          "@quickshell@"
+          "@systemd@"
+          "@profileDir@"
+          "@restartQuickshell@"
+          "@blue@"
+          "@yellow@"
+          "@comment@"
+        ]
+        [
+          "${pkgs.quickshell}"
+          "${pkgs.systemd}"
+          "${config.home.profileDirectory}"
+          "${restartQuickshell}"
+          (strip theme.blue)
+          (strip theme.yellow)
+          (strip theme.comment)
+        ]
+        (builtins.readFile ./hyprland/hyprland.lua);
   };
 }

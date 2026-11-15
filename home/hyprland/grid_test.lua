@@ -1,0 +1,539 @@
+-- Unit tests for grid.lua (the workspace grid logic). No Hyprland needed:
+--
+--   lua home/hyprland/grid_test.lua          (Hyprland embeds Lua 5.5)
+--
+-- The tests drive the real grid.lua against a fake host that behaves like the
+-- parts of Hyprland the grid relies on: focusing a workspace makes it active and
+-- fires the "workspace changed" event, moving a window follows it, timers run
+-- when the test clock advances.
+
+package.path = (arg and arg[0] and arg[0]:match("(.*/)") or "./") .. "?.lua;" .. package.path
+local Grid = require("grid")
+local ROW = Grid.ROW
+
+---------------------------------------------------------------- tiny harness
+local passed, failed, failures = 0, 0, {}
+
+local function fmt(v)
+    if type(v) == "table" then
+        local parts = {}
+        for i, x in ipairs(v) do parts[i] = tostring(x) end
+        return "{" .. table.concat(parts, ",") .. "}"
+    end
+    return tostring(v)
+end
+
+local function eq(actual, expected, msg)
+    if actual ~= expected then
+        error(string.format("%s: expected %s, got %s", msg or "values differ", fmt(expected), fmt(actual)), 2)
+    end
+end
+
+local function test(name, fn)
+    local ok, err = pcall(fn)
+    if ok then
+        passed = passed + 1
+    else
+        failed = failed + 1
+        failures[#failures + 1] = "  FAIL  " .. name .. "\n        " .. tostring(err)
+    end
+end
+
+---------------------------------------------------------------- fake Hyprland
+local function new_world(opts)
+    opts = opts or {}
+    local w = {
+        active = opts.start or 1,
+        special = false,          -- a scratchpad is up: no numbered workspace is active
+        style = "slide",
+        styles = {},              -- every style set, in order
+        now = 0,
+        timers = {},
+        seq = 0,
+        window_on = opts.start or 1,
+        focus_calls = 0,
+        move_calls = 0,
+        events = opts.events ~= false,
+    }
+    local grid
+    local host = {}
+
+    local function arrive(id)
+        w.active = id
+        if w.events and grid then grid.arrived() end
+    end
+    function host.active_id() if w.special then return -98 end return w.active end
+    function host.focus(id) w.focus_calls = w.focus_calls + 1; arrive(id) end
+    function host.move(id) w.move_calls = w.move_calls + 1; w.window_on = id; arrive(id) end
+    function host.animate(s) w.style = s; w.styles[#w.styles + 1] = s end
+    function host.after(ms, fn)
+        w.seq = w.seq + 1
+        w.timers[#w.timers + 1] = { at = w.now + ms, fn = fn, seq = w.seq }
+    end
+
+    -- Run every timer that comes due, in time order, including ones they add.
+    function w.advance(ms)
+        local target = w.now + ms
+        while true do
+            local best, bi
+            for i, t in ipairs(w.timers) do
+                if t.at <= target and (not best or t.at < best.at or (t.at == best.at and t.seq < best.seq)) then
+                    best, bi = t, i
+                end
+            end
+            if not best then break end
+            table.remove(w.timers, bi)
+            w.now = math.max(w.now, best.at)
+            best.fn()
+        end
+        w.now = target
+    end
+
+    -- Switch workspace by something other than the grid: a built-in swipe, a
+    -- panel click, `workspace N`. The grid only hears about it via the event.
+    function w.click(id) arrive(id) end
+
+    w.grid = Grid.new(host, opts.grid)
+    grid = w.grid
+    if w.events then grid.arrived() end   -- Hyprland announces the starting workspace
+    return w
+end
+
+local function at(row, col) return Grid.id_of(row, col) end
+
+---------------------------------------------------------------- id arithmetic
+test("ids map to rows and columns", function()
+    eq(Grid.row_of(1), 0); eq(Grid.col_of(1), 0)
+    eq(Grid.row_of(10), 0); eq(Grid.col_of(10), 9)
+    eq(Grid.row_of(100), 0); eq(Grid.col_of(100), 99, "last column of row 0")
+    eq(Grid.row_of(101), 1); eq(Grid.col_of(101), 0, "first column of row 1")
+    eq(Grid.row_of(200), 1); eq(Grid.col_of(200), 99)
+    eq(Grid.row_of(1001), 10); eq(Grid.col_of(1001), 0)
+end)
+
+test("id_of is the inverse of row_of/col_of for every id in 20 rows", function()
+    for id = 1, 20 * ROW do
+        eq(Grid.id_of(Grid.row_of(id), Grid.col_of(id)), id, "round trip of " .. id)
+    end
+end)
+
+---------------------------------------------------------------- sideways
+test("go_col moves one column along the row", function()
+    local w = new_world({ start = 3 })
+    eq(w.grid.go_col(1, false), true)
+    eq(w.active, 4)
+    w.grid.go_col(-1, false); w.grid.go_col(-1, false)
+    eq(w.active, 2)
+end)
+
+test("go_col stops at column 1 and does not wrap into the row above", function()
+    local w = new_world({ start = 1 })
+    eq(w.grid.go_col(-1, false), false)
+    eq(w.active, 1)
+    local v = new_world({ start = 101 })   -- first column of row 1
+    eq(v.grid.go_col(-1, false), false)
+    eq(v.active, 101, "must not fall back into row 0")
+end)
+
+test("go_col stops at the last column and does not spill into the next row", function()
+    local w = new_world({ start = 99 })
+    eq(w.grid.go_col(1, false), true); eq(w.active, 100)
+    eq(w.grid.go_col(1, false), false, "100 -> 101 would change row")
+    eq(w.active, 100)
+    local v = new_world({ start = 200 })
+    eq(v.grid.go_col(1, false), false); eq(v.active, 200)
+end)
+
+test("go_col far along a row keeps going (unbounded in practice)", function()
+    local w = new_world({ start = 1 })
+    for _ = 1, 99 do w.grid.go_col(1, false) end
+    eq(w.active, 100)
+end)
+
+test("go_col uses the sideways slide and no restore timer", function()
+    local w = new_world({ start = 5 })
+    w.grid.go_col(1, false)
+    eq(w.style, "slide")
+    eq(#w.timers, 0, "nothing to restore for a sideways move")
+end)
+
+test("go_col with carry moves the window and follows it", function()
+    local w = new_world({ start = 5 })
+    w.grid.go_col(1, true)
+    eq(w.window_on, 6); eq(w.active, 6)
+    eq(w.move_calls, 1); eq(w.focus_calls, 0)
+end)
+
+---------------------------------------------------------------- rows
+test("go_row down from row 0 lands on the same column of row 1", function()
+    local w = new_world({ start = 4 })
+    eq(w.grid.go_row(1, false), true)
+    eq(w.active, 104)
+end)
+
+test("go_row up from row 0 does nothing", function()
+    local w = new_world({ start = 4 })
+    eq(w.grid.go_row(-1, false), false)
+    eq(w.active, 4)
+    eq(#w.styles, 0, "no animation change for a move that did not happen")
+end)
+
+test("rows remember their column (the example: row 1 on column 2, row 2 on column 4)", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_col(1, false)                 -- row 0, column 2
+    eq(w.active, 2)
+    w.grid.go_row(1, false)                 -- row 1 opens on the same column (2)
+    eq(w.active, 102)
+    w.grid.go_col(1, false); w.grid.go_col(1, false)   -- row 1, column 4
+    eq(w.active, 104)
+    w.grid.go_row(-1, false)                -- back up: row 0 column 2
+    eq(w.active, 2)
+    w.grid.go_row(1, false)                 -- down: row 1 column 4
+    eq(w.active, 104)
+end)
+
+test("column 0 is remembered too (0 is a real value, not 'unset')", function()
+    local w = new_world({ start = 1 })      -- row 0, column 0
+    w.grid.go_col(1, false); w.grid.go_col(1, false)   -- column 2
+    w.grid.go_row(1, false)                 -- row 1, column 2
+    w.click(101)                            -- row 1, column 0
+    w.grid.go_row(-1, false)                -- row 0 column 2
+    eq(w.active, 3)
+    w.grid.go_row(1, false)                 -- row 1 must return to column 0, not column 2
+    eq(w.active, 101)
+end)
+
+test("a never-visited row opens on the column you are on", function()
+    local w = new_world({ start = 7 })
+    w.grid.go_row(1, false); eq(w.active, 107)
+    w.grid.go_row(1, false); eq(w.active, 207)
+    w.grid.go_row(1, false); eq(w.active, 307)
+end)
+
+test("three rows each keep their own column", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_row(1, false); w.grid.go_col(1, false)                   -- row 1, col 1
+    w.grid.go_row(1, false); w.grid.go_col(1, false); w.grid.go_col(1, false)  -- row 2, col 3
+    eq(w.active, at(2, 3))
+    w.grid.go_row(-1, false); eq(w.active, at(1, 1))
+    w.grid.go_row(-1, false); eq(w.active, at(0, 0))
+    w.grid.go_row(1, false);  eq(w.active, at(1, 1))
+    w.grid.go_row(1, false);  eq(w.active, at(2, 3))
+end)
+
+test("moves made by a swipe or a click are remembered (arrival event)", function()
+    local w = new_world({ start = 1 })
+    w.click(107)                            -- native jump into row 1 column 6
+    w.grid.go_row(-1, false)
+    eq(w.active, 1)
+    w.grid.go_row(1, false)
+    eq(w.active, 107, "row 1 should remember the column the click landed on")
+end)
+
+test("a built-in swipe that crosses into the next row is just another arrival", function()
+    local w = new_world({ start = 100 })    -- last column of row 0
+    w.click(101)                            -- swipe 'past the end' lands in row 1 column 0
+    eq(w.active, 101)
+    w.grid.go_row(-1, false)                -- row 0 was left on column 99
+    eq(w.active, 100)
+end)
+
+test("the column is recorded before leaving even if the arrival event was missed", function()
+    local w = new_world({ start = 1, events = false })
+    w.grid.go_col(1, false); w.grid.go_col(1, false)   -- column 2 (no events fired)
+    w.grid.go_row(1, false)                 -- row 1 column 2
+    w.grid.go_col(1, false)                 -- row 1 column 3
+    w.grid.go_row(-1, false)                -- row 0: must come back to column 2
+    eq(w.active, 3)
+    w.grid.go_row(1, false)
+    eq(w.active, 104, "row 1 must come back to column 3")
+end)
+
+test("go_row uses the vertical slide and puts the sideways slide back", function()
+    local w = new_world({ start = 3 })
+    w.grid.go_row(1, false)
+    eq(w.style, "slidevert")
+    w.advance(699)
+    eq(w.style, "slidevert", "still playing")
+    w.advance(1)
+    eq(w.style, "slide", "restored once the animation has played")
+end)
+
+test("a sideways move straight after a vertical one cancels the pending restore", function()
+    local w = new_world({ start = 3 })
+    w.grid.go_row(1, false)
+    w.advance(100)
+    w.grid.go_col(1, false)                 -- sets "slide" now
+    eq(w.style, "slide")
+    local n = #w.styles
+    w.advance(1000)
+    eq(#w.styles, n, "the old restore must not fire a second time")
+end)
+
+test("two quick row moves: only the later restore acts (no cutting the second animation short)", function()
+    local w = new_world({ start = 3 })
+    w.grid.go_row(1, false)
+    w.advance(400)
+    w.grid.go_row(1, false)                 -- second animation starts at t=400
+    w.advance(350)                          -- t=750: first restore (t=700) is past
+    eq(w.style, "slidevert", "the first restore must not end the second animation")
+    w.advance(350)                          -- t=1100: second restore (t=1100)
+    eq(w.style, "slide")
+end)
+
+test("go_row with carry moves the window and follows it", function()
+    local w = new_world({ start = 3 })
+    w.grid.go_row(1, true)
+    eq(w.window_on, 103); eq(w.active, 103)
+    eq(w.move_calls, 1)
+    w.grid.go_row(-1, true)
+    eq(w.window_on, 3); eq(w.active, 3)
+end)
+
+test("carrying a window into a row you have visited lands on that row's column", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_row(1, false); w.grid.go_col(1, false); w.grid.go_col(1, false)  -- row 1, column 2
+    w.grid.go_row(-1, false)                -- back to row 0 column 0
+    w.grid.go_row(1, true)                  -- carry down: lands on row 1's remembered column
+    eq(w.active, 103)
+    eq(w.window_on, 103)
+end)
+
+test("going down a very long way and back up", function()
+    local w = new_world({ start = 5 })
+    for _ = 1, 500 do w.grid.go_row(1, false) end
+    eq(w.active, at(500, 4))
+    for _ = 1, 500 do w.grid.go_row(-1, false) end
+    eq(w.active, 5)
+end)
+
+---------------------------------------------------------------- numbers
+test("go_number picks column n of the current row", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_number(7, false); eq(w.active, 7)
+    w.grid.go_row(1, false)
+    w.grid.go_number(3, false); eq(w.active, 103)
+    w.grid.go_number(10, false); eq(w.active, 110)
+end)
+
+test("go_number to the column you are already on does nothing", function()
+    local w = new_world({ start = 3 })
+    eq(w.grid.go_number(3, false), false)
+    eq(w.focus_calls, 0); eq(#w.styles, 0)
+end)
+
+test("go_number rejects values that are not a column", function()
+    local w = new_world({ start = 3 })
+    for _, bad in ipairs({ 0, -1, ROW + 1, 2.5 }) do
+        eq(w.grid.go_number(bad, false), false, "n=" .. tostring(bad))
+    end
+    eq(w.grid.go_number(nil, false), false, "nil")
+    eq(w.grid.go_number("4", false), false, "string")
+    eq(w.active, 3)
+end)
+
+test("go_number carry sends the window to that column", function()
+    local w = new_world({ start = 4 })
+    w.grid.go_row(1, false)
+    w.grid.go_number(9, true)
+    eq(w.window_on, 109); eq(w.active, 109)
+end)
+
+test("go_number from a special workspace falls back to row 0", function()
+    local w = new_world({ start = 250 })
+    w.special = true
+    w.grid.go_number(4, false)
+    eq(w.active, 4)
+end)
+
+---------------------------------------------------------------- special workspaces
+test("nothing moves while a special workspace (scratchpad) is active", function()
+    local w = new_world({ start = 105 })
+    w.special = true
+    eq(w.grid.go_col(1, false), false)
+    eq(w.grid.go_col(-1, true), false)
+    eq(w.grid.go_row(1, false), false)
+    eq(w.grid.go_row(-1, true), false)
+    eq(w.grid.gesture_row(1), false)
+    eq(w.focus_calls + w.move_calls, 0)
+    eq(w.active, 105, "the underlying workspace is untouched")
+end)
+
+test("a special workspace never overwrites a row's remembered column", function()
+    local w = new_world({ start = 105 })    -- row 1, column 4
+    eq(w.grid.remembered(1), 4)
+    w.special = true
+    w.grid.arrived()                        -- the event fires for the scratchpad too
+    eq(w.grid.remembered(1), 4)
+    eq(w.grid.remembered(-1), nil, "id -98 must not create a bogus row")
+end)
+
+---------------------------------------------------------------- gestures
+test("a swipe moves one row", function()
+    local w = new_world({ start = 3 })
+    eq(w.grid.gesture_row(1), true)
+    eq(w.active, 103)
+end)
+
+test("repeated events from one swipe move only one row", function()
+    local w = new_world({ start = 3 })
+    w.grid.gesture_row(1)
+    w.advance(10); w.grid.gesture_row(1)
+    w.advance(10); w.grid.gesture_row(1)
+    w.advance(10); w.grid.gesture_row(-1)   -- a stray opposite event too
+    eq(w.active, 103, "still one row down")
+end)
+
+test("a second swipe after the cooldown moves again", function()
+    local w = new_world({ start = 3 })
+    w.grid.gesture_row(1)
+    w.advance(349); eq(w.grid.gesture_row(1), false, "still cooling")
+    w.advance(1);   eq(w.grid.gesture_row(1), true, "cooldown over")
+    eq(w.active, 203)
+end)
+
+test("a swipe at the top does not start a cooldown", function()
+    local w = new_world({ start = 3 })
+    eq(w.grid.gesture_row(-1), false)       -- nowhere to go
+    eq(w.grid.gesture_row(1), true, "the next swipe must not be swallowed")
+    eq(w.active, 103)
+end)
+
+test("the cooldown applies to swipes, not to keyboard moves", function()
+    local w = new_world({ start = 3 })
+    w.grid.gesture_row(1)
+    eq(w.grid.go_row(1, false), true, "a key press right after a swipe still works")
+    eq(w.active, 203)
+end)
+
+test("the cooldown length is configurable", function()
+    local w = new_world({ start = 3, grid = { gesture_cooldown_ms = 50 } })
+    w.grid.gesture_row(1)
+    w.advance(49); eq(w.grid.gesture_row(1), false)
+    w.advance(1);  eq(w.grid.gesture_row(1), true)
+end)
+
+---------------------------------------------------------------- fuzz
+-- Random sequences of every operation, checked against what the rules say must
+-- happen. Deterministic (fixed seed) so a failure is reproducible.
+local function fuzz(seed, steps, events)
+    math.randomseed(seed)
+    local w = new_world({ start = math.random(1, 350), events = events })
+    local ref = {}                          -- row -> column last seen in it
+    local last_vertical = -1e9
+    local last_gesture = -1e9
+    local trace = {}
+
+    local function observe()
+        if not w.special then ref[Grid.row_of(w.active)] = Grid.col_of(w.active) end
+    end
+    observe()
+
+    for step = 1, steps do
+        local before, special = w.active, w.special
+        local row, col = Grid.row_of(before), Grid.col_of(before)
+        local op = math.random(1, 12)
+        local expect = before
+        local note
+
+        if op <= 2 then
+            local d = (math.random() < 0.5) and -1 or 1
+            local carry = math.random() < 0.3
+            note = ("go_col(%d,%s)"):format(d, tostring(carry))
+            w.grid.go_col(d, carry)
+            if not special and col + d >= 0 and col + d < ROW then expect = Grid.id_of(row, col + d) end
+        elseif op <= 5 then
+            local d = (math.random() < 0.5) and -1 or 1
+            local carry = math.random() < 0.3
+            note = ("go_row(%d,%s)"):format(d, tostring(carry))
+            ref[row] = (not special) and col or ref[row]     -- recorded before leaving
+            local moved = w.grid.go_row(d, carry)
+            if not special and row + d >= 0 then
+                local landing = ref[row + d]
+                if landing == nil then landing = col end
+                expect = Grid.id_of(row + d, landing)
+            end
+            if moved then last_vertical = w.now end
+        elseif op <= 7 then
+            local d = (math.random() < 0.5) and -1 or 1
+            note = ("gesture_row(%d)"):format(d)
+            local cooling = (w.now - last_gesture) < 350
+            ref[row] = (not special) and col or ref[row]
+            local moved = w.grid.gesture_row(d)
+            if not special and not cooling and row + d >= 0 then
+                local landing = ref[row + d]
+                if landing == nil then landing = col end
+                expect = Grid.id_of(row + d, landing)
+            end
+            if moved then last_gesture = w.now; last_vertical = w.now end
+        elseif op == 8 then
+            local n = math.random(-2, ROW + 3)
+            local carry = math.random() < 0.3
+            note = ("go_number(%d,%s)"):format(n, tostring(carry))
+            w.grid.go_number(n, carry)
+            if n >= 1 and n <= ROW then
+                local base = special and 1 or before
+                expect = Grid.id_of(Grid.row_of(base), n - 1)
+            end
+            if special and not (n >= 1 and n <= ROW) then expect = before end
+        elseif op == 9 and events then
+            -- a swipe / click / `workspace N` that bypasses the grid
+            local target = math.random(1, 450)
+            note = ("click(%d)"):format(target)
+            w.click(target)
+            expect = target
+        elseif op == 10 and events then
+            -- (Only with arrival events: with a scratchpad up the grid cannot see
+            -- which numbered workspace is underneath, so without the event it has
+            -- no way to learn what the workspace beneath was.)
+            w.special = not w.special
+            note = "toggle special -> " .. tostring(w.special)
+            if events then w.grid.arrived() end
+            expect = before
+        else
+            local ms = math.random(0, 900)
+            note = ("advance(%d)"):format(ms)
+            w.advance(ms)
+            expect = before
+        end
+
+        trace[#trace + 1] = note
+        if #trace > 8 then table.remove(trace, 1) end
+        observe()
+
+        local where = function() return ("seed %d step %d after %s (last 8: %s)"):format(seed, step, note, table.concat(trace, " | ")) end
+        if w.special then
+            -- no numbered workspace is active; the underlying one must be untouched
+            if not special then eq(w.active, before, where() .. " special toggle changed the workspace") end
+        else
+            eq(w.active, expect, where() .. " active workspace")
+        end
+        if not w.special then
+            assert(w.active >= 1, where() .. " went below workspace 1")
+            if events then
+                eq(w.grid.remembered(Grid.row_of(w.active)), Grid.col_of(w.active), where() .. " remembered column")
+            end
+        end
+        if w.style == "slidevert" then
+            assert(w.now - last_vertical < 700, where() .. " sideways slide never put back")
+        end
+    end
+
+    -- left alone, the sideways slide always comes back
+    w.advance(5000)
+    eq(w.style, "slide", ("seed %d: style after settling"):format(seed))
+    eq(#w.timers, 0, ("seed %d: timers left over"):format(seed))
+end
+
+test("fuzz: 8 seeds x 4000 random operations with arrival events", function()
+    for seed = 1, 8 do fuzz(seed, 4000, true) end
+end)
+
+test("fuzz: 8 seeds x 4000 random operations when the arrival event is missed", function()
+    for seed = 101, 108 do fuzz(seed, 4000, false) end
+end)
+
+---------------------------------------------------------------- report
+for _, f in ipairs(failures) do print(f) end
+print(("%d passed, %d failed"):format(passed, failed))
+os.exit(failed == 0 and 0 or 1)
