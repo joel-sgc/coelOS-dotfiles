@@ -37,11 +37,18 @@ Item {
   }
 
   function categoryItems() {
-    return entries.map(entry => ({
+    // danger -> LauncherPanel.runItem asks for a second Enter before running
+    // `command`. Pinned first so it's always one keypress from the top of
+    // the clipboard tab, and findable by searching "clear".
+    const clearItem = {
+      id: "clipboardClear", label: "Clear clipboard history", sub: "wipe every saved entry",
+      icon: "trash", right: "", danger: true, command: ["cliphist", "wipe"],
+    };
+    return (entries.length > 0 ? [clearItem] : []).concat(entries.map(entry => ({
       label: entry.isImage ? entry.preview : (entry.preview.length > 60 ? entry.preview.slice(0, 60) + "…" : entry.preview),
       sub: entry.isImage ? "image" : "text", icon: entry.isImage ? "image" : "clipboard", right: "",
       clipboardLine: entry.line, isImage: entry.isImage,
-    }));
+    })));
   }
 
   // cliphist list only shows a preview (truncated, and for images just the

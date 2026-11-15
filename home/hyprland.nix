@@ -137,6 +137,11 @@ in
       "$terminal" = "ghostty";
       "$mainMod" = "SUPER";
 
+      # After suspend/lock the hardware cursor plane sometimes isn't
+      # restored, leaving the lock screen with no pointer until a VT
+      # switch re-inits the display. A software cursor avoids that.
+      cursor.no_hardware_cursors = true;
+
       general = {
         gaps_in = 4;
         gaps_out = "8, 12, 12, 12";

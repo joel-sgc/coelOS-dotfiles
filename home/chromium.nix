@@ -22,6 +22,9 @@ let
     onshape = {
       name = "Onshape";
       url = "https://cad.onshape.com/";
+      # Links to these hosts, clicked anywhere (Slack, a terminal, ...),
+      # open in this app instead of the default browser; see urlRouter.
+      hosts = [ "cad.onshape.com" ];
     };
   };
 
@@ -36,12 +39,49 @@ let
       startupNotify = true;
       extraConfig.StartupWMClass = "webapp-${id}";
     };
+
+  # xdg has no "open this URL pattern in that app", only per-scheme
+  # defaults. So http/https go to this router (home/mimeapps.nix), which
+  # sends a webapp's hosts to its window and everything else to Zen, the
+  # real default browser.
+  urlRouter = pkgs.writeShellApplication {
+    name = "coel-url-router";
+    text = ''
+      case "$1" in
+      ${lib.concatStringsSep "\n" (
+        lib.concatLists (
+          lib.mapAttrsToList (
+            id: app:
+            map (
+              h: ''https://${h}|https://${h}/*) exec ${pkgs.chromium}/bin/chromium --class=webapp-${id} --app="$1" ;;''
+            ) (app.hosts or [ ])
+          ) webapps
+        )
+      )}
+      *) exec zen "$@" ;;
+      esac
+    '';
+  };
+
+  urlRouterEntry = pkgs.makeDesktopItem {
+    name = "coel-url-router";
+    desktopName = "URL Router";
+    exec = "${urlRouter}/bin/coel-url-router %u";
+    noDisplay = true;
+    mimeTypes = [
+      "x-scheme-handler/http"
+      "x-scheme-handler/https"
+    ];
+  };
 in
 {
   home.file = lib.mapAttrs' (id: app: {
     name = ".local/share/applications/webapp-${id}.desktop";
     value.source = "${mkWebapp id app}/share/applications/webapp-${id}.desktop";
-  }) webapps;
+  }) webapps // {
+    ".local/share/applications/coel-url-router.desktop".source =
+      "${urlRouterEntry}/share/applications/coel-url-router.desktop";
+  };
 
   programs.chromium = {
     enable = true;

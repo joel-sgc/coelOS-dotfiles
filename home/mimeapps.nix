@@ -54,8 +54,10 @@ in
       "application/x-extension-shtml" = [ zen ];
       "application/x-extension-xht" = [ zen ];
       "application/x-extension-xhtml" = [ zen ];
-      "x-scheme-handler/http" = [ zen ];
-      "x-scheme-handler/https" = [ zen ];
+      # Via home/chromium.nix's router: cad.onshape.com links open the
+      # Onshape app, everything else falls through to Zen.
+      "x-scheme-handler/http" = [ "coel-url-router.desktop" ];
+      "x-scheme-handler/https" = [ "coel-url-router.desktop" ];
       "x-scheme-handler/chrome" = [ zen ];
       "text/markdown" = [ "micro.desktop" ];
 

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.LocalStorage
 import Quickshell
 import Quickshell.Services.Notifications
+import Quickshell.Services.UPower
 
 // ===== NOTIFICATIONS BACKEND =====
 // Phase 2: the real thing. Owns the actual org.freedesktop.Notifications
@@ -168,6 +169,25 @@ Item {
     toasts = toasts.filter(t => t.id !== dbusId);
     const n = liveMap[String(dbusId)];
     if (n) n.dismiss();
+  }
+
+  // ----- critical battery alerts clear themselves on plug-in -----
+  // poweralertd's "Power warning: ... power level critical" is urgency
+  // critical, so it never times out (see the `until: null` above) and
+  // would otherwise sit there after the charger is connected. Same close
+  // path as clicking the toast's own [x]; the history row is kept.
+  function dismissBatteryAlerts() {
+    for (const id of Object.keys(liveMap)) {
+      const n = liveMap[id];
+      if (n.appName === "poweralertd" && n.urgency === NotificationUrgency.Critical)
+        dismissToast(n.id);
+    }
+  }
+  Connections {
+    target: UPower
+    function onOnBatteryChanged() {
+      if (!UPower.onBattery) backend.dismissBatteryAlerts();
+    }
   }
 
   // ----- actions called from the dropdown -----

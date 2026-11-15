@@ -214,7 +214,7 @@ WidgetCard {
           Layout.preferredWidth: grid.cellW
           horizontalAlignment: Text.AlignHCenter
           text: modelData; font.pixelSize: 11
-          color: (modelData === "sa" || modelData === "su") ? Pal.muted : Pal.dim
+          color: (modelData === "sa" || modelData === "su") ? Pal.muted : Pal.yellow
         }
       }
 
@@ -229,26 +229,30 @@ WidgetCard {
           readonly property bool isSel: cell.key === root.selKey
           readonly property bool isToday: cell.key === root.todayKey
           Layout.preferredWidth: grid.cellW
-          Layout.preferredHeight: 30
+          Layout.preferredHeight: grid.cellW // square
 
           Rectangle {
             anchors.fill: parent
             radius: Globals.eyeCandyOff ? 0 : 2
-            color: slot.isSel ? Pal.edge : "transparent"
+            // Same cell styling as the panel's calendar popup
+            // (sysPanel/dropdowns/CalendarDropdown.qml): today is a solid
+            // blue block, the selection a raised cell with a yellow border.
+            color: slot.isToday ? Pal.blue : slot.isSel ? Pal.edge : "transparent"
             border.width: 1
-            border.color: slot.isSel ? (root.focused ? Pal.blue : Pal.muted)
+            border.color: slot.isSel ? (root.focused ? Pal.yellow : Pal.muted)
               : (dayArea.containsMouse ? Pal.muted : "transparent")
             Column {
-              anchors.centerIn: parent
-              spacing: 2
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: Math.round((parent.height - height) / 2)
+              spacing: 0
               Mono {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: slot.cell ? slot.cell.day : ""
-                font.weight: slot.isToday ? Font.Medium : Font.Normal
+                font.weight: slot.isToday ? Font.DemiBold : Font.Normal
                 color: !slot.cell ? Pal.fg
-                  : !slot.cell.inMonth ? Pal.faint
-                  : slot.isToday ? Pal.yellow
-                  : slot.cell.weekend ? Pal.dim : Pal.fg
+                  : slot.isToday ? Pal.card
+                  : !slot.cell.inMonth ? "#4b5263"
+                  : slot.cell.weekend ? Pal.muted : Pal.fg
               }
               Row {
                 anchors.horizontalCenter: parent.horizontalCenter

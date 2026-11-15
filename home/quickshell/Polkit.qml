@@ -123,10 +123,20 @@ Scope {
   }
   function complete() {
     if (done || !flow) return;
-    if (flow.isSuccessful) { succeed(); return; }
+    // Quickshell's AuthFlow::completed() sets isCompleted a moment before
+    // isSuccessful, and isCompletedChanged can fire in between, so a good
+    // fingerprint/password briefly reads as "completed, not successful, not
+    // cancelled" (seen in the log). That state can only be a success: a real
+    // failed attempt just starts a new session and never sets isCompleted,
+    // and a cancel sets isCancelled. Waiting to re-read isSuccessful doesn't
+    // work either, as the flow can be gone before the next tick and
+    // authenticationSucceeded then never arrives.
+    if (flow.isSuccessful || (flow.isCompleted && !flow.isCancelled)) { succeed(); return; }
+    // Still in progress (e.g. a stale signal from an earlier request).
+    if (!flow.isCancelled) return;
     done = true;
     active = false;
-    showToast(flow.isCancelled ? "cancel" : "fail", flow.isCancelled ? "request dismissed" : "authentication failed");
+    showToast("cancel", "request dismissed");
   }
   function cancel() {
     if (done) return;

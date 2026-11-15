@@ -50,13 +50,13 @@
 
     # Services / integrations
     ./home/globalprotect.nix
+    ./home/server-mount.nix
     ./home/keyring.nix
     ./home/flatpak.nix
     inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
     inputs.steam-config-nix.homeModules.default
     ./home/steam.nix
-    ./home/fusion360.nix
   ];
 
   ##############################################################################

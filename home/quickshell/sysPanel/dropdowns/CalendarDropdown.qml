@@ -556,7 +556,7 @@ Item {
                 id: dayCell
                 required property var modelData
                 width: dropdownRoot.dayCellWidth
-                height: 28
+                height: width // square
                 radius: Globals.eyeCandyOff ? 0 : 2
                 color: modelData.bg
                 border.width: 1
@@ -564,29 +564,35 @@ Item {
 
                 Text {
                   anchors.horizontalCenter: parent.horizontalCenter
-                  y: 4
+                  // number + dot row (about 20px) centred in the square cell
+                  y: Math.round((parent.height - 20) / 2)
                   text: String(dayCell.modelData.label)
                   color: dayCell.modelData.color
                   font.family: "JetBrains Mono"
                   font.weight: dayCell.modelData.weight
                   font.pixelSize: 12
                 }
-                Rectangle {
+                // Todo dot and calendar-event dot, centred as a pair (a
+                // hidden one takes no space, so a lone dot sits dead centre).
+                // Event dots are yellow, same as the desktop widget's.
+                Row {
                   anchors.horizontalCenter: parent.horizontalCenter
-                  y: 20
-                  width: 4
-                  height: 4
-                  radius: Globals.eyeCandyOff ? 0 : 2
-                  color: dayCell.modelData.dot
-                }
-                Rectangle {
-                  visible: dayCell.modelData.gdot
-                  x: parent.width / 2 + 4
-                  y: 20
-                  width: 4
-                  height: 4
-                  radius: Globals.eyeCandyOff ? 0 : 2
-                  color: dropdownRoot.colors[0]
+                  y: Math.round((parent.height - 20) / 2) + 16
+                  spacing: 2
+                  Rectangle {
+                    visible: Qt.color(dayCell.modelData.dot).a > 0
+                    width: 4
+                    height: 4
+                    radius: Globals.eyeCandyOff ? 0 : 2
+                    color: dayCell.modelData.dot
+                  }
+                  Rectangle {
+                    visible: dayCell.modelData.gdot
+                    width: 4
+                    height: 4
+                    radius: Globals.eyeCandyOff ? 0 : 2
+                    color: dropdownRoot.colors[2]
+                  }
                 }
                 MouseArea {
                   anchors.fill: parent

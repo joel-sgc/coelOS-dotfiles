@@ -138,35 +138,9 @@
 
   # Personal server sshfs mount
   programs.fuse.userAllowOther = true;
-  #
-  # TEMPORARILY DISABLED (2026-11-06) while getting Fusion running: with the
-  # server unreachable the autofs mount went stale, and Wine stalls for
-  # seconds whenever it walks the host mount table (home/fusion360.nix).
-  # Flip to true to bring it back.
-  fileSystems."/home/joelsgc/server" = pkgs.lib.mkIf false {
-    device = "sftp@jsgc-server:/upload";
-    fsType = "fuse.sshfs";
-    options = [
-      "x-systemd.automount"
-      # Bounds the *initial* connect/handshake, which ServerAliveInterval
-      # below does not cover (that only detects a dead connection after
-      # one is already established) -- without this, a server that hangs
-      # mid-handshake (observed 2026-10-15: jsgc-server's sftp subsystem
-      # hung indefinitely after a kernel crash) blocks every process that
-      # touches ~/server, Dolphin included, forever instead of failing fast.
-      "x-systemd.mount-timeout=15"
-      "_netdev"
-      "IdentityFile=/home/joelsgc/.ssh/id_ed25519_coelos_server"
-      "IdentitiesOnly=yes"
-      "StrictHostKeyChecking=accept-new"
-      "allow_other"
-      "uid=1000"
-      "gid=100"
-      "reconnect"
-      "ServerAliveInterval=15"
-      "ServerAliveCountMax=3"
-    ];
-  };
+  # The server mount itself is a user service, not a fileSystems entry: see
+  # home/server-mount.nix (an fstab/automount entry leaves a ghost directory
+  # and stalls anything that stats ~/server while the server is down).
 
   ##############################################################################
   # Desktop Environment
@@ -448,6 +422,13 @@
 
   services.udev.extraRules = ''
     KERNEL=="sda", GROUP="kvm", MODE="0660"
+
+    # The Bluetooth radio keeps ending up soft-blocked for no reason (seen
+    # as "Failed to set mode: Failed (0x03)" in bluetoothd), and
+    # systemd-rfkill then persists that across reboots. Nothing here
+    # soft-blocks it on purpose (the panel toggles adapter power, not
+    # rfkill), so clear it whenever it appears.
+    SUBSYSTEM=="rfkill", ATTR{type}=="bluetooth", ACTION=="add|change", ATTR{soft}=="1", ATTR{soft}="0"
   '';
 
   ##############################################################################

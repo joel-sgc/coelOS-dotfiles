@@ -16,6 +16,7 @@ the rest (M2, M6, M7, keep-alives).
   M8  either       TEARDOWN
 """
 
+import re
 CRLF = "\r\n"
 
 # CEA-861 resolution table used by wfd_video_formats (bit index -> (w, h, fps, interlaced)).
@@ -58,8 +59,135 @@ def fits_level(cea_bit, level_bit):
     return macroblock_rate(cea_bit) <= LEVEL_MAX_MBPS[level_bit]
 
 
-# What we ask for, best first (mode bit, label).
+# VESA and "handheld" (HH) resolution tables of the Wi-Fi Display spec. Displays advertise them next to the CEA bitmap;
+# we can read them (they are listed in `coel-miracast info`) but only *produce* CEA modes.
+VESA_MODES = {
+    0: (800, 600, 30, False), 1: (800, 600, 60, False), 2: (1024, 768, 30, False), 3: (1024, 768, 60, False),
+    4: (1152, 864, 30, False), 5: (1152, 864, 60, False), 6: (1280, 768, 30, False), 7: (1280, 768, 60, False),
+    8: (1280, 800, 30, False), 9: (1280, 800, 60, False), 10: (1360, 768, 30, False), 11: (1360, 768, 60, False),
+    12: (1366, 768, 30, False), 13: (1366, 768, 60, False), 14: (1280, 1024, 30, False), 15: (1280, 1024, 60, False),
+    16: (1400, 1050, 30, False), 17: (1400, 1050, 60, False), 18: (1440, 900, 30, False), 19: (1440, 900, 60, False),
+    20: (1600, 900, 30, False), 21: (1600, 900, 60, False), 22: (1600, 1200, 30, False), 23: (1600, 1200, 60, False),
+    24: (1680, 1024, 30, False), 25: (1680, 1024, 60, False), 26: (1680, 1050, 30, False), 27: (1680, 1050, 60, False),
+    28: (1920, 1200, 30, False),
+}
+HH_MODES = {
+    0: (800, 480, 30, False), 1: (800, 480, 60, False), 2: (854, 480, 30, False), 3: (854, 480, 60, False),
+    4: (864, 480, 30, False), 5: (864, 480, 60, False), 6: (640, 360, 30, False), 7: (640, 360, 60, False),
+    8: (960, 540, 30, False), 9: (960, 540, 60, False), 10: (848, 480, 30, False), 11: (848, 480, 60, False),
+}
+
+
+def mode_name(width, height, fps, interlaced=False):
+    """'1080p30', '720p60', '1080i50'; other sizes spelled out: '720x480p60', '1600x1200p30'."""
+    std = {(1280, 720): "720", (1920, 1080): "1080"}
+    suffix = "i" if interlaced else "p"
+    if (width, height) in std:
+        return "%s%s%d" % (std[(width, height)], suffix, fps)
+    return "%dx%d%s%d" % (width, height, suffix, fps)
+
+
+def parse_mode_name(text):
+    """Inverse of mode_name; also accepts '1920x1080@30' and 'WxH@F'. Returns (w, h, fps, interlaced)."""
+    t = text.strip().lower().replace(" ", "")
+    m = re.fullmatch(r"(720|1080)([pi])(\d+)", t)
+    if m:
+        w, h = (1280, 720) if m.group(1) == "720" else (1920, 1080)
+        return w, h, int(m.group(3)), m.group(2) == "i"
+    m = re.fullmatch(r"(\d+)x(\d+)([pi@])(\d+)", t)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(4)), m.group(3) == "i"
+    raise ValueError("not a mode name: %r (examples: 1080p30, 720p60, 720x480p60)" % text)
+
+
+def cea_bit_for(text):
+    """CEA bitmap bit for a mode name such as '720p30'. Raises ValueError if it is not a CEA mode."""
+    mode = parse_mode_name(text)
+    for bit, m in CEA_MODES.items():
+        if m == mode:
+            return bit
+    raise ValueError("%s is not a mode we can produce (CEA modes: %s)" % (
+        text, ", ".join(mode_name(*m) for m in CEA_MODES.values())))
+
+
+def parse_preference(value):
+    """Preference list for the video mode, best first. Names ('1080p30,720p60') or legacy CEA bit numbers ('7,5');
+    a string with commas or a list. Returns CEA bits."""
+    items = value if isinstance(value, (list, tuple)) else str(value).split(",")
+    bits = []
+    for item in items:
+        if isinstance(item, int):
+            bits.append(item)
+            continue
+        item = item.strip()
+        if not item:
+            continue
+        bits.append(int(item) if item.isdigit() else cea_bit_for(item))
+    return bits
+
+
+# What we ask for, best first: 1080p30, 720p30, 720p60, 1080p60, 480p60, 640x480p60.
 DEFAULT_PREFERENCE = [7, 5, 6, 8, 1, 0]
+
+
+def describe_modes(entries):
+    """Every resolution/rate the display offers in its video formats (all three tables), as a list of dicts."""
+    out, seen = [], set()
+    for e in entries:
+        for table, modes, key in (("cea", CEA_MODES, "cea"), ("vesa", VESA_MODES, "vesa"), ("hh", HH_MODES, "hh")):
+            for bit, (w, h, fps, interlaced) in modes.items():
+                if (e.get(key, 0) >> bit) & 1 and (table, bit) not in seen:
+                    seen.add((table, bit))
+                    out.append({"name": mode_name(w, h, fps, interlaced), "width": w, "height": h, "fps": fps,
+                                "interlaced": interlaced, "table": table, "bit": bit,
+                                "usable": table == "cea"})
+    return out
+
+
+def rank_modes(entries, preference=None, strict=False):
+    """The display's modes in the order we would pick them: first those in `preference` (best first), then the other
+    modes we can produce, then the ones we can only read (VESA / handheld). Each gets `rank` (1 = chosen) or None."""
+    pref = parse_preference(DEFAULT_PREFERENCE if preference is None else preference)
+    modes = describe_modes(entries)
+    levels = 0
+    for e in entries:
+        levels |= e.get("level", 0)
+
+    def usable(m):
+        if m["table"] != "cea":
+            return False
+        return not strict or any(levels & b and fits_level(m["bit"], b) for b in LEVELS)
+
+    cea = [m for m in modes if m["table"] == "cea"]
+    ordered = [m for b in pref for m in cea if m["bit"] == b]
+    rest = [m for m in cea if m not in ordered]
+    rest.sort(key=lambda m: (m["interlaced"], -m["width"] * m["height"], -m["fps"]))
+    ranked, n = [], 0
+    for m in ordered + rest:
+        m = dict(m, in_preference=m in ordered)
+        if usable(m):
+            n += 1
+            m["rank"] = n
+        else:
+            m["rank"] = None
+        ranked.append(m)
+    return ranked + [dict(m, in_preference=False, rank=None) for m in modes if m["table"] != "cea"]
+
+
+def describe_sink(caps, preference=None, strict=False):
+    """Everything the display told us in M3, decoded, with our ranking of its video modes."""
+    entries = parse_video_formats(caps.get("wfd_video_formats", "none"))
+    profiles = sorted({"constrained-baseline" if e["profile"] & PROFILE_CBP else "constrained-high"
+                       for e in entries if e["profile"] & (PROFILE_CBP | PROFILE_CHP)})
+    levels = sorted({LEVELS[b] for e in entries for b in LEVELS if e["level"] & b})
+    return {
+        "video_modes": rank_modes(entries, preference, strict),
+        "h264_profiles": profiles,
+        "h264_levels": levels,
+        "audio_codecs": parse_audio_codecs(caps.get("wfd_audio_codecs")),
+        "content_protection": caps.get("wfd_content_protection", "none"),
+        "rtp_ports": caps.get("wfd_client_rtp_ports", ""),
+    }
 
 
 class RtspError(Exception):
