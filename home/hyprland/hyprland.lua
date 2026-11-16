@@ -107,11 +107,19 @@ local function publish_targets()
         workspace_swipe_grid_up = t.up, workspace_swipe_grid_down = t.down,
     } })
 end
-hl.on("workspace.active", function()
+local function sync()
     grid.arrived()
     save_rows()
     publish_targets()
-end)
+end
+hl.on("workspace.active", sync)
+-- At login no workspace is active yet when this file loads and the first one may
+-- never raise workspace.active, so the targets would stay empty (no gestures until a
+-- keybind changed workspace). These catch the first workspace and any monitor change.
+hl.on("hyprland.start", sync)
+hl.on("monitor.added", sync)
+hl.on("monitor.focused", sync)
+hl.on("workspace.created", sync)
 save_rows()
 publish_targets()   -- a fresh session starts with a fresh file, never a stale one
 

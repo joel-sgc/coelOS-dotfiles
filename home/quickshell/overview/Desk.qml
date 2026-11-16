@@ -13,12 +13,13 @@ Item {
   property real screenH: 1504
   property url wallpaper: ""
   property var captureFor: function (address) { return null; }
+  property string query: ""           // lowercase search text: matches glow, the rest fade
 
   width: screenW
   height: screenH
   transformOrigin: Item.TopLeft
 
-  Rectangle { anchors.fill: parent; color: "#1e2127" }
+  Rectangle { anchors.fill: parent; color: "#21252b" }
 
   Image {
     anchors.fill: parent
@@ -28,6 +29,16 @@ Item {
     asynchronous: true
     // One decode at screen size, shared by every desk.
     sourceSize: Qt.size(desk.screenW, desk.screenH)
+  }
+
+  Column {   // nothing open here
+    anchors.centerIn: parent
+    visible: desk.spec !== null && desk.spec.windows.length === 0
+    spacing: 24
+    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "+"; color: "#3e4451"
+           font.family: "JetBrains Mono"; font.pixelSize: 260 }
+    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "empty workspace"; color: "#5c6370"
+           font.family: "JetBrains Mono"; font.pixelSize: 40 }
   }
 
   Repeater {
@@ -40,6 +51,9 @@ Item {
       y: modelData.y
       width: modelData.w
       height: modelData.h
+      readonly property bool searching: desk.query !== ""
+      readonly property bool hit: searching && (modelData.cls + " " + modelData.title).toLowerCase().indexOf(desk.query) >= 0
+      opacity: searching && !hit ? 0.16 : 1
 
       // Shown until its picture arrives (and if one never does): a clearly visible
       // box with the app's name, sized for a desktop that is displayed small.
@@ -49,7 +63,7 @@ Item {
         width: parent.width - 40
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
-        text: win.modelData.cls || win.modelData.title
+        text: win.modelData.name || win.modelData.cls || win.modelData.title
         color: "#abb2bf"
         font.family: "JetBrains Mono"
         font.pixelSize: 84
@@ -63,6 +77,14 @@ Item {
         live: false
         paintCursor: false
         Component.onCompleted: if (captureSource) Qt.callLater(picture.captureFrame)
+      }
+      Rectangle {   // search hit
+        anchors.fill: parent
+        anchors.margins: -12
+        color: "transparent"
+        visible: win.hit
+        border.width: 12
+        border.color: "#e5c07b"
       }
     }
   }

@@ -11,6 +11,40 @@
 var ROW = 100;
 var ROWS = 5;
 
+// A readable name for a window's class: "zen" -> "Zen Browser", "code" -> "VS Code",
+// "chrome-cad.onshape.com__-Default" (a Chrome app window) -> "Onshape",
+// "org.kde.dolphin" -> "Dolphin".
+var KNOWN = {
+  "zen": "Zen Browser", "zen-browser": "Zen Browser", "zen-alpha": "Zen Browser", "firefox": "Firefox",
+  "code": "VS Code", "code-oss": "VS Code", "code-url-handler": "VS Code", "vscodium": "VSCodium",
+  "google-chrome": "Chrome", "chromium": "Chromium", "brave-browser": "Brave",
+  "kitty": "Kitty", "ghostty": "Ghostty", "com.mitchellh.ghostty": "Ghostty", "alacritty": "Alacritty",
+  "org.kde.dolphin": "Files", "org.gnome.nautilus": "Files", "thunar": "Files",
+  "org.pwmt.zathura": "Zathura", "mpv": "mpv", "obsidian": "Obsidian", "discord": "Discord",
+  "signal": "Signal", "spotify": "Spotify", "steam": "Steam", "gimp": "GIMP", "vlc": "VLC",
+  "org.kde.kate": "Kate", "org.kde.okular": "Okular", "org.kde.spectacle": "Spectacle",
+  "slack": "Slack", "telegram-desktop": "Telegram", "org.telegram.desktop": "Telegram",
+  "libreoffice-writer": "Writer", "libreoffice-calc": "Calc", "pavucontrol": "Volume",
+};
+function titleCase(w) { return w ? w.charAt(0).toUpperCase() + w.slice(1) : w; }
+function appName(cls) {
+  var c = String(cls || "").trim();
+  if (!c) return "";
+  var key = c.toLowerCase();
+  if (KNOWN[key]) return KNOWN[key];
+  // Chrome / Chromium app windows: chrome-<host>__<path>-<profile>
+  var app = /^(?:chrome|chromium|brave|msedge)-([^_]+?)(?:__.*)?-(?:default|profile.*)$/i.exec(c);
+  if (app) {
+    var parts = app[1].split(".").filter(function (p) { return p; });
+    if (parts.length > 1) parts.pop();                                   // the TLD
+    if (parts.length > 1 && /^(co|com|org|net|ac)$/.test(parts[parts.length - 1])) parts.pop();
+    return titleCase(parts[parts.length - 1] || app[1]);
+  }
+  // Reverse-DNS ids: keep the last part.
+  if (c.indexOf(".") > 0 && /^[a-z]{2,}\.[A-Za-z0-9_.-]+$/i.test(c)) c = c.slice(c.lastIndexOf(".") + 1);
+  return c.split(/[-_ ]+/).map(titleCase).join(" ");
+}
+
 function rowOf(id) { return Math.floor((id - 1) / ROW); }
 function colOf(id) { return (id - 1) % ROW + 1; }          // 1-based, as on the bar
 function idOf(row, col) { return row * ROW + col; }
@@ -50,7 +84,7 @@ function rowsOf(clients, opts) {
     if (rowOf(id) >= ROWS) return;
     var at = c.at || [0, 0], size = c.size || [0, 0];
     (byWs[id] = byWs[id] || []).push({
-      address: c.address, cls: c.class || c.initialClass || "", title: c.title || "",
+      address: c.address, cls: c.class || c.initialClass || "", name: appName(c.class || c.initialClass), title: c.title || "",
       x: at[0] - monX, y: at[1] - monY, w: Math.max(1, size[0] || 0), h: Math.max(1, size[1] || 0),
       floating: !!c.floating,
     });
@@ -71,6 +105,10 @@ function rowsOf(clients, opts) {
     else if (ids.length) rep = ids[0];
     else rep = idOf(r, 1);
     if (ids.indexOf(rep) < 0) { ids.push(rep); ids.sort(function (a, b) { return a - b; }); }
+    // A row always ends in an empty workspace to open something in: when its last
+    // one has windows, offer the next. (An empty one is left as it is.)
+    var last = ids[ids.length - 1];
+    if ((byWs[last] || []).length && colOf(last) < ROW) ids.push(last + 1);
 
     rows.push({
       index: r, label: "r" + (r + 1), current: r === focusedRow,

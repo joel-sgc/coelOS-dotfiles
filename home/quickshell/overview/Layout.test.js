@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const src = fs.readFileSync(path.join(__dirname, "Layout.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
-const L = new Function(src + "\nreturn { ROW, ROWS, rowOf, colOf, idOf, parseRemembered, rowsOf };")();
+const L = new Function(src + "\nreturn { ROW, ROWS, rowOf, colOf, idOf, parseRemembered, rowsOf, appName };")();
 
 let passed = 0, failed = 0;
 const failures = [];
@@ -49,14 +49,14 @@ test("always five rows, labelled r1..r5, each with at least one desk", () => {
 
 test("a desk carries its workspace's windows", () => {
   const rows = L.rowsOf([client("a", 2), client("b", 2), client("c", 103)], { focusedId: 2 });
-  eq(deskIds(rows[0]), [2]);
+  eq(deskIds(rows[0]), [2, 3]);
   eq(rows[0].desks[0].windows.map(w => w.address), ["a", "b"]);
-  eq(deskIds(rows[1]), [103]);
+  eq(deskIds(rows[1]), [103, 104]);
 });
 
 test("a row shows every workspace that has windows, in column order", () => {
   const rows = L.rowsOf([client("a", 7), client("b", 2), client("c", 5)], { focusedId: 2 });
-  eq(deskIds(rows[0]), [2, 5, 7]);
+  eq(deskIds(rows[0]), [2, 5, 7, 8]);
 });
 
 test("windows are placed relative to the monitor", () => {
@@ -87,7 +87,7 @@ test("on your own row the representative is the workspace you are on, even when 
 test("other rows use the workspace the grid remembers", () => {
   const rows = L.rowsOf([client("a", 1), client("b", 103), client("c", 105)], { focusedId: 1, remembered: "1,105,,," });
   eq(rep(rows[1]), [105]);
-  eq(deskIds(rows[1]), [103, 105]);
+  eq(deskIds(rows[1]), [103, 105, 106]);
 });
 
 test("a remembered workspace with no windows is still shown", () => {
@@ -135,6 +135,42 @@ test("missing or zero fields still give a usable window", () => {
 
 test("null entries and clients without a workspace are ignored", () => {
   eq(L.rowsOf([null, {}, { address: "x" }, client("ok", 1)], { focusedId: 1 })[0].desks[0].windows.length, 1);
+});
+
+// ---------------------------------------------------------------- names and the spare workspace
+test("window classes get readable names", () => {
+  const n = L.appName;
+  eq(n("zen"), "Zen Browser"); eq(n("code"), "VS Code"); eq(n("kitty"), "Kitty");
+  eq(n("chrome-cad.onshape.com__-Default"), "Onshape");
+  eq(n("chrome-mail.google.com__u_0-Default"), "Google");
+  eq(n("org.kde.dolphin"), "Files");
+  eq(n("org.example.some-tool"), "Some Tool");
+  eq(n("my_app"), "My App");
+  eq(n(""), ""); eq(n(undefined), "");
+});
+
+test("each window carries its readable name", () => {
+  const rows = L.rowsOf([client("a", 1, { class: "zen" })], { focusedId: 1 });
+  eq(rows[0].desks[0].windows[0].name, "Zen Browser");
+});
+
+test("a row whose last workspace has windows offers the next one, empty", () => {
+  const rows = L.rowsOf([client("a", 1), client("b", 3)], { focusedId: 1 });
+  eq(deskIds(rows[0]), [1, 3, 4]);
+  eq(rows[0].desks[2].windows.length, 0);
+  eq(rep(rows[0]), [1]);
+});
+
+test("an empty last workspace is left as it is: no extra one", () => {
+  const rows = L.rowsOf([client("a", 1)], { focusedId: 4 });     // you are on empty 4
+  eq(deskIds(rows[0]), [1, 4]);
+  eq(deskIds(rows[2]), [201], "empty rows too");
+});
+
+test("no spare workspace past the end of a row", () => {
+  const rows = L.rowsOf([client("a", 100), client("b", 500)], { focusedId: 100 });
+  eq(deskIds(rows[0]), [100]);
+  eq(deskIds(rows[4]), [500]);
 });
 
 // ---------------------------------------------------------------- fuzz

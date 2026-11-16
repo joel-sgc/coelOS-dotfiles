@@ -108,8 +108,11 @@ Scope {
           return null;
         }
         // Hyprland's config is Lua: the grid (and each row's remembered column) lives
-        // there, so ask it to go to the row.
-        onRowChosen: row => Hyprland.dispatch("function() coel_grid.goto_row(" + row + ") end")
+        // there. A row's own desktop goes through it; another workspace of the row is
+        // focused directly.
+        onChosen: (row, id, rep) => Hyprland.dispatch(rep
+          ? "function() coel_grid.goto_row(" + row + ") end"
+          : "function() hl.dispatch(hl.dsp.focus({ workspace = " + id + " })) end")
         onFinished: scope.open = false
       }
     }
