@@ -78,7 +78,12 @@ FocusScope {
     if (row !== currentRow) rowChosen(row);
     closeTo(row);
   }
-  function dismiss() { if (phase === "open") closeTo(currentRow); }
+  // Put your desktop back. Before the opening picture has arrived there is nothing
+  // to zoom, so it just ends.
+  function dismiss() {
+    if (phase === "open") closeTo(currentRow);
+    else if (phase === "waiting") finished();
+  }
 
   // Begin as soon as there is something to show and the opening picture is in.
   readonly property bool ready: dataReady && (snap.hasContent || fallback.running === false)

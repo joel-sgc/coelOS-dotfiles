@@ -20,8 +20,17 @@ Scope {
   IpcHandler {
     target: "overview"
     function open(): void { scope.open = true; }
-    function close(): void { scope.open = false; }
-    function toggle(): void { scope.open = !scope.open; }
+    function close(): void { scope.requestClose(); }
+    function toggle(): void { if (scope.open) scope.requestClose(); else scope.open = true; }
+  }
+
+  // Close the way Escape does: your current desktop zooms back to full size, and
+  // the overlay goes away when that has played. (Switching `open` off directly would
+  // remove it instantly.) With nothing to animate, just close.
+  function requestClose() {
+    const w = loader.item;
+    if (w && w.overviewPanel) w.overviewPanel.dismiss();
+    else scope.open = false;
   }
 
   function focusedScreen() {
@@ -31,6 +40,7 @@ Scope {
   }
 
   LazyLoader {
+    id: loader
     active: scope.open
 
     PanelWindow {
@@ -78,7 +88,10 @@ Scope {
         }
       }
 
+      readonly property var overviewPanel: panel
+
       OverviewPanel {
+        id: panel
         anchors.fill: parent
         rows: win.rows
         dataReady: win.dataReady

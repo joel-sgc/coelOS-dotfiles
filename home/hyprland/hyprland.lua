@@ -96,26 +96,34 @@ local function save_rows()
     local f = io.open(rows_file, "w")
     if f then f:write(grid.snapshot()); f:close() end
 end
+-- The compositor's grid swipe (patches/hyprland-grid-swipe.patch) slides to
+-- whichever workspace is named for the swipe's direction, so tell it on every change.
+local function publish_targets()
+    local t = grid.swipe_targets()
+    -- pcall: a Hyprland without the patch (before the rebuild is switched to) does not
+    -- know these options; stay quiet rather than raise an error on every change.
+    pcall(hl.config, { gestures = {
+        workspace_swipe_grid_left = t.left, workspace_swipe_grid_right = t.right,
+        workspace_swipe_grid_up = t.up, workspace_swipe_grid_down = t.down,
+    } })
+end
 hl.on("workspace.active", function()
     grid.arrived()
     save_rows()
+    publish_targets()
 end)
-save_rows()   -- a fresh session starts with a fresh file, never a stale one
+save_rows()
+publish_targets()   -- a fresh session starts with a fresh file, never a stale one
 
 ------------------------------------------------------------------ gestures
--- Sideways: Hyprland's own swipe, so the workspaces follow your fingers (you can
--- hold halfway). It is left in its default mode, which only ever steps to a
--- workspace that EXISTS, so it cannot go below the first workspace. (An earlier
--- attempt to make it count by workspace number, `workspace_swipe_use_r`, let it
--- target workspace 0 and crashed Hyprland when a swipe ended: do not turn that on.)
--- It can reach a neighbouring row's workspace if you swipe past the end of a row;
--- Super+Ctrl+arrows and Super+1..0 never do.
+-- Three fingers, both axes: Hyprland's own swipe, patched (patches/hyprland-grid-swipe.patch)
+-- so the workspaces follow your fingers sideways AND up/down. With workspace_swipe_grid
+-- on, a sideways swipe slides to the left/right target and a vertical one to the
+-- up/down target, as published above by grid.swipe_targets(); a direction with no
+-- target (row ends, first/last row) does not move.
+pcall(hl.config, { gestures = { workspace_swipe_grid = true } })
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
--- Up/down cannot be built in (the built-in swipe tracks one axis), so they step one
--- row per swipe through the grid (grid.lua), which cannot leave it and ignores
--- repeat events from one swipe. If up/down feel backwards, swap the two lines.
-hl.gesture({ fingers = 3, direction = "up",   action = function() grid.gesture_row(1) end })
-hl.gesture({ fingers = 3, direction = "down", action = function() grid.gesture_row(-1) end })
+hl.gesture({ fingers = 3, direction = "vertical",   action = "workspace" })
 -- Four fingers: up opens the workspace overview (home/quickshell/Overview.qml, in
 -- the panel), down closes it. Escape or a click also close it.
 hl.gesture({ fingers = 4, direction = "up",   action = function() hl.exec_cmd(qs .. " overview open") end })

@@ -191,6 +191,11 @@
     # Launch through UWSM: Hyprland runs as wayland-wm@*.service and the
     # session gets a real graphical-session.target / env import / cgroups.
     withUWSM = true;
+    # Hyprland with the grid-aware three-finger swipe (see the patch's header and
+    # TODO.md). Re-check the patch after every Hyprland update.
+    package = pkgs.hyprland.overrideAttrs (o: {
+      patches = (o.patches or [ ]) ++ [ ./patches/hyprland-grid-swipe.patch ];
+    });
   };
 
   services.xserver.xkb = {
@@ -256,8 +261,8 @@
   # whichever implementation is found first.
   xdg.portal = {
     enable = true;
+    # (the hyprland portal is added by programs.hyprland, built against its package)
     extraPortals = [
-      pkgs.xdg-desktop-portal-hyprland
       pkgs.xdg-desktop-portal-gtk
     ];
     config = {

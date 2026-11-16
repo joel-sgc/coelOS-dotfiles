@@ -1,0 +1,220 @@
+diff --git a/src/config/values/ConfigValues.cpp b/src/config/values/ConfigValues.cpp
+index 23cad96..dd62df5 100644
+--- a/src/config/values/ConfigValues.cpp
++++ b/src/config/values/ConfigValues.cpp
+@@ -385,6 +385,11 @@ std::vector<SP<IValue>> Values::getConfigValues() {
+         MS<Int>("gestures:workspace_swipe_direction_lock_threshold", "in px, the distance to swipe before direction lock activates.", 10, {.min = 0, .max = 200}),
+         MS<Bool>("gestures:workspace_swipe_forever", "if enabled, swiping will not clamp at the neighboring workspaces but continue to the further ones.", false),
+         MS<Bool>("gestures:workspace_swipe_use_r", "if enabled, swiping will use the r prefix instead of the m prefix for finding workspaces.", false),
++        MS<Bool>("gestures:workspace_swipe_grid", "if enabled, workspace swipes slide between the workspaces given by workspace_swipe_grid_{left,right,up,down} (a horizontal swipe uses left/right, a vertical one up/down) and follow the swipe's own axis, instead of using the next/previous workspace.", false),
++        MS<Int>("gestures:workspace_swipe_grid_left", "grid swipes: id of the workspace to the left (must be lower than the current one), 0 for none.", 0, {.min = 0, .max = 2000000000}),
++        MS<Int>("gestures:workspace_swipe_grid_right", "grid swipes: id of the workspace to the right (must be higher than the current one), 0 for none.", 0, {.min = 0, .max = 2000000000}),
++        MS<Int>("gestures:workspace_swipe_grid_up", "grid swipes: id of the workspace above (must be lower than the current one), 0 for none.", 0, {.min = 0, .max = 2000000000}),
++        MS<Int>("gestures:workspace_swipe_grid_down", "grid swipes: id of the workspace below (must be higher than the current one), 0 for none.", 0, {.min = 0, .max = 2000000000}),
+         MS<Int>("gestures:close_max_timeout", "Timeout for closing windows with the close gesture, in ms.", 1000, {.min = 10, .max = 2000}),
+         MS<Bool>("gestures:scrolling:move_snap_to_grid", "When releasing the scroll move gesture, whether it shoud try to snap to the grid.", true),
+         MS<Bool>("gestures:scrolling:move_snap_cursor", "When releasing the scroll move gesture, whether it shoud snap the cursor to the newly focused window.", true),
+diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
+index e2eac69..f7f006f 100644
+--- a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
++++ b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
+@@ -9,12 +9,32 @@ bool CUnifiedWorkspaceSwipeGesture::isGestureInProgress() {
+     return m_workspaceBegin;
+ }
+ 
+-void CUnifiedWorkspaceSwipeGesture::begin() {
++void CUnifiedWorkspaceSwipeGesture::begin(bool grid, bool vertical) {
+     if (isGestureInProgress())
+         return;
+ 
+     const auto PWORKSPACE = Desktop::focusState()->monitor()->m_activeWorkspace;
+ 
++    m_grid         = grid;
++    m_gridVertical = vertical;
++    m_gridPrev     = 0;
++    m_gridNext     = 0;
++
++    if (grid) {
++        static auto PLEFT  = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_grid_left");
++        static auto PRIGHT = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_grid_right");
++        static auto PUP    = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_grid_up");
++        static auto PDOWN  = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_grid_down");
++
++        const WORKSPACEID PREV = vertical ? *PUP : *PLEFT;
++        const WORKSPACEID NEXT = vertical ? *PDOWN : *PRIGHT;
++
++        // A neighbour only counts if it is a real, ordinary workspace on the right side
++        // of this one; anything else means "nothing that way".
++        m_gridPrev = (PWORKSPACE && PREV >= 1 && PREV < PWORKSPACE->m_id) ? PREV : 0;
++        m_gridNext = (PWORKSPACE && NEXT > PWORKSPACE->m_id) ? NEXT : 0;
++    }
++
+     Log::logger->log(Log::DEBUG, "CUnifiedWorkspaceSwipeGesture::begin: Starting a swipe from {}", PWORKSPACE->m_name);
+ 
+     m_workspaceBegin = PWORKSPACE;
+@@ -46,17 +66,19 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+     const auto   XDISTANCE     = m_monitor->m_size.x + *PWORKSPACEGAP;
+     const auto   YDISTANCE     = m_monitor->m_size.y + *PWORKSPACEGAP;
+     const auto   ANIMSTYLE     = m_workspaceBegin->m_renderOffset->getStyle();
+-    const bool   VERTANIMS     = ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert");
++    const bool   VERTANIMS     = m_grid ? m_gridVertical : (ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert"));
+     const double d             = m_delta - delta;
+     m_delta                    = delta;
+ 
+     m_avgSpeed = (m_avgSpeed * m_speedPoints + abs(d)) / (m_speedPoints + 1);
+     m_speedPoints++;
+ 
+-    auto workspaceIDLeft  = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
+-    auto workspaceIDRight = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
++    // Grid swipes name their neighbours; "none" is expressed as the workspace itself,
++    // which is how the stock code already treats the ends of the list.
++    auto workspaceIDLeft  = m_grid ? (m_gridPrev ? m_gridPrev : m_workspaceBegin->m_id) : getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
++    auto workspaceIDRight = m_grid ? (m_gridNext ? m_gridNext : m_workspaceBegin->m_id) : getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
+ 
+-    if ((workspaceIDLeft == WORKSPACE_INVALID || workspaceIDRight == WORKSPACE_INVALID || workspaceIDLeft == m_workspaceBegin->m_id) && !*PSWIPENEW) {
++    if (!m_grid && (workspaceIDLeft == WORKSPACE_INVALID || workspaceIDRight == WORKSPACE_INVALID || workspaceIDLeft == m_workspaceBegin->m_id) && !*PSWIPENEW) {
+         m_workspaceBegin = nullptr; // invalidate the swipe
+         return;
+     }
+@@ -65,6 +87,14 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+ 
+     m_delta = std::clamp(m_delta, sc<double>(-SWIPEDISTANCE), sc<double>(SWIPEDISTANCE));
+ 
++    // Grid swipe with nothing in that direction: the workspace just stays where it is.
++    if (m_grid && ((m_delta < 0 && !m_gridPrev) || (m_delta > 0 && !m_gridNext))) {
++        m_delta = 0;
++        g_pHyprRenderer->damageMonitor(m_monitor.lock());
++        m_workspaceBegin->m_renderOffset->setValueAndWarp(Vector2D(0.0, 0.0));
++        return;
++    }
++
+     if ((m_workspaceBegin->m_id == workspaceIDLeft && *PSWIPENEW && (m_delta < 0)) ||
+         (m_delta > 0 && m_workspaceBegin->getWindows() == 0 && workspaceIDRight <= m_workspaceBegin->m_id) || (m_delta < 0 && m_workspaceBegin->m_id <= workspaceIDLeft)) {
+ 
+@@ -85,7 +115,7 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+         const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDLeft);
+ 
+         if (workspaceIDLeft > m_workspaceBegin->m_id || !PWORKSPACE) {
+-            if (*PSWIPENEW) {
++            if (*PSWIPENEW || m_grid) {
+                 g_pHyprRenderer->damageMonitor(m_monitor.lock());
+ 
+                 if (VERTANIMS)
+@@ -125,7 +155,7 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+         const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDRight);
+ 
+         if (workspaceIDRight < m_workspaceBegin->m_id || !PWORKSPACE) {
+-            if (*PSWIPENEW) {
++            if (*PSWIPENEW || m_grid) {
+                 g_pHyprRenderer->damageMonitor(m_monitor.lock());
+ 
+                 if (VERTANIMS)
+@@ -186,16 +216,16 @@ void CUnifiedWorkspaceSwipeGesture::end() {
+     static auto PSWIPEUSER    = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_use_r");
+     static auto PWORKSPACEGAP = CConfigValue<Config::INTEGER>("general:gaps_workspaces");
+     const auto  ANIMSTYLE     = m_workspaceBegin->m_renderOffset->getStyle();
+-    const bool  VERTANIMS     = ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert");
++    const bool  VERTANIMS     = m_grid ? m_gridVertical : (ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert"));
+ 
+     // commit
+-    auto       workspaceIDLeft  = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
+-    auto       workspaceIDRight = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
++    auto       workspaceIDLeft  = m_grid ? (m_gridPrev ? m_gridPrev : m_workspaceBegin->m_id) : getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
++    auto       workspaceIDRight = m_grid ? (m_gridNext ? m_gridNext : m_workspaceBegin->m_id) : getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
+     const auto SWIPEDISTANCE    = std::clamp(*PSWIPEDIST, sc<int64_t>(1LL), sc<int64_t>(UINT32_MAX));
+ 
+     // If we've been swiping off the right end with PSWIPENEW enabled, there is
+     // no workspace there yet, and we need to choose an ID for a new one now.
+-    if (workspaceIDRight <= m_workspaceBegin->m_id && *PSWIPENEW)
++    if (!m_grid && workspaceIDRight <= m_workspaceBegin->m_id && *PSWIPENEW)
+         workspaceIDRight = getWorkspaceIDNameFromString("r+1").id;
+ 
+     auto         PWORKSPACER = g_pCompositor->getWorkspaceByID(workspaceIDRight); // not guaranteed if PSWIPENEW || PSWIPENUMBER
+@@ -207,7 +237,13 @@ void CUnifiedWorkspaceSwipeGesture::end() {
+ 
+     PHLWORKSPACE pSwitchedTo = nullptr;
+ 
+-    if ((abs(m_delta) < SWIPEDISTANCE * *PSWIPEPERC && (*PSWIPEFORC == 0 || (*PSWIPEFORC != 0 && m_avgSpeed < *PSWIPEFORC))) || abs(m_delta) < 2) {
++    // A target that cannot exist (an invalid id, or the workspace itself) is not
++    // something to switch to: treat the swipe as cancelled. Without this, creating
++    // workspace "invalid" gave nothing back and the code below dereferenced it.
++    const bool TARGETUNUSABLE = (m_delta < 0 && (workspaceIDLeft == WORKSPACE_INVALID || (!PWORKSPACEL && workspaceIDLeft == m_workspaceBegin->m_id))) ||
++        (m_delta > 0 && (workspaceIDRight == WORKSPACE_INVALID || (!PWORKSPACER && workspaceIDRight == m_workspaceBegin->m_id)));
++
++    if (TARGETUNUSABLE || (abs(m_delta) < SWIPEDISTANCE * *PSWIPEPERC && (*PSWIPEFORC == 0 || (*PSWIPEFORC != 0 && m_avgSpeed < *PSWIPEFORC))) || abs(m_delta) < 2) {
+         // revert
+         if (abs(m_delta) < 2) {
+             if (PWORKSPACEL)
+@@ -301,6 +337,10 @@ void CUnifiedWorkspaceSwipeGesture::end() {
+ 
+     m_workspaceBegin   = nullptr;
+     m_initialDirection = 0;
++    m_grid             = false;
++    m_gridVertical     = false;
++    m_gridPrev         = 0;
++    m_gridNext         = 0;
+ 
+     g_pInputManager->refocus();
+ 
+diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.hpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.hpp
+index 4dbb6c5..83b8a83 100644
+--- a/src/managers/input/UnifiedWorkspaceSwipeGesture.hpp
++++ b/src/managers/input/UnifiedWorkspaceSwipeGesture.hpp
+@@ -2,10 +2,11 @@
+ 
+ #include "../../helpers/memory/Memory.hpp"
+ #include "../../desktop/DesktopTypes.hpp"
++#include "../../SharedDefs.hpp"
+ 
+ class CUnifiedWorkspaceSwipeGesture {
+   public:
+-    void begin();
++    void begin(bool grid = false, bool vertical = false);
+     void update(double delta);
+     void end();
+ 
+@@ -21,6 +22,14 @@ class CUnifiedWorkspaceSwipeGesture {
+     int           m_speedPoints      = 0;
+     int           m_touchID          = 0;
+ 
++    // Grid swipes (gestures:workspace_swipe_grid): the neighbours are given, not
++    // searched for, and the axis comes from the gesture, not the animation style.
++    // 0 = no workspace that way. Read once when the swipe begins.
++    bool          m_grid         = false;
++    bool          m_gridVertical = false;
++    WORKSPACEID   m_gridPrev     = 0; // left or up
++    WORKSPACEID   m_gridNext     = 0; // right or down
++
+     friend class CWorkspaceSwipeGesture;
+     friend class CInputManager;
+ };
+diff --git a/src/managers/input/trackpad/gestures/WorkspaceSwipeGesture.cpp b/src/managers/input/trackpad/gestures/WorkspaceSwipeGesture.cpp
+index 7ede683..508d10f 100644
+--- a/src/managers/input/trackpad/gestures/WorkspaceSwipeGesture.cpp
++++ b/src/managers/input/trackpad/gestures/WorkspaceSwipeGesture.cpp
+@@ -10,6 +10,7 @@ void CWorkspaceSwipeGesture::begin(const ITrackpadGesture::STrackpadGestureBegin
+     ITrackpadGesture::begin(e);
+ 
+     static auto PSWIPENEW = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_create_new");
++    static auto PGRID     = CConfigValue<Config::INTEGER>("gestures:workspace_swipe_grid");
+ 
+     if (g_pSessionLockManager->isSessionLocked() || g_pUnifiedWorkspaceSwipe->isGestureInProgress())
+         return;
+@@ -20,10 +21,15 @@ void CWorkspaceSwipeGesture::begin(const ITrackpadGesture::STrackpadGestureBegin
+             onMonitor++;
+     }
+ 
+-    if (onMonitor < 2 && !*PSWIPENEW)
++    // Grid swipes can always create the workspace they slide into.
++    if (onMonitor < 2 && !*PSWIPENEW && !*PGRID)
+         return; // disallow swiping when there's 1 workspace on a monitor
+ 
+-    g_pUnifiedWorkspaceSwipe->begin();
++    // The axis of the swipe (as detected from the first movement): vertical swipes slide
++    // up/down and use the grid's up/down neighbours, horizontal ones left/right.
++    const bool VERTICAL = e.direction == TRACKPAD_GESTURE_DIR_UP || e.direction == TRACKPAD_GESTURE_DIR_DOWN || e.direction == TRACKPAD_GESTURE_DIR_VERTICAL;
++
++    g_pUnifiedWorkspaceSwipe->begin(*PGRID, VERTICAL);
+ }
+ 
+ void CWorkspaceSwipeGesture::update(const ITrackpadGesture::STrackpadGestureUpdate& e) {

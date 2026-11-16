@@ -236,7 +236,8 @@ test("even if the arrival event never comes, nothing moves from a workspace off 
     eq(w.grid.go_col(1, false), false)
     eq(w.grid.go_col(-1, true), false)
     eq(w.grid.go_row(1, false), false)
-    eq(w.grid.gesture_row(-1), false)
+    local t = w.grid.swipe_targets()
+    eq(t.left + t.right + t.up + t.down, 0, "no swipe targets either")
     eq(w.active, 2147483647, "left exactly as it was: no arithmetic on a nonsense id")
     eq(w.focus_calls + w.move_calls, 0)
 end)
@@ -330,16 +331,8 @@ test("nothing below the fifth row: no move, no animation, no carry", function()
     local styles = #w.styles
     eq(w.grid.go_row(1, false), false)
     eq(w.grid.go_row(1, true), false)
-    eq(w.grid.gesture_row(1), false)
     eq(w.active, at(4, 7)); eq(#w.styles, styles, "no animation change"); eq(w.move_calls, 0)
-    eq(#w.timers, 0, "and no cooldown or restore timers")
-end)
-
-test("a swipe down at the bottom does not start a cooldown", function()
-    local w = new_world({ start = at(4, 0) })
-    eq(w.grid.gesture_row(1), false)
-    eq(w.grid.gesture_row(-1), true, "the swipe back up must not be swallowed")
-    eq(w.active, at(3, 0))
+    eq(#w.timers, 0, "and no restore timers")
 end)
 
 test("the fifth row remembers its column like any other", function()
@@ -492,7 +485,8 @@ test("nothing moves while a special workspace (scratchpad) is active", function(
     eq(w.grid.go_col(-1, true), false)
     eq(w.grid.go_row(1, false), false)
     eq(w.grid.go_row(-1, true), false)
-    eq(w.grid.gesture_row(1), false)
+    local t = w.grid.swipe_targets()
+    eq(t.left + t.right + t.up + t.down, 0)
     eq(w.focus_calls + w.move_calls, 0)
     eq(w.active, 105, "the underlying workspace is untouched")
 end)
@@ -506,49 +500,51 @@ test("a special workspace never overwrites a row's remembered column", function(
     eq(w.grid.remembered(-1), nil, "id -98 must not create a bogus row")
 end)
 
----------------------------------------------------------------- gestures
-test("a swipe moves one row", function()
+---------------------------------------------------------------- swipe targets
+test("a swipe's targets: neighbours in the row, other rows on the same column", function()
     local w = new_world({ start = 3 })
-    eq(w.grid.gesture_row(1), true)
-    eq(w.active, 103)
+    local t = w.grid.swipe_targets()
+    eq(t.left, 2); eq(t.right, 4); eq(t.up, 0, "no row above the first"); eq(t.down, 103)
 end)
 
-test("repeated events from one swipe move only one row", function()
-    local w = new_world({ start = 3 })
-    w.grid.gesture_row(1)
-    w.advance(10); w.grid.gesture_row(1)
-    w.advance(10); w.grid.gesture_row(1)
-    w.advance(10); w.grid.gesture_row(-1)   -- a stray opposite event too
-    eq(w.active, 103, "still one row down")
+test("the row's ends have no sideways target", function()
+    local w = new_world({ start = at(2, 0) })
+    eq(w.grid.swipe_targets().left, 0)
+    eq(w.grid.swipe_targets().right, at(2, 1))
+    local w2 = new_world({ start = at(2, 99) })
+    eq(w2.grid.swipe_targets().right, 0)
+    eq(w2.grid.swipe_targets().left, at(2, 98))
 end)
 
-test("a second swipe after the cooldown moves again", function()
-    local w = new_world({ start = 3 })
-    w.grid.gesture_row(1)
-    w.advance(349); eq(w.grid.gesture_row(1), false, "still cooling")
-    w.advance(1);   eq(w.grid.gesture_row(1), true, "cooldown over")
-    eq(w.active, 203)
+test("the last row has no target below", function()
+    local w = new_world({ start = at(4, 7) })
+    eq(w.grid.swipe_targets().down, 0)
+    eq(w.grid.swipe_targets().up, at(3, 7))
 end)
 
-test("a swipe at the top does not start a cooldown", function()
-    local w = new_world({ start = 3 })
-    eq(w.grid.gesture_row(-1), false)       -- nowhere to go
-    eq(w.grid.gesture_row(1), true, "the next swipe must not be swallowed")
-    eq(w.active, 103)
+test("up and down land on the column each row was left on", function()
+    local w = new_world({ start = at(1, 20) })
+    w.grid.go_row(1, false)             -- row 2 at column 20
+    w.grid.go_col(1, false)             -- column 21 in row 2
+    local t = w.grid.swipe_targets()
+    eq(t.up, at(1, 20), "row 1 remembered column 20")
+    eq(t.down, at(3, 21), "unvisited row opens on the current column")
 end)
 
-test("the cooldown applies to swipes, not to keyboard moves", function()
-    local w = new_world({ start = 3 })
-    w.grid.gesture_row(1)
-    eq(w.grid.go_row(1, false), true, "a key press right after a swipe still works")
-    eq(w.active, 203)
+test("lower targets are lower ids and higher targets higher (the compositor needs this)", function()
+    for _, start in ipairs({ 1, 50, 100, 101, 250, 399, 500 }) do
+        local w = new_world({ start = start })
+        local t = w.grid.swipe_targets()
+        for _, k in ipairs({ "left", "up" }) do assert(t[k] == 0 or t[k] < start, k .. " from " .. start) end
+        for _, k in ipairs({ "right", "down" }) do assert(t[k] == 0 or t[k] > start, k .. " from " .. start) end
+    end
 end)
 
-test("the cooldown length is configurable", function()
-    local w = new_world({ start = 3, grid = { gesture_cooldown_ms = 50 } })
-    w.grid.gesture_row(1)
-    w.advance(49); eq(w.grid.gesture_row(1), false)
-    w.advance(1);  eq(w.grid.gesture_row(1), true)
+test("nothing to swipe to from a scratchpad", function()
+    local w = new_world({ start = 105 })
+    w.special = true
+    local t = w.grid.swipe_targets()
+    eq(t.left + t.right + t.up + t.down, 0)
 end)
 
 ---------------------------------------------------------------- fuzz
@@ -559,7 +555,6 @@ local function fuzz(seed, steps, events)
     local w = new_world({ start = math.random(1, 350), events = events })
     local ref = {}                          -- row -> column last seen in it
     local last_vertical = -1e9
-    local last_gesture = -1e9
     local trace = {}
 
     local function observe()
@@ -593,17 +588,10 @@ local function fuzz(seed, steps, events)
             end
             if moved then last_vertical = w.now end
         elseif op <= 7 then
-            local d = (math.random() < 0.5) and -1 or 1
-            note = ("gesture_row(%d)"):format(d)
-            local cooling = (w.now - last_gesture) < 350
-            ref[row] = (not special) and col or ref[row]
-            local moved = w.grid.gesture_row(d)
-            if not special and not cooling and row + d >= 0 and row + d < Grid.ROWS then
-                local landing = ref[row + d]
-                if landing == nil then landing = col end
-                expect = Grid.id_of(row + d, landing)
-            end
-            if moved then last_gesture = w.now; last_vertical = w.now end
+            note = "swipe_targets"
+            local t = w.grid.swipe_targets()
+            for _, k in ipairs({ "left", "up" }) do assert(t[k] == 0 or (not special and t[k] < w.active), note) end
+            for _, k in ipairs({ "right", "down" }) do assert(t[k] == 0 or (not special and t[k] > w.active), note) end
         elseif op == 8 then
             local n = math.random(-2, ROW + 3)
             local carry = math.random() < 0.3

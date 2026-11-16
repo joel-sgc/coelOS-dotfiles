@@ -34,11 +34,9 @@ function M.id_of(row, col) return row * ROW + col + 1 end
 function M.new(host, opts)
     opts = opts or {}
     local restore_ms  = opts.restore_ms or 700           -- put the sideways slide back after this
-    local cooldown_ms = opts.gesture_cooldown_ms or 350  -- one row or column per swipe, however many events
 
     local last_col = {}   -- row -> column last visited in it
     local style_gen = 0   -- bumped on every move; only the newest restore timer may act
-    local cooling = false
     local g = {}
 
     -- The active workspace if it is one of the grid's; nil for a scratchpad or
@@ -121,19 +119,29 @@ function M.new(host, opts)
         return jump(id, M.id_of(row, landing), false, "slidevert")
     end
 
-    -- A swipe may deliver more than one event for a single gesture, which would
-    -- hop several rows; accept one move, then ignore the rest for a moment. A swipe
-    -- that cannot move (the first or last row) does not start the wait.
-    local function swipe(move)
-        if cooling then return false end
-        local moved = move()
-        if moved then
-            cooling = true
-            host.after(cooldown_ms, function() cooling = false end)
+    -- Where a swipe leads from here, for the compositor's grid swipe
+    -- (gestures:workspace_swipe_grid): the workspace to slide to on each side, 0 for
+    -- none. Sideways stays in the row (and stops at its first and last column);
+    -- up/down land on the column each row was last left on, like go_row. Every
+    -- left/up target is a lower workspace number than this one and every right/down
+    -- target a higher one, which the compositor requires.
+    function g.swipe_targets()
+        local id = active()
+        if not id then return { left = 0, right = 0, up = 0, down = 0 } end
+        local row, col = M.row_of(id), M.col_of(id)
+        local function other_row(r)
+            if r < 0 or r >= ROWS then return 0 end
+            local landing = last_col[r]
+            if landing == nil then landing = col end
+            return M.id_of(r, landing)
         end
-        return moved
+        return {
+            left  = col > 0 and id - 1 or 0,
+            right = col < ROW - 1 and id + 1 or 0,
+            up    = other_row(row - 1),
+            down  = other_row(row + 1),
+        }
     end
-    function g.gesture_row(delta) return swipe(function() return g.go_row(delta, false) end) end
 
     -- Column n (1..ROW) of the current row (Super+1..0 are 1..10).
     function g.go_number(n, carry)
