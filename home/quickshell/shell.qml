@@ -127,6 +127,9 @@ ShellRoot {
     onToggleRequested: (screen) => panel.openPanelRequested(screen, "notifications")
   }
 
+  // Workspace overview (four-finger swipe up) -- see Overview.qml
+  Overview {}
+
   // Spotlight-style launcher (rofi replacement) -- see Launcher.qml
   Launcher {
     open: root.launcherOpen

@@ -139,6 +139,19 @@ Scope {
           const f = Hyprland.focusedWorkspace;
           return f && f.id >= 1 ? Math.floor((f.id - 1) / 100) : 0;
         }
+        // 1-based column of the focused workspace within its row (the active chip).
+        property int workspaceCol: {
+          const f = Hyprland.focusedWorkspace;
+          return f && f.id >= 1 ? (f.id - 1) % 100 + 1 : 1;
+        }
+        // Rows with at least one window open (row index -> true).
+        property var workspaceRowsInUse: {
+          const used = ({});
+          for (const ws of Hyprland.workspaces.values) {
+            if (ws.id >= 1 && ws.toplevels.values.length > 0) used[Math.floor((ws.id - 1) / 100)] = true;
+          }
+          return used;
+        }
         property int workspaceCount: {
           let maxCol = 5;
           for (const ws of Hyprland.workspaces.values) {

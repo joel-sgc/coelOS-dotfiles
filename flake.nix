@@ -77,19 +77,32 @@
       };
     in
     {
-      # `nix flake check` (or `nix build .#checks.x86_64-linux.hyprland-grid`) runs
-      # the unit tests for the workspace grid logic (home/hyprland/grid_test.lua)
-      # under Lua 5.5, the version Hyprland embeds.
-      checks.${system}.hyprland-grid =
+      # Unit tests, run by `nix flake check` or one at a time with
+      # `nix build .#checks.x86_64-linux.<name>`:
+      #  - hyprland-grid: the workspace grid logic (home/hyprland/grid_test.lua),
+      #    under Lua 5.5, the version Hyprland embeds.
+      #  - overview-layout: the overview's layout logic
+      #    (home/quickshell/overview/Layout.test.js), under Node.
+      checks.${system} =
         let
           checkPkgs = nixpkgs.legacyPackages.${system};
         in
-        checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; } ''
-          cd ${./home/hyprland}
-          lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
-          cat "$TMPDIR/results.txt"
-          cp "$TMPDIR/results.txt" $out
-        '';
+        {
+          hyprland-grid =
+            checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; } ''
+              cd ${./home/hyprland}
+              lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+              cat "$TMPDIR/results.txt"
+              cp "$TMPDIR/results.txt" $out
+            '';
+
+          overview-layout =
+            checkPkgs.runCommand "overview-layout-tests" { nativeBuildInputs = [ checkPkgs.nodejs ]; } ''
+              node ${./home/quickshell/overview}/Layout.test.js > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+              cat "$TMPDIR/results.txt"
+              cp "$TMPDIR/results.txt" $out
+            '';
+        };
 
       nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";

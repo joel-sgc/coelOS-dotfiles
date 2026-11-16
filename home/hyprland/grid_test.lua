@@ -230,12 +230,24 @@ test("moves made by a swipe or a click are remembered (arrival event)", function
     eq(w.active, 107, "row 1 should remember the column the click landed on")
 end)
 
-test("a built-in swipe that crosses into the next row is just another arrival", function()
-    local w = new_world({ start = 100 })    -- last column of row 0
-    w.click(101)                            -- swipe 'past the end' lands in row 1 column 0
-    eq(w.active, 101)
-    w.grid.go_row(-1, false)                -- row 0 was left on column 99
-    eq(w.active, 100)
+---------------------------------------------------------------- arrivals the grid did not make
+test("even if the arrival event never comes, nothing moves from a workspace off the grid", function()
+    local w = new_world({ start = 2147483647, events = false })
+    eq(w.grid.go_col(1, false), false)
+    eq(w.grid.go_col(-1, true), false)
+    eq(w.grid.go_row(1, false), false)
+    eq(w.grid.gesture_row(-1), false)
+    eq(w.active, 2147483647, "left exactly as it was: no arithmetic on a nonsense id")
+    eq(w.focus_calls + w.move_calls, 0)
+end)
+
+test("the grid never moves anything by itself when told about an arrival", function()
+    for _, landing in ipairs({ 0, 2147483647, 501, 101, 7 }) do
+        local w = new_world({ start = 100 })
+        w.click(landing)
+        eq(w.focus_calls + w.move_calls, 0, "arrival at " .. landing)
+        eq(w.active, landing, "it must not be pulled anywhere")
+    end
 end)
 
 test("the column is recorded before leaving even if the arrival event was missed", function()
@@ -299,12 +311,138 @@ test("carrying a window into a row you have visited lands on that row's column",
     eq(w.window_on, 103)
 end)
 
-test("going down a very long way and back up", function()
+test("the grid has five rows", function()
+    eq(Grid.ROWS, 5)
+end)
+
+test("going down stops at the fifth row and back up returns to the first", function()
     local w = new_world({ start = 5 })
-    for _ = 1, 500 do w.grid.go_row(1, false) end
-    eq(w.active, at(500, 4))
-    for _ = 1, 500 do w.grid.go_row(-1, false) end
-    eq(w.active, 5)
+    for _ = 1, 4 do eq(w.grid.go_row(1, false), true) end
+    eq(w.active, at(4, 4), "row 5, same column")
+    for _ = 1, 20 do w.grid.go_row(1, false) end
+    eq(w.active, at(4, 4), "no sixth row")
+    for _ = 1, 20 do w.grid.go_row(-1, false) end
+    eq(w.active, 5, "back on the first row, same column")
+end)
+
+test("nothing below the fifth row: no move, no animation, no carry", function()
+    local w = new_world({ start = at(4, 7) })
+    local styles = #w.styles
+    eq(w.grid.go_row(1, false), false)
+    eq(w.grid.go_row(1, true), false)
+    eq(w.grid.gesture_row(1), false)
+    eq(w.active, at(4, 7)); eq(#w.styles, styles, "no animation change"); eq(w.move_calls, 0)
+    eq(#w.timers, 0, "and no cooldown or restore timers")
+end)
+
+test("a swipe down at the bottom does not start a cooldown", function()
+    local w = new_world({ start = at(4, 0) })
+    eq(w.grid.gesture_row(1), false)
+    eq(w.grid.gesture_row(-1), true, "the swipe back up must not be swallowed")
+    eq(w.active, at(3, 0))
+end)
+
+test("the fifth row remembers its column like any other", function()
+    local w = new_world({ start = 1 })
+    for _ = 1, 4 do w.grid.go_row(1, false) end        -- row 5 (index 4), column 1
+    w.grid.go_col(1, false); w.grid.go_col(1, false)   -- column 3
+    w.grid.go_row(-1, false)
+    w.grid.go_row(1, false)
+    eq(w.active, at(4, 2))
+end)
+
+test("carrying a window down to the fifth row and no further", function()
+    local w = new_world({ start = at(3, 2) })
+    eq(w.grid.go_row(1, true), true)
+    eq(w.window_on, at(4, 2))
+    eq(w.grid.go_row(1, true), false)
+    eq(w.window_on, at(4, 2), "the window stays put")
+end)
+
+---------------------------------------------------------------- goto_row (the overview)
+test("goto_row jumps straight to a row, on the same column the first time", function()
+    local w = new_world({ start = 4 })
+    eq(w.grid.goto_row(3), true)
+    eq(w.active, at(3, 3))
+end)
+
+test("goto_row returns to the column a row was left on", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_row(1, false); w.grid.go_col(1, false); w.grid.go_col(1, false)   -- row 1, column 3
+    w.grid.go_row(-1, false); w.grid.go_col(1, false)                           -- row 0, column 2
+    eq(w.grid.goto_row(1), true); eq(w.active, at(1, 2))
+    eq(w.grid.goto_row(0), true); eq(w.active, at(0, 1))
+end)
+
+test("goto_row skips rows in between and remembers where it left", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_col(1, false)                    -- row 0, column 2
+    w.grid.goto_row(4)                         -- row 4, column 2 (first visit)
+    w.grid.go_col(1, false)                    -- row 4, column 3
+    w.grid.goto_row(0)
+    eq(w.active, at(0, 1))
+    w.grid.goto_row(4)
+    eq(w.active, at(4, 2))
+end)
+
+test("goto_row to the row you are on does nothing", function()
+    local w = new_world({ start = 105 })
+    eq(w.grid.goto_row(1), false)
+    eq(w.focus_calls, 0); eq(#w.styles, 0)
+end)
+
+test("goto_row rejects anything that is not a row of the grid", function()
+    local w = new_world({ start = 3 })
+    for _, bad in ipairs({ -1, 5, 6, 1.5 }) do eq(w.grid.goto_row(bad), false, "row " .. tostring(bad)) end
+    eq(w.grid.goto_row(nil), false); eq(w.grid.goto_row("2"), false)
+    eq(w.active, 3)
+end)
+
+test("goto_row uses the vertical slide and then puts the sideways slide back", function()
+    local w = new_world({ start = 3 })
+    w.grid.goto_row(2)
+    eq(w.style, "slidevert")
+    w.advance(700)
+    eq(w.style, "slide")
+end)
+
+test("goto_row from a scratchpad lands on that row's remembered column, else the first", function()
+    local w = new_world({ start = 1 })
+    w.grid.go_row(1, false); w.grid.go_col(1, false); w.grid.go_col(1, false)   -- row 1, column 3
+    w.grid.go_row(-1, false)
+    w.special = true
+    w.grid.goto_row(1); eq(w.active, at(1, 2), "remembered column")
+    local v = new_world({ start = 1 })
+    v.special = true
+    v.grid.goto_row(3); eq(v.active, at(3, 0), "first column of a new row")
+end)
+
+---------------------------------------------------------------- snapshot (for the overview)
+test("snapshot lists each row's remembered workspace, empty for unvisited rows", function()
+    local w = new_world({ start = 3 })
+    eq(w.grid.snapshot(), "3,,,,")
+    w.grid.go_row(1, false); w.grid.go_col(1, false)       -- row 1, column 4
+    eq(w.grid.snapshot(), "3,104,,,")
+    w.grid.goto_row(4)                                     -- row 4 opens on column 4
+    eq(w.grid.snapshot(), "3,104,,,404")
+end)
+
+test("snapshot always has five entries", function()
+    local w = new_world({ start = 250 })
+    local _, commas = w.grid.snapshot():gsub(",", ",")
+    eq(commas, 4)
+end)
+
+test("snapshot follows moves made outside the grid", function()
+    local w = new_world({ start = 1 })
+    w.click(307)
+    eq(w.grid.snapshot(), "1,,,307,")
+end)
+
+test("a scratchpad does not change the snapshot", function()
+    local w = new_world({ start = 105 })
+    w.special = true; w.grid.arrived()
+    eq(w.grid.snapshot(), ",105,,,")
 end)
 
 ---------------------------------------------------------------- numbers
@@ -432,7 +570,7 @@ local function fuzz(seed, steps, events)
     for step = 1, steps do
         local before, special = w.active, w.special
         local row, col = Grid.row_of(before), Grid.col_of(before)
-        local op = math.random(1, 12)
+        local op = math.random(1, 13)
         local expect = before
         local note
 
@@ -448,7 +586,7 @@ local function fuzz(seed, steps, events)
             note = ("go_row(%d,%s)"):format(d, tostring(carry))
             ref[row] = (not special) and col or ref[row]     -- recorded before leaving
             local moved = w.grid.go_row(d, carry)
-            if not special and row + d >= 0 then
+            if not special and row + d >= 0 and row + d < Grid.ROWS then
                 local landing = ref[row + d]
                 if landing == nil then landing = col end
                 expect = Grid.id_of(row + d, landing)
@@ -460,7 +598,7 @@ local function fuzz(seed, steps, events)
             local cooling = (w.now - last_gesture) < 350
             ref[row] = (not special) and col or ref[row]
             local moved = w.grid.gesture_row(d)
-            if not special and not cooling and row + d >= 0 then
+            if not special and not cooling and row + d >= 0 and row + d < Grid.ROWS then
                 local landing = ref[row + d]
                 if landing == nil then landing = col end
                 expect = Grid.id_of(row + d, landing)
@@ -476,12 +614,23 @@ local function fuzz(seed, steps, events)
                 expect = Grid.id_of(Grid.row_of(base), n - 1)
             end
             if special and not (n >= 1 and n <= ROW) then expect = before end
-        elseif op == 9 and events then
+        elseif op == 9 and events and not special then
             -- a swipe / click / `workspace N` that bypasses the grid
             local target = math.random(1, 450)
             note = ("click(%d)"):format(target)
             w.click(target)
             expect = target
+        elseif op == 13 then
+            local r = math.random(-1, Grid.ROWS + 1)
+            note = ("goto_row(%d)"):format(r)
+            ref[row] = (not special) and col or ref[row]
+            local moved = w.grid.goto_row(r)
+            if not special and r >= 0 and r < Grid.ROWS and r ~= row then
+                local landing = ref[r]
+                if landing == nil then landing = col end
+                expect = Grid.id_of(r, landing)
+            end
+            if moved then last_vertical = w.now end
         elseif op == 10 and events then
             -- (Only with arrival events: with a scratchpad up the grid cannot see
             -- which numbered workspace is underneath, so without the event it has

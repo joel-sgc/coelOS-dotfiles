@@ -61,6 +61,10 @@ hl.config({
 -- (grid_test.lua). This only plugs Hyprland into it.
 package.path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/?.lua;" .. package.path
 
+-- One speed for both slides (sideways and up/down), in tenths of a second, so they
+-- always feel the same: 3 is about 300 ms. Lower is snappier.
+local SLIDE_SPEED = 3
+
 local grid = require("grid").new({
     active_id = function()
         local ws = hl.get_active_workspace()
@@ -70,35 +74,52 @@ local grid = require("grid").new({
     -- Moves the focused window and follows it.
     move = function(id) hl.dispatch(hl.dsp.window.move({ workspace = id })) end,
     animate = function(style)
-        hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "default", style = style })
+        hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier = "default", style = style })
     end,
     after = function(ms, fn) hl.timer(fn, { timeout = ms, type = "oneshot" }) end,
+}, {
+    -- Put the sideways slide back once the up/down one has played: a little longer
+    -- than the animation itself (SLIDE_SPEED tenths of a second).
+    restore_ms = SLIDE_SPEED * 100 + 150,
 })
-hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "default", style = "slide" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier = "default", style = "slide" })
 
 -- Every arrival, however it happened (key, swipe, panel click, window carried
 -- along), updates the remembered column, so leaving a row always records where
 -- you were.
-hl.on("workspace.active", grid.arrived)
-
-hl.config({
-    gestures = {
-        -- Hyprland's own sideways swipe normally steps to the next EXISTING
-        -- workspace, which can be one in another row. This makes it step by plain
-        -- workspace number (+1/-1), i.e. along the row.
-        workspace_swipe_use_r = true,
-    },
-})
+-- The overview (home/quickshell/Overview.qml) takes you to a row through this...
+coel_grid = grid
+-- ...and reads which workspace each row returns to from this file, kept up to date
+-- on every change of workspace (five numbers: see grid.snapshot()).
+local rows_file = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/coel-grid-rows"
+local function save_rows()
+    local f = io.open(rows_file, "w")
+    if f then f:write(grid.snapshot()); f:close() end
+end
+hl.on("workspace.active", function()
+    grid.arrived()
+    save_rows()
+end)
+save_rows()   -- a fresh session starts with a fresh file, never a stale one
 
 ------------------------------------------------------------------ gestures
--- Sideways: Hyprland's own swipe, the workspaces follow your fingers. The
--- built-in swipe tracks one axis only, so up/down cannot be built in: they step
--- one row per swipe (grid.gesture_row ignores repeat events from one swipe).
--- Four fingers are left free for a future overview. If up/down feel backwards,
--- swap the two directions.
+-- Sideways: Hyprland's own swipe, so the workspaces follow your fingers (you can
+-- hold halfway). It is left in its default mode, which only ever steps to a
+-- workspace that EXISTS, so it cannot go below the first workspace. (An earlier
+-- attempt to make it count by workspace number, `workspace_swipe_use_r`, let it
+-- target workspace 0 and crashed Hyprland when a swipe ended: do not turn that on.)
+-- It can reach a neighbouring row's workspace if you swipe past the end of a row;
+-- Super+Ctrl+arrows and Super+1..0 never do.
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+-- Up/down cannot be built in (the built-in swipe tracks one axis), so they step one
+-- row per swipe through the grid (grid.lua), which cannot leave it and ignores
+-- repeat events from one swipe. If up/down feel backwards, swap the two lines.
 hl.gesture({ fingers = 3, direction = "up",   action = function() grid.gesture_row(1) end })
 hl.gesture({ fingers = 3, direction = "down", action = function() grid.gesture_row(-1) end })
+-- Four fingers: up opens the workspace overview (home/quickshell/Overview.qml, in
+-- the panel), down closes it. Escape or a click also close it.
+hl.gesture({ fingers = 4, direction = "up",   action = function() hl.exec_cmd(qs .. " overview open") end })
+hl.gesture({ fingers = 4, direction = "down", action = function() hl.exec_cmd(qs .. " overview close") end })
 
 ------------------------------------------------------------------ autostart
 hl.on("hyprland.start", function()

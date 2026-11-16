@@ -11,16 +11,8 @@ import QtQuick.Layouts
 RowLayout {
   spacing: 2
 
-  // Which row of the workspace grid this is; only shown below the first row.
-  Text {
-    visible: root.workspaceRow > 0
-    Layout.alignment: Qt.AlignVCenter
-    Layout.rightMargin: 4
-    text: "row " + (root.workspaceRow + 1)
-    color: root.mutedColor
-    font.family: "JetBrains Mono"
-    font.pixelSize: 12
-  }
+  // Which of the five rows of the workspace grid this is.
+  RowIndicator {}
 
   Repeater {
     model: root.workspaceCount
