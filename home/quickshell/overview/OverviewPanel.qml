@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell.Wayland
 import ".."
 
@@ -41,7 +41,9 @@ FocusScope {
 
   // 0 = your desktop, 1 = the map.
   property real t: 0
-  property string phase: "waiting"       // waiting -> open -> closing
+  property string phase: "waiting"       // waiting -> open -> closing (drag: following your fingers)
+  property bool driven: false            // opened by a swipe that is still going: follow it
+  property real dragT: 0                 // where the fingers have taken t (0..1)
 
   // row, workspace id, and whether it is the desktop that row returns to anyway.
   signal chosen(int row, int id, bool rep)
@@ -125,10 +127,13 @@ FocusScope {
     return n;
   }
   // Jump to the first desktop with a match (after the bindings above have settled).
-  onQueryChanged: Qt.callLater(function () {
+  onQueryChanged: {
+    if (field.text !== query) field.text = query;
+    Qt.callLater(ov.jumpToHit);
+  }
+  function jumpToHit() {
     if (ov.hits.length) { ov.selRow = ov.hits[0].row; ov.selIdx = ov.hits[0].idx; }
-  })
-
+  }
   function move(dr, dc) {
     if (phase !== "open" || !rows.length) return;
     let r = selRow, i = selIdx;
@@ -142,12 +147,51 @@ FocusScope {
     selRow = r; selIdx = i;
   }
 
-  function start() {
+  function start(from) {
     if (phase !== "waiting") return;
     selRow = zoomRow = currentRow;
     selIdx = zoomIdx = repIndex(currentRow);
     phase = "open";
-    anim.from = 0; anim.to = 1; anim.restart();
+    // Never start so far along that there is nothing left to see.
+    anim.from = Math.min(from || 0, 0.5); anim.to = 1; anim.restart();
+  }
+
+  // ---- following a swipe ----
+  // A swipe up opens the map as it goes (dragT is its progress); a swipe down on an
+  // open map takes it back. Letting go finishes the move one way or the other.
+  function grab() {                       // a swipe starts on an open (or closing) map
+    if (phase !== "open" && phase !== "closing") return false;
+    anim.stop();
+    selRow = zoomRow = currentRow;
+    selIdx = zoomIdx = repIndex(currentRow);
+    snapFollow(t);                        // hold exactly where it is
+    phase = "drag";
+    return true;
+  }
+  // The map eases towards where the fingers are rather than jumping to it, so a fast
+  // swipe is still seen: it can move at most this fast (t per second); lower is slower.
+  property real follow: 0
+  property bool easeFollow: false
+  function snapFollow(v) { easeFollow = false; follow = v; easeFollow = true; }
+  onDragTChanged: follow = dragT
+  Component.onCompleted: { snapFollow(0); follow = dragT; }   // eases up to wherever the fingers already are
+  Behavior on follow {
+    enabled: ov.easeFollow
+    SmoothedAnimation { velocity: 4.2; reversingMode: SmoothedAnimation.Sync }
+  }
+  onFollowChanged: if (phase === "drag") t = Math.max(0, Math.min(1, follow))
+  // The fingers are up. open: where the move was going (true = the map).
+  function release(open) {
+    driven = false;
+    if (phase === "drag") {
+      anim.from = t;
+      if (open) { phase = "open"; anim.to = 1; }
+      else { phase = "closing"; anim.to = 0; }
+      anim.restart();
+    } else if (phase === "waiting") {
+      // Not built yet (first moments of the swipe): go on as a normal open or give up.
+      if (open) { if (ready) start(Math.max(0, dragT)); } else finished();
+    }
   }
   function closeTo(row, idx) {
     if (phase === "closing") return;
@@ -174,24 +218,32 @@ FocusScope {
 
   // Begin as soon as there is something to show and the picture of your desktop is in.
   readonly property bool ready: dataReady && (snap.hasContent || fallback.running === false)
-  onReadyChanged: if (ready) start()
+  onReadyChanged: if (ready) {
+    if (driven) {                          // the swipe is still going: join it where it is
+      selRow = zoomRow = currentRow;
+      selIdx = zoomIdx = repIndex(currentRow);
+      phase = "drag";
+      t = Math.max(0, Math.min(1, follow));
+    } else start(Math.max(0, dragT));
+  }
   Timer { id: fallback; interval: 350; running: true }   // do not wait forever for the picture
 
-  NumberAnimation { id: anim; target: ov; property: "t"; duration: 480; easing.type: Easing.OutQuint
+  NumberAnimation { id: anim; target: ov; property: "t"; duration: 300; easing.type: Easing.OutQuart
                     onFinished: if (ov.phase === "closing") ov.finished() }
 
   focus: true
-  Keys.onPressed: event => {
-    if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return;
+  // The search field owns the keyboard (see below), so it behaves as a normal text
+  // box; these are the keys it hands back to the map.
+  function fieldKey(event, field) {
     const k = event.key;
-    if (k === Qt.Key_Escape) { event.accepted = true; if (ov.query !== "") ov.query = ""; else ov.dismiss(); }
-    else if (k === Qt.Key_Return || k === Qt.Key_Enter) { event.accepted = true; ov.choose(ov.selRow, ov.selIdx); }
-    else if (k === Qt.Key_Left) { event.accepted = true; ov.move(0, -1); }
-    else if (k === Qt.Key_Right) { event.accepted = true; ov.move(0, 1); }
-    else if (k === Qt.Key_Up) { event.accepted = true; ov.move(-1, 0); }
-    else if (k === Qt.Key_Down) { event.accepted = true; ov.move(1, 0); }
-    else if (k === Qt.Key_Backspace) { event.accepted = true; ov.query = ov.query.slice(0, -1); }
-    else if (event.text.length === 1 && event.text >= " " && ov.query.length < 32) { event.accepted = true; ov.query += event.text; }
+    if (k === Qt.Key_Escape) { event.accepted = true; if (field.text !== "") field.clear(); else dismiss(); }
+    else if (k === Qt.Key_Return || k === Qt.Key_Enter) { event.accepted = true; choose(selRow, selIdx); }
+    else if (k === Qt.Key_Up) { event.accepted = true; move(-1, 0); }
+    else if (k === Qt.Key_Down) { event.accepted = true; move(1, 0); }
+    // Sideways walks the row until there is text to edit; then it is the caret's.
+    else if ((k === Qt.Key_Left || k === Qt.Key_Right) && field.text === "") {
+      event.accepted = true; move(0, k === Qt.Key_Left ? -1 : 1);
+    }
   }
 
   // Scroll: up/down moves between rows, sideways (or shift) along the row.
@@ -329,15 +381,6 @@ FocusScope {
               id: clip
               anchors.fill: parent
               // Square when it fills the screen, rounded as a miniature.
-              // Only while the map is settled: a layer is rendered at the tile's small size,
-              // so during a zoom it would be stretched and blurry. Unrounded while moving.
-              layer.enabled: ov.t > 0.98
-              layer.effect: MultiEffect {
-                maskEnabled: true
-                maskSource: roundMask
-                maskThresholdMin: 0.5
-                maskSpreadAtMin: 1.0
-              }
               Rectangle { anchors.fill: parent; color: ov.cTile }
 
               Loader {
@@ -380,12 +423,29 @@ FocusScope {
               }
             }
 
-            Item {
-              id: roundMask
-              anchors.fill: parent
-              visible: false
-              layer.enabled: true
-              Rectangle { anchors.fill: parent; radius: ov.radius * ov.chrome; color: "black" }
+            // Rounded corners: four background-coloured corner pieces over the tile.
+            // Plain vector shapes (no offscreen layer), so they stay sharp however far
+            // the map is zoomed and cost nothing while it moves.
+            Repeater {
+              model: [{ x: 0, y: 0, rot: 0 }, { x: 1, y: 0, rot: 90 }, { x: 1, y: 1, rot: 180 }, { x: 0, y: 1, rot: 270 }]
+              delegate: Shape {
+                required property var modelData
+                readonly property real rad: ov.radius * ov.chrome
+                visible: rad > 0.5
+                width: rad; height: rad
+                x: modelData.x ? tile.width - rad : 0
+                y: modelData.y ? tile.height - rad : 0
+                rotation: modelData.rot
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                  fillColor: ov.cBg
+                  strokeWidth: -1
+                  startX: 0; startY: 0
+                  PathLine { x: rad; y: 0 }
+                  PathArc { x: 0; y: rad; radiusX: rad; radiusY: rad; direction: PathArc.Counterclockwise }
+                  PathLine { x: 0; y: 0 }
+                }
+              }
             }
 
             MouseArea {
@@ -488,31 +548,32 @@ FocusScope {
           rotation: 45
         }
       }
-      Row {
-        anchors.verticalCenter: parent.verticalCenter
-        Text {
-          text: ov.query; color: ov.cFg
-          font.family: "JetBrains Mono"; font.pixelSize: Math.round(13 * ov.u)
-        }
-        Rectangle {
-          width: 7 * ov.u; height: 14 * ov.u; color: ov.cAccent
-          anchors.verticalCenter: parent.verticalCenter
-          SequentialAnimation on opacity {
-            loops: Animation.Infinite; running: ov.phase === "open"
-            NumberAnimation { to: 1; duration: 0 }
-            PauseAnimation { duration: 550 }
-            NumberAnimation { to: 0; duration: 0 }
-            PauseAnimation { duration: 550 }
-          }
-        }
-        Text {
-          visible: ov.query === ""
-          text: "type to find a window"; color: ov.cMute
-          font.family: "JetBrains Mono"; font.pixelSize: Math.round(13 * ov.u)
-        }
+    }
+    TextInput {
+      id: field
+      anchors.left: parent.left; anchors.leftMargin: 38 * ov.u
+      anchors.right: countText.left; anchors.rightMargin: 10 * ov.u
+      anchors.verticalCenter: parent.verticalCenter
+      focus: true
+      clip: true
+      maximumLength: 64
+      color: ov.cFg
+      selectionColor: ov.cAccent
+      selectedTextColor: ov.cBg
+      selectByMouse: true
+      font.family: "JetBrains Mono"; font.pixelSize: Math.round(13 * ov.u)
+      onTextChanged: ov.query = text
+      Keys.onPressed: event => ov.fieldKey(event, field)
+      // A thin line that blinks, like a terminal's bar cursor.
+      cursorDelegate: Rectangle { width: Math.max(1.5, 1.5 * ov.u); color: ov.cAccent }
+      Text {
+        visible: field.text === ""
+        text: "type to find a window"; color: ov.cMute
+        font: field.font
       }
     }
     Text {
+      id: countText
       anchors.right: parent.right; anchors.rightMargin: 12 * ov.u
       anchors.verticalCenter: parent.verticalCenter
       text: ov.query === "" ? ov.totalWindows + " windows"

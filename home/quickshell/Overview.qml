@@ -17,6 +17,71 @@ Scope {
 
   property bool open: false
 
+  // ---- four-finger swipes, followed live ----
+  // Hyprland (patched, home/hyprland/hyprland.lua) reports each swipe as raw events
+  // "coelswipe>>begin,<up|down>", ">>update,<tag>,<distance>", ">>end,<tag>,<distance>,<cancelled>".
+  // Up on a closed overview opens it, the map following your fingers; down on an open
+  // one takes it back. Letting go commits when you went far enough, or fast enough.
+  readonly property real swipeSpan: 300       // distance (Hyprland's units) for a whole open/close
+  property string swipeKind: ""               // "" | "open" | "close"
+  property real swipeT: 0                     // the map's t as the fingers have it
+  property real swipeVel: 0                   // t per second, recent
+  property real swipeLastT: 0
+  property real swipeLastMs: 0
+
+  function swipePanel() { const w = loader.item; return w ? w.overviewPanel : null; }
+
+  property real swipeBase: 0                  // t when the swipe took hold (0 or 1, or mid-animation)
+
+  function onSwipe(data) {
+    const p = data.split(",");
+    const kind = p[0], tag = p[1];
+    if (kind === "begin") {
+      swipeKind = "";
+      const panel = swipePanel();
+      if (tag === "up" && !open) {
+        swipeKind = "open"; swipeBase = 0; swipeT = 0;
+        open = true;
+      } else if (tag === "up" && panel && panel.phase === "closing" && panel.grab()) {
+        // Swiped up again while it was still closing: take it back from where it is.
+        swipeKind = "open"; swipeBase = panel.t; swipeT = panel.t;
+      } else if (tag === "down" && panel && panel.grab()) {
+        // (also mid-way through opening: whatever it was doing, your fingers have it now)
+        swipeKind = "close"; swipeBase = panel.t; swipeT = panel.t;
+      }
+      swipeVel = 0; swipeLastT = swipeT; swipeLastMs = Date.now();
+      return;
+    }
+    if (swipeKind === "" || tag !== (swipeKind === "open" ? "up" : "down")) return;
+    const moved = (parseFloat(p[2]) || 0) / swipeSpan;
+    const t = Math.max(0, Math.min(1, swipeKind === "open" ? swipeBase + moved : swipeBase - moved));
+    if (kind === "update") {
+      // Speed, smoothed. The first update arrives together with "begin" (same
+      // instant), which says nothing about speed, so updates that close are skipped.
+      const now = Date.now(), dt = now - swipeLastMs;
+      if (dt >= 4) {
+        swipeVel = 0.6 * swipeVel + 0.4 * (t - swipeLastT) / (dt / 1000);
+        swipeLastT = t; swipeLastMs = now;
+      }
+      swipeT = t;
+    } else if (kind === "end") {
+      const cancelled = p[3] === "1";
+      let goOpen;
+      if (cancelled) goOpen = swipeKind === "close";
+      else if (swipeKind === "open") goOpen = t >= 0.33 || swipeVel > 1.2;       // far enough, or a flick
+      else goOpen = !(t <= 0.67 || swipeVel < -1.2);
+      const panel = swipePanel();
+      if (panel) panel.release(goOpen);
+      else if (!goOpen) open = false;
+      swipeKind = "";
+    }
+  }
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) { if (event.name === "coelswipe") scope.onSwipe(event.data); }
+  }
+
   IpcHandler {
     target: "overview"
     function open(): void { scope.open = true; }
@@ -93,6 +158,8 @@ Scope {
       OverviewPanel {
         id: panel
         anchors.fill: parent
+        driven: scope.swipeKind === "open"
+        dragT: scope.swipeT
         rows: win.rows
         dataReady: win.dataReady
         screenW: win.screen ? win.screen.width : 2256

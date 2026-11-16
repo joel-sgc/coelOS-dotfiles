@@ -133,9 +133,11 @@ pcall(hl.config, { gestures = { workspace_swipe_grid = true } })
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 hl.gesture({ fingers = 3, direction = "vertical",   action = "workspace" })
 -- Four fingers: up opens the workspace overview (home/quickshell/Overview.qml, in
--- the panel), down closes it. Escape or a click also close it.
-hl.gesture({ fingers = 4, direction = "up",   action = function() hl.exec_cmd(qs .. " overview open") end })
-hl.gesture({ fingers = 4, direction = "down", action = function() hl.exec_cmd(qs .. " overview close") end })
+-- the panel), down closes it, and the overview follows your fingers as they move.
+-- "event" is an action of the patched Hyprland: it only reports the swipe's progress
+-- as "coelswipe" events, which Overview.qml follows. Escape or a click also close it.
+hl.gesture({ fingers = 4, direction = "up",   action = "event", mode = "up" })
+hl.gesture({ fingers = 4, direction = "down", action = "event", mode = "down" })
 
 ------------------------------------------------------------------ autostart
 hl.on("hyprland.start", function()
