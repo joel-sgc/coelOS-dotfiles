@@ -500,6 +500,30 @@ test("a special workspace never overwrites a row's remembered column", function(
     eq(w.grid.remembered(-1), nil, "id -98 must not create a bogus row")
 end)
 
+---------------------------------------------------------------- goto_row, carrying a window
+test("goto_row with carry takes the window and lands on the row's remembered column", function()
+    local w = new_world({ start = at(0, 2) })
+    w.grid.goto_row(2)                       -- visit row 2 (column 2), then back
+    w.grid.go_col(1, false)                  -- row 2, column 3
+    w.grid.goto_row(0)
+    local focus, move = w.focus_calls, w.move_calls
+    eq(w.grid.goto_row(2, true), true)
+    eq(w.active, at(2, 3))
+    eq(w.move_calls, move + 1); eq(w.focus_calls, focus, "carried, not just focused")
+end)
+
+test("goto_row to the row you are on does nothing, carrying or not", function()
+    local w = new_world({ start = at(1, 4) })
+    eq(w.grid.goto_row(1, true), false)
+    eq(w.move_calls, 0)
+end)
+
+test("goto_row refuses nonsense rows even when carrying", function()
+    local w = new_world({ start = 3 })
+    for _, bad in ipairs({ -1, 5, 2.5, "x" }) do eq(w.grid.goto_row(bad, true), false) end
+    eq(w.move_calls + w.focus_calls, 0)
+end)
+
 ---------------------------------------------------------------- swipe targets
 test("a swipe's targets: neighbours in the row, other rows on the same column", function()
     local w = new_world({ start = 3 })

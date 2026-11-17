@@ -119,6 +119,9 @@ Scope {
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
       property var rows: []
+      property var clients: []                // `hyprctl clients`, kept so a moved window can be re-laid-out
+      property var layoutOpts: ({})
+      property int movedTo: 0                 // the workspace a window was just dropped on
       property bool dataReady: false
       property url wallpaper: ""
 
@@ -139,16 +142,37 @@ Scope {
             const active = json(parts[3], {});
             const mons = json(parts[4], []);
             const mon = mons.find(m => m.focused) || mons[0] || {};
-            win.rows = L.rowsOf(clients, {
+            win.clients = clients;
+            win.layoutOpts = {
               monitorId: mon.id !== undefined ? mon.id : -1, monX: mon.x || 0, monY: mon.y || 0,
               focusedId: active.id !== undefined ? active.id : -1, remembered: parts[1] || "",
-            });
+            };
+            win.rows = L.rowsOf(clients, win.layoutOpts);
             // "eDP-1: 2256x1504, scale: 1, currently displaying: image: /path/to.jpg"
             const lines = (parts[2] || "").split("\n");
             const own = lines.find(l => mon.name && l.indexOf(mon.name + ":") >= 0) || lines[0] || "";
             const img = /image:\s*(\S.*?)\s*$/.exec(own);
             if (img) win.wallpaper = "file://" + img[1];
             win.dataReady = true;
+          }
+        }
+      }
+
+      // A moment after a drop: the windows as Hyprland has really arranged them now
+      // (the dropped window's size and place, and its new neighbours'), and each picture
+      // taken again as the rows are laid out afresh.
+      Timer { id: refreshTimer; interval: 250; onTriggered: refresh.running = true }
+      Process {
+        id: refresh
+        command: ["hyprctl", "-j", "clients"]
+        stdout: StdioCollector {
+          onStreamFinished: {
+            let fresh = null;
+            try { fresh = JSON.parse(text); } catch (e) { fresh = null; }
+            if (!fresh) return;
+            win.clients = fresh;
+            win.rows = L.rowsOf(fresh, win.layoutOpts);
+            if (win.movedTo) panel.selectId(win.movedTo);
           }
         }
       }
@@ -180,6 +204,25 @@ Scope {
         onChosen: (row, id, rep) => Hyprland.dispatch(rep
           ? "function() coel_grid.goto_row(" + row + ") end"
           : "function() hl.dispatch(hl.dsp.focus({ workspace = " + id + " })) end")
+        // A window was dropped on another workspace: Hyprland moves it (it stays where
+        // you are), and the map is laid out again with it in its new place.
+        onWindowMoved: (address, workspace, fx, fy) => {
+          // Hyprland moves it (you stay where you are), placing it on the side of the
+          // workspace it was dropped on: the point is given in screen coordinates.
+          const o = win.layoutOpts;
+          Hyprland.dispatch("function() hl.dispatch(hl.dsp.window.move({ workspace = " + workspace
+            + ", follow = false, window = \"address:" + address + "\", focal_x = "
+            + Math.round((o.monX || 0) + fx * panel.screenW) + ", focal_y = "
+            + Math.round((o.monY || 0) + fy * panel.screenH) + " })) end");
+          // Show it at once, then (once Hyprland has re-tiled) take the real layout again.
+          const list = win.clients.map(c => c.address === address
+            ? Object.assign({}, c, { workspace: { id: workspace, name: String(workspace) } }) : c);
+          win.clients = list;
+          win.rows = L.rowsOf(list, win.layoutOpts);
+          panel.selectId(workspace);
+          win.movedTo = workspace;
+          refreshTimer.restart();
+        }
         onFinished: scope.open = false
       }
     }

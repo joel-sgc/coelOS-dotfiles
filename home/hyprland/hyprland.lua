@@ -232,6 +232,13 @@ for i = 1, 10 do
     hl.bind(mainMod .. " + SHIFT + " .. key,   function() grid.go_number(i, true) end)
 end
 
+-- Super+Ctrl+1..5: carry the focused window to that row (landing on the column the
+-- row was last left on) and follow it. Dragging a window in the overview does the
+-- same for any workspace.
+for r = 1, 5 do
+    hl.bind(mainMod .. " + CTRL + " .. r, function() grid.goto_row(r - 1, true) end)
+end
+
 -- Move / resize windows with Super + left / right mouse button
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })

@@ -104,11 +104,14 @@ function rowsOf(clients, opts) {
     else if (remembered[r] >= 1 && rowOf(remembered[r]) === r) rep = remembered[r];
     else if (ids.length) rep = ids[0];
     else rep = idOf(r, 1);
-    if (ids.indexOf(rep) < 0) { ids.push(rep); ids.sort(function (a, b) { return a - b; }); }
-    // A row always ends in an empty workspace to open something in: when its last
-    // one has windows, offer the next. (An empty one is left as it is.)
-    var last = ids[ids.length - 1];
-    if ((byWs[last] || []).length && colOf(last) < ROW) ids.push(last + 1);
+    // Every workspace from the row's start up to the last one in use (one with windows,
+    // or the one the row returns to) is shown, so an empty workspace with something
+    // after it never disappears. Then one more, empty, to open something in (unless
+    // the last one is already empty).
+    var lastUsed = Math.max(rep, ids.length ? ids[ids.length - 1] : 0);
+    ids = [];
+    for (var id = idOf(r, 1); id <= lastUsed; id++) ids.push(id);
+    if ((byWs[lastUsed] || []).length && colOf(lastUsed) < ROW) ids.push(lastUsed + 1);
 
     rows.push({
       index: r, label: "r" + (r + 1), current: r === focusedRow,

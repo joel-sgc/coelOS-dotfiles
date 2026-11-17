@@ -48,6 +48,7 @@ FocusScope {
   // row, workspace id, and whether it is the desktop that row returns to anyway.
   signal chosen(int row, int id, bool rep)
   signal finished()
+  signal windowMoved(string address, int workspace, real fx, real fy)   // dropped on a workspace, at this point of its tile (0..1 each way)
 
   // ---- geometry (the design is authored for 1280 wide; u scales it to the screen) ----
   // 0.78: the design filled the screen with its map; a little smaller leaves air
@@ -84,7 +85,19 @@ FocusScope {
   readonly property color cYellow: "#e5c07b"
   readonly property color cRed: "#ef596f"
 
+  readonly property int rowCount: 5
   function desksOf(row) { return rows[row] ? rows[row].desks : []; }
+  // What a desktop looks like, as text: two desktops with the same text need no redraw.
+  function deskSig(d) {
+    if (!d) return "";
+    let out = d.id + "|" + d.rep + "|";
+    for (const w of d.windows) out += w.address + ":" + w.x + "," + w.y + "," + w.w + "," + w.h + "," + w.title + "," + w.floating + ";";
+    return out;
+  }
+  function applyRows() {
+    for (let r = 0; r < rowCount; r++) { const item = rowRepeater.itemAt(r); if (item) item.setDesks(desksOf(r)); }
+  }
+  onRowsChanged: applyRows()
   function repIndex(row) {
     const desks = desksOf(row);
     for (let i = 0; i < desks.length; i++) if (desks[i].rep) return i;
@@ -174,7 +187,7 @@ FocusScope {
   property bool easeFollow: false
   function snapFollow(v) { easeFollow = false; follow = v; easeFollow = true; }
   onDragTChanged: follow = dragT
-  Component.onCompleted: { snapFollow(0); follow = dragT; }   // eases up to wherever the fingers already are
+  Component.onCompleted: { snapFollow(0); follow = dragT; applyRows(); Qt.callLater(applyRows); }   // eases up to wherever the fingers already are
   Behavior on follow {
     enabled: ov.easeFollow
     SmoothedAnimation { velocity: 4.2; reversingMode: SmoothedAnimation.Sync }
@@ -214,6 +227,75 @@ FocusScope {
       selRow = currentRow; selIdx = repIndex(currentRow);
       closeTo(selRow, selIdx);
     } else if (phase === "waiting") finished();
+  }
+
+  // ---- dragging a window from one desktop to another ----
+  property var dragWin: null             // the window being carried (a Layout.js window)
+  property int dragRow: 0                // where it came from
+  property int dragIdx: 0
+  property real dragGrabX: 0             // where on the window it was picked up (screen pixels)
+  property real dragGrabY: 0
+  property real dragPx: 0                // the pointer, in panel coordinates
+  property real dragPy: 0
+  property bool dragSuppress: false      // swallow the click that ends a drag
+  property bool snapStale: false         // the picture of your screen no longer matches (a window left or arrived)
+
+  // The topmost window of a desktop under (x, y), in screen pixels.
+  function windowAt(desk, x, y) {
+    const ws = desk && desk.windows ? desk.windows : [];
+    for (let i = ws.length - 1; i >= 0; i--) {
+      const w = ws[i];
+      if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) return w;
+    }
+    return null;
+  }
+  // The desktop under a point in panel coordinates, or null.
+  function tileAt(px, py) {
+    for (let r = 0; r < rows.length; r++) {
+      const ty = tileY(r);
+      if (py < ty || py > ty + tileH + 14 * u) continue;
+      const desks = rows[r].desks;
+      for (let i = 0; i < desks.length; i++) {
+        const tx = tileX(r, i);
+        if (tx + tileW < ox + x0 - 2 * u || tx > ox + stageW) continue;   // scrolled out of sight
+        if (px >= tx && px <= tx + tileW) return { row: r, idx: i };
+      }
+    }
+    return null;
+  }
+  function beginDrag(w, row, idx, gx, gy) {
+    dragWin = w; dragRow = row; dragIdx = idx; dragGrabX = gx; dragGrabY = gy;
+  }
+  function dragMove(px, py) {
+    dragPx = px; dragPy = py;
+    const hit = tileAt(px, py);
+    if (hit) { selRow = hit.row; selIdx = hit.idx; }     // the ring shows where it would land
+  }
+  function dragEnd() {
+    dragWin = null;
+    dragSuppress = true;
+    Qt.callLater(function () { ov.dragSuppress = false; });
+  }
+  function dragCancel() {
+    selRow = dragRow; selIdx = dragIdx;
+    dragEnd();
+  }
+  function dragDrop() {
+    const w = dragWin, hit = tileAt(dragPx, dragPy);
+    const from = desksOf(dragRow)[dragIdx];
+    const to = hit ? desksOf(hit.row)[hit.idx] : null;
+    dragEnd();
+    if (!w || !to || !from || to.id === from.id) { selRow = dragRow; selIdx = dragIdx; return; }
+    if ((dragRow === currentRow && from.rep) || (hit.row === currentRow && to.rep)) snapStale = true;
+    // Where in the tile it was let go (0..1 across and down), so it can land on that side.
+    const tx = tileX(hit.row, hit.idx), ty = tileY(hit.row);
+    windowMoved(w.address, to.id, Math.max(0, Math.min(1, (dragPx - tx) / tileW)), Math.max(0, Math.min(1, (dragPy - ty) / tileH)));
+  }
+  // After the rows are rebuilt: put the selector back on a workspace.
+  function selectId(id) {
+    const r = Math.floor((id - 1) / 100);
+    const d = desksOf(r);
+    for (let i = 0; i < d.length; i++) if (d[i].id === id) { selRow = r; selIdx = i; return; }
   }
 
   // Begin as soon as there is something to show and the picture of your desktop is in.
@@ -272,11 +354,11 @@ FocusScope {
 
   // Row labels: a coloured bar, the row number, and what is in it.
   Repeater {
-    model: ov.rows
+    model: ov.rowCount
     delegate: Item {
       id: lab
-      required property var modelData
       required property int index
+      readonly property var modelData: ov.rows[index] || { desks: [] }
       readonly property bool isSel: ov.selRow === index
       readonly property bool isCur: ov.currentRow === index
       readonly property int nWs: { let n = 0; for (const d of modelData.desks) if (d.windows.length) n++; return n; }
@@ -322,28 +404,50 @@ FocusScope {
 
     Repeater {
       id: rowRepeater
-      model: ov.rows
+      model: ov.rowCount
 
       delegate: Item {
         id: rowItem
-        required property var modelData
         required property int index
         readonly property int focusIdx: ov.selRow === index ? ov.selIdx : ov.repIndex(index)
-        readonly property int count: modelData.desks.length
+        // The row's desktops. Tiles are not rebuilt when this changes: each one only
+        // takes its new desktop if that differs from what it already shows, so after a
+        // window moves only the two workspaces it touched are redrawn.
+        property var desks: []
+        Component.onCompleted: setDesks(ov.desksOf(index))
+        readonly property int count: desks.length
+        function syncTile(t) {
+          const d = desks[t.index];
+          const sig = ov.deskSig(d);
+          if (sig !== t.sig) { t.sig = sig; t.desk = d || null; }
+        }
+        // One entry per desktop; entries are only appended or dropped at the end, so
+        // the tiles already built stay as they are (a plain number as the Repeater's
+        // model would rebuild them all whenever it changed).
+        ListModel { id: tileModel }
+        function setDesks(list) {
+          desks = list;
+          while (tileModel.count < list.length) tileModel.append({ k: tileModel.count });
+          while (tileModel.count > list.length) tileModel.remove(tileModel.count - 1);
+          for (let i = 0; i < count; i++) { const t = tileRepeater.itemAt(i); if (t) syncTile(t); }
+        }
         property real off: Math.max(0, Math.min(Math.max(0, count * ov.pitchX - 14 * ov.u - ov.visW),
                                                        focusIdx * ov.pitchX - (ov.visW - ov.tileW) / 2))
         Behavior on off { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
 
         Repeater {
-          model: rowItem.modelData.desks
+          id: tileRepeater
+          model: tileModel
           delegate: Item {
             id: tile
-            required property var modelData
             required property int index
+            property var desk: null
+            property string sig: "\u0000"
+            Component.onCompleted: rowItem.syncTile(tile)
             readonly property bool isSel: ov.phase !== "waiting" && ov.selRow === rowItem.index && ov.selIdx === index
-            readonly property bool isCur: ov.currentRow === rowItem.index && modelData.rep
+            readonly property bool isCur: ov.currentRow === rowItem.index && desk !== null && desk.rep
             readonly property string q: ov.query.trim().toLowerCase()
-            readonly property bool hit: q !== "" && ov.deskMatches(modelData, q).length > 0
+            readonly property bool hit: q !== "" && desk !== null && ov.deskMatches(desk, q).length > 0
             readonly property real px: ov.ox + ov.x0 + index * ov.pitchX - rowItem.off
             // Only desktops that are on screen get built: each one holds window pictures.
             readonly property bool near: px > -ov.pitchX * 1.5 && px < ov.width + ov.pitchX * 0.5
@@ -386,13 +490,13 @@ FocusScope {
               Loader {
                 anchors.fill: parent
                 active: tile.visible
-                sourceComponent: tile.isCur && snap.hasContent ? snapView : deskView
+                sourceComponent: tile.isCur && snap.hasContent && !ov.snapStale ? snapView : deskView
               }
               Component {
                 id: deskView
                 Item {
                   Desk {
-                    spec: tile.modelData
+                    spec: tile.desk
                     screenW: ov.screenW; screenH: ov.screenH
                     wallpaper: ov.wallpaper
                     captureFor: ov.captureFor
@@ -448,13 +552,30 @@ FocusScope {
               }
             }
 
+            // Click: go there. Press on a window and drag: carry it to another desktop.
             MouseArea {
+              id: tileMouse
               anchors.fill: parent
               enabled: ov.phase === "open"
               hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onEntered: { ov.selRow = rowItem.index; ov.selIdx = tile.index; }
-              onClicked: ov.choose(rowItem.index, tile.index)
+              cursorShape: ov.dragWin ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+              property var cand: null
+              property point pressAt
+              onEntered: if (!ov.dragWin) { ov.selRow = rowItem.index; ov.selIdx = tile.index; }
+              onPressed: mouse => {
+                pressAt = Qt.point(mouse.x, mouse.y);
+                cand = ov.windowAt(tile.desk, mouse.x / ov.shrink, mouse.y / ov.shrink);
+              }
+              onPositionChanged: mouse => {
+                if (!pressed) return;
+                const p = mapToItem(ov, mouse.x, mouse.y);
+                if (!ov.dragWin && cand && Math.hypot(mouse.x - pressAt.x, mouse.y - pressAt.y) > 8 * ov.u)
+                  ov.beginDrag(cand, rowItem.index, tile.index, pressAt.x / ov.shrink - cand.x, pressAt.y / ov.shrink - cand.y);
+                if (ov.dragWin) ov.dragMove(p.x, p.y);
+              }
+              onReleased: if (ov.dragWin) ov.dragDrop()
+              onCanceled: if (ov.dragWin) ov.dragCancel()
+              onClicked: if (!ov.dragSuppress) ov.choose(rowItem.index, tile.index)
             }
 
             // Caption: a dot on your own desktop, the workspace number, the apps in it.
@@ -468,14 +589,14 @@ FocusScope {
                 font.family: "JetBrains Mono"; font.pixelSize: Math.round(10.5 * ov.u)
               }
               Text {
-                text: String(tile.modelData.col)
+                text: tile.desk ? String(tile.desk.col) : ""
                 color: tile.isSel ? ov.cAccent : "#7f848e"
                 font.family: "JetBrains Mono"; font.pixelSize: Math.round(10.5 * ov.u)
               }
               Text {
                 readonly property var names: {
                   const seen = [];
-                  for (const w of tile.modelData.windows) if (w.name && seen.indexOf(w.name) < 0) seen.push(w.name);
+                  for (const w of (tile.desk ? tile.desk.windows : [])) if (w.name && seen.indexOf(w.name) < 0) seen.push(w.name);
                   return seen;
                 }
                 width: ov.tileW - x
@@ -601,6 +722,29 @@ FocusScope {
         color: ov.cMute
         font.family: "JetBrains Mono"; font.pixelSize: Math.round(11 * ov.u)
       }
+    }
+  }
+
+  // The window being carried: an outline the size it has in the tiles, under the pointer.
+  Rectangle {
+    visible: ov.dragWin !== null
+    z: 50
+    x: ov.dragPx - ov.dragGrabX * ov.shrink
+    y: ov.dragPy - ov.dragGrabY * ov.shrink
+    width: ov.dragWin ? Math.max(ov.dragWin.w * ov.shrink, 24 * ov.u) : 0
+    height: ov.dragWin ? Math.max(ov.dragWin.h * ov.shrink, 16 * ov.u) : 0
+    radius: Globals.eyeCandyOff ? 0 : 5 * ov.u
+    color: Qt.rgba(0.2, 0.22, 0.27, 0.92)
+    border.width: 2 * ov.u
+    border.color: ov.cAccent
+    Text {
+      anchors.centerIn: parent
+      width: parent.width - 8 * ov.u
+      horizontalAlignment: Text.AlignHCenter
+      elide: Text.ElideRight
+      text: ov.dragWin ? (ov.dragWin.name || ov.dragWin.cls || ov.dragWin.title) : ""
+      color: ov.cFg
+      font.family: "JetBrains Mono"; font.pixelSize: Math.round(11 * ov.u)
     }
   }
 

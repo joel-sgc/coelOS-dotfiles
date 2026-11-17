@@ -49,14 +49,14 @@ test("always five rows, labelled r1..r5, each with at least one desk", () => {
 
 test("a desk carries its workspace's windows", () => {
   const rows = L.rowsOf([client("a", 2), client("b", 2), client("c", 103)], { focusedId: 2 });
-  eq(deskIds(rows[0]), [2, 3]);
-  eq(rows[0].desks[0].windows.map(w => w.address), ["a", "b"]);
-  eq(deskIds(rows[1]), [103, 104]);
+  eq(deskIds(rows[0]), [1, 2, 3], "workspace 1 is empty but comes before 2, so it is shown");
+  eq(rows[0].desks[1].windows.map(w => w.address), ["a", "b"]);
+  eq(deskIds(rows[1]), [101, 102, 103, 104]);
 });
 
 test("a row shows every workspace that has windows, in column order", () => {
   const rows = L.rowsOf([client("a", 7), client("b", 2), client("c", 5)], { focusedId: 2 });
-  eq(deskIds(rows[0]), [2, 5, 7, 8]);
+  eq(deskIds(rows[0]), [1, 2, 3, 4, 5, 6, 7, 8], "every workspace up to the last one in use, then a spare");
 });
 
 test("windows are placed relative to the monitor", () => {
@@ -80,19 +80,19 @@ test("floating windows come after tiled ones so they are drawn on top", () => {
 test("on your own row the representative is the workspace you are on, even when empty", () => {
   const rows = L.rowsOf([client("a", 1)], { focusedId: 4 });
   eq(rep(rows[0]), [4]);
-  eq(deskIds(rows[0]), [1, 4]);
+  eq(deskIds(rows[0]), [1, 2, 3, 4]);
   eq(rows.map(r => r.current), [true, false, false, false, false]);
 });
 
 test("other rows use the workspace the grid remembers", () => {
   const rows = L.rowsOf([client("a", 1), client("b", 103), client("c", 105)], { focusedId: 1, remembered: "1,105,,," });
   eq(rep(rows[1]), [105]);
-  eq(deskIds(rows[1]), [103, 105, 106]);
+  eq(deskIds(rows[1]), [101, 102, 103, 104, 105, 106]);
 });
 
 test("a remembered workspace with no windows is still shown", () => {
   const rows = L.rowsOf([client("b", 103)], { focusedId: 1, remembered: "1,108,,," });
-  eq(deskIds(rows[1]), [103, 108]);
+  eq(deskIds(rows[1]), [101, 102, 103, 104, 105, 106, 107, 108]);
   eq(rep(rows[1]), [108]);
 });
 
@@ -154,23 +154,30 @@ test("each window carries its readable name", () => {
   eq(rows[0].desks[0].windows[0].name, "Zen Browser");
 });
 
+test("a gap between workspaces is shown, empty (the bug: dragging windows out left a hole)", () => {
+  const rows = L.rowsOf([client("a", 1), client("b", 3)], { focusedId: 1 });
+  eq(deskIds(rows[0]), [1, 2, 3, 4]);
+  eq(rows[0].desks[1].windows.length, 0);
+});
+
 test("a row whose last workspace has windows offers the next one, empty", () => {
   const rows = L.rowsOf([client("a", 1), client("b", 3)], { focusedId: 1 });
-  eq(deskIds(rows[0]), [1, 3, 4]);
-  eq(rows[0].desks[2].windows.length, 0);
+  eq(deskIds(rows[0]), [1, 2, 3, 4]);
+  eq(rows[0].desks[3].windows.length, 0);
   eq(rep(rows[0]), [1]);
 });
 
 test("an empty last workspace is left as it is: no extra one", () => {
   const rows = L.rowsOf([client("a", 1)], { focusedId: 4 });     // you are on empty 4
-  eq(deskIds(rows[0]), [1, 4]);
+  eq(deskIds(rows[0]), [1, 2, 3, 4]);
   eq(deskIds(rows[2]), [201], "empty rows too");
 });
 
 test("no spare workspace past the end of a row", () => {
   const rows = L.rowsOf([client("a", 100), client("b", 500)], { focusedId: 100 });
-  eq(deskIds(rows[0]), [100]);
-  eq(deskIds(rows[4]), [500]);
+  eq(deskIds(rows[0]).length, 100, "the whole row, and nothing past it");
+  eq(deskIds(rows[0])[99], 100);
+  eq(deskIds(rows[4]).length, 100);
 });
 
 // ---------------------------------------------------------------- fuzz

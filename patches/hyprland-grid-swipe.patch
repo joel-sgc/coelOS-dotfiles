@@ -1,3 +1,17 @@
+diff --git a/src/Compositor.hpp b/src/Compositor.hpp
+index 9847335..844713a 100644
+--- a/src/Compositor.hpp
++++ b/src/Compositor.hpp
+@@ -153,6 +153,9 @@ class CCompositor {
+     WORKSPACEID                         getNewSpecialID();
+     void                                performUserChecks();
+     void                                moveWindowToWorkspaceSafe(PHLWINDOW pWindow, PHLWORKSPACE pWorkspace);
++    // Where on the screen a window being moved to another workspace should land (a tiled layout
++    // puts it beside the window nearest this point). Set around the move by hl.dsp.window.move{focal_x, focal_y}.
++    std::optional<Vector2D>             m_moveFocalPoint;
+     PHLWINDOW                           getForceFocus();
+     void                                scheduleMonitorStateRecheck();
+     void                                arrangeMonitors();
 diff --git a/src/config/lua/bindings/LuaBindingsConfigRules.cpp b/src/config/lua/bindings/LuaBindingsConfigRules.cpp
 index 7adbf2c..c50d22a 100644
 --- a/src/config/lua/bindings/LuaBindingsConfigRules.cpp
@@ -19,6 +33,44 @@ index 7adbf2c..c50d22a 100644
          else if (action == "resize")
              result = g_pTrackpadGestures->addGesture(makeUnique<CResizeTrackpadGesture>(), fingerCount, direction, modMask, deltaScale, disableInhibit);
          else if (action == "move")
+diff --git a/src/config/lua/bindings/LuaBindingsDispatchers.cpp b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
+index 379ccce..b82abf9 100644
+--- a/src/config/lua/bindings/LuaBindingsDispatchers.cpp
++++ b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
+@@ -465,7 +465,14 @@ static int dsp_moveToWorkspace(lua_State* L) {
+         return Internal::dispatcherError(L, "Invalid workspace", ERR, C_INVARG);
+ 
+     bool silent = lua_toboolean(L, lua_upvalueindex(2));
+-    return Internal::checkResult(L, CA::moveToWorkspace(ws, silent, Internal::windowFromUpval(L, 3)));
++
++    // Optional: where on the screen the window should land (upvalues 4 and 5).
++    if (lua_isnumber(L, lua_upvalueindex(4)) && lua_isnumber(L, lua_upvalueindex(5)))
++        g_pCompositor->m_moveFocalPoint = Vector2D{lua_tonumber(L, lua_upvalueindex(4)), lua_tonumber(L, lua_upvalueindex(5))};
++
++    const auto RESULT = CA::moveToWorkspace(ws, silent, Internal::windowFromUpval(L, 3));
++    g_pCompositor->m_moveFocalPoint.reset();
++    return Internal::checkResult(L, RESULT);
+ }
+ 
+ static int dsp_moveToMonitor(lua_State* L) {
+@@ -821,7 +828,16 @@ static int hlWindowMove(lua_State* L) {
+         lua_pushstring(L, ws->c_str());
+         lua_pushboolean(L, silent);
+         Internal::pushWindowUpval(L, 1);
+-        lua_pushcclosure(L, dsp_moveToWorkspace, 3);
++        const auto focalX = Internal::tableOptNum(L, 1, "focal_x");
++        const auto focalY = Internal::tableOptNum(L, 1, "focal_y");
++        if (focalX && focalY) {
++            lua_pushnumber(L, *focalX);
++            lua_pushnumber(L, *focalY);
++        } else {
++            lua_pushnil(L);
++            lua_pushnil(L);
++        }
++        lua_pushcclosure(L, dsp_moveToWorkspace, 5);
+         return 1;
+     }
+ 
 diff --git a/src/config/values/ConfigValues.cpp b/src/config/values/ConfigValues.cpp
 index 23cad96..dd62df5 100644
 --- a/src/config/values/ConfigValues.cpp
@@ -35,6 +87,25 @@ index 23cad96..dd62df5 100644
          MS<Int>("gestures:close_max_timeout", "Timeout for closing windows with the close gesture, in ms.", 1000, {.min = 10, .max = 2000}),
          MS<Bool>("gestures:scrolling:move_snap_to_grid", "When releasing the scroll move gesture, whether it shoud try to snap to the grid.", true),
          MS<Bool>("gestures:scrolling:move_snap_cursor", "When releasing the scroll move gesture, whether it shoud snap the cursor to the newly focused window.", true),
+diff --git a/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.cpp b/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.cpp
+index ff1b1b4..7630496 100644
+--- a/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.cpp
++++ b/src/layout/algorithm/tiled/dwindle/DwindleAlgorithm.cpp
+@@ -75,6 +75,14 @@ void CDwindleAlgorithm::addTarget(SP<ITarget> target) {
+ 
+     SP<SDwindleNodeData> OPENINGON;
+ 
++    // A move that names where on the screen the window should land (see m_moveFocalPoint)
++    // places it like a drop at that point, even on a workspace that is not showing.
++    std::shared_ptr<void> focalGuard;
++    if (!m_overrideFocalPoint && g_pCompositor->m_moveFocalPoint) {
++        m_overrideFocalPoint = g_pCompositor->m_moveFocalPoint;
++        focalGuard           = std::shared_ptr<void>(nullptr, [this](void*) { m_overrideFocalPoint.reset(); });
++    }
++
+     const auto           MOUSECOORDS = m_overrideFocalPoint.value_or(g_pInputManager->getMouseCoordsInternal());
+     const auto           ACTIVE_MON  = Desktop::focusState()->monitor();
+ 
 diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
 index e2eac69..f7f006f 100644
 --- a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp

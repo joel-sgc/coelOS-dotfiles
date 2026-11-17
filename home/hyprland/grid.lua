@@ -105,8 +105,9 @@ function M.new(host, opts)
 
     -- Straight to row `row` (0-based), landing on the column that row was left on
     -- (or the column you are on, for a row you have not visited). Used by the
-    -- overview. Works from a scratchpad too, landing on the row's first column.
-    function g.goto_row(row)
+    -- overview and the move-to-row keys (carry: take the focused window along).
+    -- Works from a scratchpad too, landing on the row's first column.
+    function g.goto_row(row, carry)
         if type(row) ~= "number" or row ~= math.floor(row) or row < 0 or row >= ROWS then return false end
         local id = active()
         local col = 0
@@ -116,7 +117,7 @@ function M.new(host, opts)
         end
         local landing = last_col[row]
         if landing == nil then landing = col end
-        return jump(id, M.id_of(row, landing), false, "slidevert")
+        return jump(id, M.id_of(row, landing), carry and true or false, "slidevert")
     end
 
     -- Where a swipe leads from here, for the compositor's grid swipe
