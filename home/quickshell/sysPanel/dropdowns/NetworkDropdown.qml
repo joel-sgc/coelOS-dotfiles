@@ -540,6 +540,7 @@ Item {
       }
     }
     onExited: {
+      gpBusyWatchdog.stop();
       dropdownRoot.gpBusy = false;
       dropdownRoot.gpMfaPrompt = "";
       gpStatusSettleTimer.restart();
@@ -558,15 +559,38 @@ Item {
     interval: 1000
     onTriggered: gpStatusProc.running = true
   }
+  // Safety net: if a connect/disconnect process never reports exit (hung
+  // client, lost onExited), gpBusy would wedge the toggle forever -- the
+  // "have to use the CLI" failure mode. Force-reset after 6 minutes (just
+  // past gp-connect.exp's 300s MFA wait).
+  Timer {
+    id: gpBusyWatchdog
+    interval: 360000
+    onTriggered: {
+      if (!dropdownRoot.gpBusy) return;
+      console.warn("gp busy watchdog fired; resetting");
+      gpConnectProc.running = false;
+      gpDisconnectProc.running = false;
+      dropdownRoot.gpBusy = false;
+      dropdownRoot.gpMfaPrompt = "";
+      gpStatusProc.running = true;
+    }
+  }
   function gpToggle() {
     console.warn("gpToggle called: gpBusy=" + gpBusy + " gpStatus=" + gpStatus);
     if (gpBusy) return;
-    if (gpStatus === "connected" || gpStatus === "connected-internal") {
+    // connected/connecting/disconnecting/agent-down/unknown all route to
+    // disconnect-or-connect sensibly: anything "up or in flight" is torn
+    // down; only a settled idle state (disconnected/unknown/agent-down)
+    // starts a connect. coel-vpn-connect itself restarts a dead agent.
+    if (gpStatus === "connected" || gpStatus === "connected-internal"
+        || gpStatus === "connecting" || gpStatus === "disconnecting") {
       gpBusy = true;
-      const p = gpDisconnectProc;
-      p.running = true;
+      gpBusyWatchdog.restart();
+      gpDisconnectProc.running = true;
     } else {
       gpBusy = true;
+      gpBusyWatchdog.restart();
       gpMfaPrompt = "";
       gpConnectProc.running = true;
     }
@@ -587,7 +611,7 @@ Item {
   Process {
     id: gpDisconnectProc
     command: ["coel-vpn-disconnect"]
-    onExited: { dropdownRoot.gpBusy = false; gpStatusSettleTimer.restart(); }
+    onExited: { gpBusyWatchdog.stop(); dropdownRoot.gpBusy = false; gpStatusSettleTimer.restart(); }
   }
   function gpSubmitMfa() {
     if (!gpMfaPrompt) return;
@@ -1297,7 +1321,7 @@ Item {
             Text { text: "LUC (GlobalProtect)"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13; Layout.leftMargin: 6 }
             Item { Layout.fillWidth: true }
             Text {
-              text: dropdownRoot.gpBusy ? "…" : dropdownRoot.gpStatus === "connected-internal" ? "up · internal" : dropdownRoot.gpStatus === "connected" ? "up" : dropdownRoot.gpStatus
+              text: dropdownRoot.gpBusy ? "…" : dropdownRoot.gpStatus === "connected-internal" ? "up · internal" : dropdownRoot.gpStatus === "connected" ? "up" : dropdownRoot.gpStatus === "agent-down" ? "agent down" : dropdownRoot.gpStatus
               color: dropdownRoot.gpStatus.startsWith("connected") ? dropdownRoot.colors[3] : dropdownRoot.mutedColor
               font.family: "JetBrains Mono"
               font.pixelSize: 13

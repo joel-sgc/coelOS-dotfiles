@@ -41,6 +41,10 @@ let
       gpFHS
       pkgs.expect
       pkgs.libsecret
+      pkgs.systemd
+      pkgs.gnugrep
+      pkgs.coreutils
+      vpnStatus
     ];
     text = ''
       if [ "''${1:-}" = "-h" ] || [ "''${1:-}" = "--help" ]; then
@@ -65,6 +69,18 @@ let
                 unexpected-exit | 3 no-password
                 4 timeout/needs-attention | 5 mfa not supplied
       EOF
+        exit 0
+      fi
+
+      # Self-heal: restart a dead/inactive agent, and no-op if already up so
+      # a stale UI state can't kick off a pointless (lockout-risking) login.
+      if ! systemctl --user is-active --quiet globalprotect-agent; then
+        echo "coel-vpn-connect: agent inactive, restarting it" >&2
+        systemctl --user restart globalprotect-agent
+        sleep 2
+      fi
+      if coel-vpn-status 2>/dev/null | grep -q '^connected'; then
+        echo "GP_STATUS: connected"
         exit 0
       fi
 
@@ -113,20 +129,58 @@ let
     '';
   };
 
-  # Machine-readable status probe for the TUI to poll. Prints one token on
-  # stdout: connected | connected-internal | disconnected | unknown.
+  # Machine-readable status probe for the TUI / panel to poll. Prints one
+  # token on stdout:
+  #   connected | connected-internal | connecting | disconnecting
+  #   | disconnected | agent-down | unknown
   # Exit 0 iff connected (either flavour).
+  #
+  # The vendor client reports many more states than Connected/Disconnected
+  # (seen in PanGPA.log): "OnDemand mode." (its idle state -- NOT an
+  # unknown), "Retrieving configuration...", "Discovering network...",
+  # "Restoring VPN Connection", and "Disconnected" carrying an <error>.
+  # Anything unrecognised is cross-checked against the gpd0 interface so a
+  # new banner string can't leave the UI stuck on "unknown". The call is
+  # bounded by a timeout so a wedged agent shows up as agent-down instead of
+  # hanging the poller.
   vpnStatus = pkgs.writeShellApplication {
     name = "coel-vpn-status";
-    runtimeInputs = [ gpFHS ];
+    runtimeInputs = [
+      gpFHS
+      pkgs.coreutils
+      pkgs.iproute2
+      pkgs.systemd
+    ];
     text = ''
-      out=$(globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status' 2>/dev/null || true)
+      if ! systemctl --user is-active --quiet globalprotect-agent; then
+        echo agent-down; exit 1
+      fi
+
+      rc=0
+      out=$(timeout 8 globalprotect-agent-fhs -c 'cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status' 2>&1) || rc=$?
+      if [ "$rc" -eq 124 ]; then
+        echo agent-down; exit 1
+      fi
+      echo "coel-vpn-status raw: $out" >&2
+
+      shopt -s nocasematch
       case "$out" in
-        *"Connected - Internal"*) echo connected-internal; exit 0 ;;
-        *"Connected"*)            echo connected;          exit 0 ;;
-        *"Disconnected"*)         echo disconnected;       exit 1 ;;
-        *)                        echo unknown;            exit 1 ;;
+        *"Connected - Internal"*)                 echo connected-internal; exit 0 ;;
+        *"Not Connected"*|*"Disconnected"*|*"OnDemand"*|*"Disabled"*)
+                                                  echo disconnected;       exit 1 ;;
+        *"Disconnecting"*)                        echo disconnecting;      exit 1 ;;
+        *"Retrieving"*|*"Discovering"*|*"Restoring"*|*"Connecting"*|*"Authenticating"*)
+                                                  echo connecting;         exit 1 ;;
+        *"Connected"*)                            echo connected;          exit 0 ;;
       esac
+
+      # Unrecognised banner: fall back to ground truth from the tunnel
+      # interface (gpd0 with an address == up).
+      if ip -br addr show dev gpd0 2>/dev/null | grep -q -E 'UP|UNKNOWN.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'; then
+        echo connected; exit 0
+      fi
+      if [ -z "$out" ]; then echo agent-down; else echo unknown; fi
+      exit 1
     '';
   };
 

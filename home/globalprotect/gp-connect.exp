@@ -30,7 +30,7 @@
 #   GP_PORTAL GP_USERNAME GP_FHS_CMD GP_PASSWORD
 #   GP_MFA_CODE   optional  -- MFA code (same as passing argv[0])
 #
-# GP_STATUS values: connecting | mfa-required | mfa-rejected | connected
+# GP_STATUS values: clearing-stale-session | session-conflict | connecting | mfa-required | mfa-rejected | connected
 #                   | password-rejected | mfa-failed | auth-failed
 #                   | unexpected-exit | no-password | mfa-timeout
 #                   | needs-attention | timeout
@@ -66,63 +66,85 @@ set password $env(GP_PASSWORD)
 status "connecting"
 log_user 0
 set timeout 120
-spawn $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect connect --portal $portal --username $username"
+# The client sometimes refuses to start with "a GlobalProtect connection is
+# already established from this Linux system" while `show --status` says
+# idle (OnDemand) -- a stale session the agent hasn't released. That refusal
+# comes before any credential is sent, so it is safe to clear it with a
+# disconnect and retry exactly once (no lockout risk).
+set sysfhs globalprotect-fhs
+if {[info exists env(GP_DISCONNECT_FHS_CMD)]} { set sysfhs $env(GP_DISCONNECT_FHS_CMD) }
+for {set try 0} {$try < 2} {incr try} {
+    set pw_sent 0
+    set mfa_sent 0
+    set conflict 0
+    spawn $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect connect --portal $portal --username $username"
 
-set pw_sent 0
-set mfa_sent 0
-expect {
-    -re {Username\([^)]*\):\s*$} {
-        send -- "$username\r"
-        exp_continue
-    }
-    -re {Password:\s*$} {
-        incr pw_sent
-        if {$pw_sent > 2} { status "password-rejected"; exit 2 }
-        send -- "$password\r"
-        exp_continue
-    }
-    -re {(?i)verification code:\s*$} {
-        if {$mfa_sent >= 1} {
-            status "mfa-rejected"
-            set mfa ""
+    expect {
+        -re {Username\([^)]*\):\s*$} {
+            send -- "$username\r"
+            exp_continue
         }
-        if {$mfa eq ""} {
-            status "mfa-required"
-            set timeout 300
-            expect_user {
-                -re {([^\r\n]+)[\r\n]} { set mfa [string trim $expect_out(1,string)] }
-                timeout { status "mfa-timeout"; exit 5 }
+        -re {Password:\s*$} {
+            incr pw_sent
+            if {$pw_sent > 2} { status "password-rejected"; exit 2 }
+            send -- "$password\r"
+            exp_continue
+        }
+        -re {(?i)verification code:\s*$} {
+            if {$mfa_sent >= 1} {
+                status "mfa-rejected"
+                set mfa ""
             }
-            set timeout 120
+            if {$mfa eq ""} {
+                status "mfa-required"
+                set timeout 300
+                expect_user {
+                    -re {([^\r\n]+)[\r\n]} { set mfa [string trim $expect_out(1,string)] }
+                    timeout { status "mfa-timeout"; exit 5 }
+                }
+                set timeout 120
+            }
+            if {$mfa eq ""} { status "mfa-timeout"; exit 5 }
+            incr mfa_sent
+            if {$mfa_sent > 4} { status "mfa-failed"; exit 2 }
+            send -- "$mfa\r"
+            exp_continue
         }
-        if {$mfa eq ""} { status "mfa-timeout"; exit 5 }
-        incr mfa_sent
-        if {$mfa_sent > 4} { status "mfa-failed"; exit 2 }
-        send -- "$mfa\r"
-        exp_continue
-    }
-    -re {(?i)(authentication failed|login failed|invalid username or password|incorrect password|cannot connect to globalprotect)} {
-        status "auth-failed"; exit 2
-    }
-    -re {(?i)pem pass ?phrase|do you want to continue.*\?} {
-        status "needs-attention"; exit 4
-    }
-    timeout { status "timeout"; exit 4 }
-    eof {
-        # The vendor CLI usually just exits on success with no clear banner,
-        # so confirm against an explicit status query. Landing here at all
-        # means the client exited without matching any of the patterns
-        # above -- distinct from "password-rejected"/"mfa-failed"/the
-        # explicit "authentication failed" match, all of which mean the
-        # gateway actually rejected a credential. This is "something else
-        # ended the process" (crash, killed, unexpected banner) and used to
-        # get mislabeled as the same "auth-failed", which made every one of
-        # those causes look identical from the caller's side.
-        catch {
-            exec $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status"
-        } out
-        if {[regexp {(?i)\mconnected\M} $out]} { status "connected"; exit 0 }
-        puts stderr "coel-vpn-connect: unexpected client exit; show --status said: $out"
-        status "unexpected-exit"; exit 2
+        -re {(?i)(authentication failed|login failed|invalid username or password|incorrect password|cannot connect to globalprotect)} {
+            status "auth-failed"; exit 2
+        }
+        -re {(?i)already established} {
+            set conflict 1
+            exp_continue
+        }
+        -re {(?i)pem pass ?phrase|do you want to continue.*\?} {
+            status "needs-attention"; exit 4
+        }
+        timeout { status "timeout"; exit 4 }
+        eof {
+            if {$conflict && $try == 0} {
+                puts stderr "coel-vpn-connect: stale session reported by client; disconnecting and retrying once"
+                status "clearing-stale-session"
+                catch { exec $sysfhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect disconnect" }
+                after 3000
+                continue
+            }
+            if {$conflict} { status "session-conflict"; exit 4 }
+            # The vendor CLI usually just exits on success with no clear banner,
+            # so confirm against an explicit status query. Landing here at all
+            # means the client exited without matching any of the patterns
+            # above -- distinct from "password-rejected"/"mfa-failed"/the
+            # explicit "authentication failed" match, all of which mean the
+            # gateway actually rejected a credential. This is "something else
+            # ended the process" (crash, killed, unexpected banner) and used to
+            # get mislabeled as the same "auth-failed", which made every one of
+            # those causes look identical from the caller's side.
+            catch {
+                exec $fhs -c "cd /opt/paloaltonetworks/globalprotect && ./globalprotect show --status"
+            } out
+            if {[regexp {(?i)\mconnected\M} $out]} { status "connected"; exit 0 }
+            puts stderr "coel-vpn-connect: unexpected client exit; show --status said: $out"
+            status "unexpected-exit"; exit 2
+        }
     }
 }

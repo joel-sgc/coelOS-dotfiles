@@ -8,48 +8,38 @@ let
 
   gpFHS = (import ./globalprotect/fhs.nix { pkgs = pkgs-pinned; }) "globalprotect-fhs";
 
-  # GlobalProtect's full-tunnel config duplicates routes for whatever local
-  # subnet you're on through its own tunnel interface (gpd0), with no
-  # explicit metric (defaults to 0), beating the real route -- breaks
-  # SSH/DNS/anything else on that subnet while connected (see
-  # modules/globalprotect/globalprotect-hip-investigation.md). PanGPS has a
-  # netlink-reactive watchdog that re-adds a plainly-deleted route within
-  # milliseconds, so this bypasses it with policy routing instead: finds
-  # every subnet routed via *both* gpd0 and a different device (the hijack
-  # signature) and routes it through a separate table PanGPS never touches.
-  gpRouteFix = pkgs.writeShellApplication {
-    name = "gp-route-fix";
-    runtimeInputs = [ pkgs.iproute2 pkgs.jq pkgs.gnugrep ];
-    text = builtins.readFile ./globalprotect/gp-route-fix.sh;
+  # Ranges that must go through GlobalProtect even while Tailscale has an
+  # exit node (see globalprotect/vpn-routes.sh for the rule ladder). GP here is
+  # a pure full tunnel with no pushed route list, so LUC's networks are
+  # declared by hand. 147.126.0.0/16 is LUC's public block (IP-gated library
+  # resources etc.); the gateway's own /32 is exempted automatically.
+  gpRanges = [ "10.0.0.0/8" "147.126.0.0/16" ];
+
+  vpnRoutes = pkgs.writeShellApplication {
+    name = "coel-vpn-routes";
+    runtimeInputs = [ pkgs.iproute2 pkgs.jq pkgs.gnugrep pkgs.coreutils ];
+    text = "export GP_RANGES=\"${lib.concatStringsSep " " gpRanges}\"\n" + builtins.readFile ./globalprotect/vpn-routes.sh;
   };
 in
 {
-  environment.systemPackages = [ gpFHS gpRouteFix ];
+  environment.systemPackages = [ gpFHS vpnRoutes ];
 
-  systemd.services.gp-route-fix-up = {
-    description = "Bypass GlobalProtect's local-subnet route hijack";
+  # Long-running reconciler: re-applies the rule ladder whenever links,
+  # addresses or routes change (gpd0 / tailscale0 / wifi coming and going).
+  # Replaces the old one-shot udev-triggered gp-route-fix, which only fired
+  # when gpd0 was *created* -- but PanGPS keeps gpd0 around, so connecting
+  # later never re-ran it.
+  systemd.services.coel-vpn-routes = {
+    description = "Reconcile Tailscale / GlobalProtect / LAN policy routing";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
     serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${gpRouteFix}/bin/gp-route-fix up";
+      ExecStart = "${vpnRoutes}/bin/coel-vpn-routes watch";
+      ExecStopPost = "${vpnRoutes}/bin/coel-vpn-routes down";
+      Restart = "on-failure";
+      RestartSec = 3;
     };
   };
-
-  systemd.services.gp-route-fix-down = {
-    description = "Clean up GlobalProtect route-hijack bypass";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${gpRouteFix}/bin/gp-route-fix down";
-    };
-  };
-
-  # Triggers off the actual kernel event of gpd0 appearing/disappearing,
-  # rather than a NetworkManager dispatcher script -- NM never manages or
-  # notices gpd0 (PanGPS brings it up directly, outside NM entirely), so a
-  # dispatcher hook wouldn't reliably fire for it.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="net", KERNEL=="gpd0", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}="gp-route-fix-up.service"
-    SUBSYSTEM=="net", KERNEL=="gpd0", ACTION=="remove", TAG+="systemd", ENV{SYSTEMD_WANTS}="gp-route-fix-down.service"
-  '';
 
   users.groups.globalprotect = {};
 
