@@ -134,16 +134,14 @@ Scope {
         }
 
         // Workspaces are a grid in rows of 100 (see home/hyprland/hyprland.lua): row 0 is
-        // 1..100, row 1 is 101..200. The bar shows the focused workspace's row.
-        property int workspaceRow: {
-          const f = Hyprland.focusedWorkspace;
-          return f && f.id >= 1 ? Math.floor((f.id - 1) / 100) : 0;
-        }
-        // 1-based column of the focused workspace within its row (the active chip).
-        property int workspaceCol: {
-          const f = Hyprland.focusedWorkspace;
-          return f && f.id >= 1 ? (f.id - 1) % 100 + 1 : 1;
-        }
+        // 1..100, row 1 is 101..200. The grid is shared by every monitor; each monitor sits on
+        // a row of it (all on the same one by default), and each bar shows the row of its own
+        // monitor, with that monitor's workspace as the active chip.
+        readonly property var barMonitor: Hyprland.monitorFor(root.screen)
+        readonly property int barWsId: barMonitor && barMonitor.activeWorkspace ? barMonitor.activeWorkspace.id : -1
+        property int workspaceRow: barWsId >= 1 ? Math.floor((barWsId - 1) / 100) : 0
+        // 1-based column of the monitor's workspace within its row (the active chip).
+        property int workspaceCol: barWsId >= 1 ? (barWsId - 1) % 100 + 1 : 1
         // Rows with at least one window open (row index -> true).
         property var workspaceRowsInUse: {
           const used = ({});

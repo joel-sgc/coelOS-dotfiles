@@ -293,9 +293,10 @@ FocusScope {
   }
   // After the rows are rebuilt: put the selector back on a workspace.
   function selectId(id) {
-    const r = Math.floor((id - 1) / 100);
-    const d = desksOf(r);
-    for (let i = 0; i < d.length; i++) if (d[i].id === id) { selRow = r; selIdx = i; return; }
+    for (let r = 0; r < rows.length; r++) {
+      const d = rows[r].desks;
+      for (let i = 0; i < d.length; i++) if (d[i].id === id) { selRow = r; selIdx = i; return; }
+    }
   }
 
   // Begin as soon as there is something to show and the picture of your desktop is in.

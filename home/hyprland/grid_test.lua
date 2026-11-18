@@ -66,6 +66,7 @@ local function new_world(opts)
     function host.focus(id) w.focus_calls = w.focus_calls + 1; arrive(id) end
     function host.move(id) w.move_calls = w.move_calls + 1; w.window_on = id; arrive(id) end
     function host.animate(s) w.style = s; w.styles[#w.styles + 1] = s end
+    if opts.usable then host.usable = opts.usable end
     function host.after(ms, fn)
         w.seq = w.seq + 1
         w.timers[#w.timers + 1] = { at = w.now + ms, fn = fn, seq = w.seq }
@@ -498,6 +499,49 @@ test("a special workspace never overwrites a row's remembered column", function(
     w.grid.arrived()                        -- the event fires for the scratchpad too
     eq(w.grid.remembered(1), 4)
     eq(w.grid.remembered(-1), nil, "id -98 must not create a bogus row")
+end)
+
+---------------------------------------------------------------- workspaces that belong to another monitor
+local function taken(set) return function(id) return not set[id] end end
+
+test("stepping sideways skips workspaces the other monitor has", function()
+    local w = new_world({ start = 5, usable = taken({ [6] = true, [7] = true }) })
+    eq(w.grid.go_col(1, false), true); eq(w.active, 8, "6 and 7 are skipped")
+    eq(w.grid.go_col(-1, false), true); eq(w.active, 5)
+end)
+
+test("no step at all when everything that way is taken", function()
+    local set = {}
+    for i = 6, 100 do set[i] = true end
+    local w = new_world({ start = 5, usable = taken(set) })
+    eq(w.grid.go_col(1, false), false); eq(w.active, 5)
+    eq(w.grid.swipe_targets().right, 0)
+end)
+
+test("swipe targets skip taken workspaces too", function()
+    local w = new_world({ start = 5, usable = taken({ [4] = true, [6] = true }) })
+    local t = w.grid.swipe_targets()
+    eq(t.left, 3); eq(t.right, 7)
+end)
+
+test("changing row lands on the nearest column that is free", function()
+    local w = new_world({ start = 5, usable = taken({ [105] = true, [104] = true }) })   -- row 1, columns 5 and 4 taken
+    eq(w.grid.go_row(1, false), true); eq(w.active, 106, "columns 5 and 4 are taken: the nearest free one is 6")
+    eq(w.grid.swipe_targets().up, 5, "and back up to the column it left")
+end)
+
+test("a whole row taken: no way into it", function()
+    local set = {}
+    for i = 101, 200 do set[i] = true end
+    local w = new_world({ start = 5, usable = taken(set) })
+    eq(w.grid.go_row(1, false), false); eq(w.active, 5)
+    eq(w.grid.swipe_targets().down, 0)
+    eq(w.grid.goto_row(1), false)
+end)
+
+test("asking for a workspace by number still takes it", function()
+    local w = new_world({ start = 5, usable = taken({ [7] = true }) })
+    eq(w.grid.go_number(7, false), true); eq(w.active, 7)
 end)
 
 ---------------------------------------------------------------- goto_row, carrying a window

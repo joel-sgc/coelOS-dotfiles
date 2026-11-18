@@ -16,6 +16,10 @@
 --   host.move(id)      -> carry the focused window to `id` and follow it
 --   host.animate(s)    -> set the workspace slide style ("slide" | "slidevert")
 --   host.after(ms, fn) -> run fn once after ms milliseconds
+--   host.usable(id)    -> (optional) false when workspace `id` belongs to another monitor
+--                         (it is showing it, or has windows on it). Moving around the grid
+--                         (steps, rows, swipes) never lands on such a workspace; asking for
+--                         one by number (go_number) still takes it over.
 
 local M = {}
 
@@ -31,9 +35,35 @@ function M.row_of(id) return math.floor((id - 1) / ROW) end
 function M.col_of(id) return (id - 1) % ROW end
 function M.id_of(row, col) return row * ROW + col + 1 end
 
+M.SLOT = ROWS * ROW    -- all the workspaces of the grid
+
 function M.new(host, opts)
     opts = opts or {}
     local restore_ms  = opts.restore_ms or 700           -- put the sideways slide back after this
+
+    local function usable(id) return host.usable == nil or host.usable(id) ~= false end
+
+    -- The column in `row` to land on, as close as possible to `want` (0-based): `want`
+    -- itself, else the nearest column whose workspace is usable. nil when there is none.
+    local function landing_col(row, want)
+        if usable(M.id_of(row, want)) then return want end
+        for d = 1, ROW - 1 do
+            if want - d >= 0 and usable(M.id_of(row, want - d)) then return want - d end
+            if want + d < ROW and usable(M.id_of(row, want + d)) then return want + d end
+        end
+        return nil
+    end
+
+    -- The next usable column from `col` going `dir` (-1 or 1), skipping workspaces that
+    -- belong to another monitor. nil at the end of the row.
+    local function step_col(row, col, dir)
+        local c = col + dir
+        while c >= 0 and c < ROW do
+            if usable(M.id_of(row, c)) then return c end
+            c = c + dir
+        end
+        return nil
+    end
 
     local last_col = {}   -- row -> column last visited in it
     local style_gen = 0   -- bumped on every move; only the newest restore timer may act
@@ -83,9 +113,10 @@ function M.new(host, opts)
     function g.go_col(delta, carry)
         local id = active()
         if not id then return false end
-        local col = M.col_of(id) + delta
-        if col < 0 or col >= ROW then return false end
-        return jump(id, M.id_of(M.row_of(id), col), carry, "slide")
+        local row = M.row_of(id)
+        local col = step_col(row, M.col_of(id), delta < 0 and -1 or 1)
+        if not col then return false end
+        return jump(id, M.id_of(row, col), carry, "slide")
     end
 
     -- Up/down a row, landing on the column that row was left on. delta is -1 or +1.
@@ -98,8 +129,8 @@ function M.new(host, opts)
         last_col[row] = col
         local new_row = row + delta
         if new_row < 0 or new_row >= ROWS then return false end
-        local landing = last_col[new_row]
-        if landing == nil then landing = col end
+        local landing = landing_col(new_row, last_col[new_row] == nil and col or last_col[new_row])
+        if landing == nil then return false end
         return jump(id, M.id_of(new_row, landing), carry, "slidevert")
     end
 
@@ -115,8 +146,8 @@ function M.new(host, opts)
             col = M.col_of(id)
             last_col[M.row_of(id)] = col
         end
-        local landing = last_col[row]
-        if landing == nil then landing = col end
+        local landing = landing_col(row, last_col[row] == nil and col or last_col[row])
+        if landing == nil then return false end
         return jump(id, M.id_of(row, landing), carry and true or false, "slidevert")
     end
 
@@ -132,16 +163,14 @@ function M.new(host, opts)
         local row, col = M.row_of(id), M.col_of(id)
         local function other_row(r)
             if r < 0 or r >= ROWS then return 0 end
-            local landing = last_col[r]
-            if landing == nil then landing = col end
-            return M.id_of(r, landing)
+            local landing = landing_col(r, last_col[r] == nil and col or last_col[r])
+            return landing and M.id_of(r, landing) or 0
         end
-        return {
-            left  = col > 0 and id - 1 or 0,
-            right = col < ROW - 1 and id + 1 or 0,
-            up    = other_row(row - 1),
-            down  = other_row(row + 1),
-        }
+        local function side(dir)
+            local c = step_col(row, col, dir)
+            return c and M.id_of(row, c) or 0
+        end
+        return { left = side(-1), right = side(1), up = other_row(row - 1), down = other_row(row + 1) }
     end
 
     -- Column n (1..ROW) of the current row (Super+1..0 are 1..10).

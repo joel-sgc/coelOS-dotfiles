@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const src = fs.readFileSync(path.join(__dirname, "Layout.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
-const L = new Function(src + "\nreturn { ROW, ROWS, rowOf, colOf, idOf, parseRemembered, rowsOf, appName };")();
+const L = new Function(src + "\nreturn { ROW, ROWS, rowOf, colOf, idOf, parseRemembered, rememberedFor, rowsOf, appName };")();
 
 let passed = 0, failed = 0;
 const failures = [];
@@ -65,10 +65,16 @@ test("windows are placed relative to the monitor", () => {
   eq([w.x, w.y, w.w, w.h], [100, 48, 1000, 500]);
 });
 
-test("only windows on the monitor being shown count", () => {
-  const rows = L.rowsOf([client("a", 1), client("b", 1, { monitor: 1 })], { focusedId: 1, monitorId: 0 });
-  eq(rows[0].desks[0].windows.map(w => w.address), ["a"]);
-  eq(L.rowsOf([client("a", 1, { monitor: 5 })], { focusedId: 1 })[0].desks[0].windows.length, 1, "no monitor given: all of them");
+test("windows on another monitor are shown too, fitted into this monitor's shape", () => {
+  const mons = [{ id: 0, x: 0, y: 0, width: 2000, height: 1000 }, { id: 1, x: 2000, y: -500, width: 1000, height: 1000 }];
+  const rows = L.rowsOf([client("a", 1, { at: [100, 50], size: [400, 300] }),
+                         client("b", 1, { monitor: 1, at: [2000, -500], size: [500, 1000] })],
+                        { focusedId: 1, monitorId: 0, monitors: mons });
+  const [a, b] = rows[0].desks[0].windows;
+  eq([a.x, a.y, a.w, a.h], [100, 50, 400, 300], "this monitor's own windows are as they are");
+  // monitor 1 is square, this one is 2:1: scaled by 1 (height), centred sideways
+  eq([b.x, b.y, b.w, b.h], [500, 0, 500, 1000]);
+  eq(L.rowsOf([client("a", 1, { monitor: 5 })], { focusedId: 1 })[0].desks[0].windows.length, 1, "no monitors known: untouched");
 });
 
 test("floating windows come after tiled ones so they are drawn on top", () => {
@@ -180,6 +186,15 @@ test("no spare workspace past the end of a row", () => {
   eq(deskIds(rows[4]).length, 100);
 });
 
+// ---------------------------------------------------------------- the rows file
+test("the rows file has a line per monitor", () => {
+  eq(L.rememberedFor("eDP-1:1,101,,,\nDP-7:504,604,,,\n", "DP-7"), "504,604,,,");
+  eq(L.rememberedFor("eDP-1:1,101,,,\n", "DP-7"), "");
+  eq(L.rememberedFor("", "DP-7"), "");
+  const rows = L.rowsOf([], { focusedId: 1, remembered: L.rememberedFor("DP-7:1,104,,,\n", "DP-7") });
+  eq(rep(rows[1]), [104]);
+});
+
 // ---------------------------------------------------------------- fuzz
 test("fuzz: 3000 random worlds keep every invariant", () => {
   let s = 4242;
@@ -209,7 +224,7 @@ test("fuzz: 3000 random worlds keep every invariant", () => {
         if (floatSeen >= 0 && d.windows.slice(floatSeen).some(w => !w.floating)) throw new Error(where + " floating not last");
       });
     });
-    const expected = list.filter(c => c.workspace.id >= 1 && L.rowOf(c.workspace.id) < 5 && c.mapped !== false && c.hidden !== true && c.monitor === 0).length;
+    const expected = list.filter(c => c.workspace.id >= 1 && L.rowOf(c.workspace.id) < 5 && c.mapped !== false && c.hidden !== true).length;
     eq(Object.keys(seen).length, expected, where + " windows kept");
     const focusedInGrid = focusedId >= 1 && L.rowOf(focusedId) < 5;
     eq(rows.filter(r => r.current).length, focusedInGrid ? 1 : 0, where + " current row");

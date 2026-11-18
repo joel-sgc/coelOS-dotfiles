@@ -65,23 +65,68 @@ package.path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config"
 -- always feel the same: 3 is about 300 ms. Lower is snappier.
 local SLIDE_SPEED = 3
 
-local grid = require("grid").new({
-    active_id = function()
-        local ws = hl.get_active_workspace()
-        return ws and ws.id
-    end,
-    focus = function(id) hl.dispatch(hl.dsp.focus({ workspace = id })) end,
+local Grid = require("grid")
+
+-- The workspaces (five rows of 100) are shared by all monitors: a workspace is shown by
+-- one monitor at a time, and every monitor sits on a row (by default all on the same
+-- one) and can be moved to another with the swipes, keys or the overview. What a row
+-- returns to is remembered per monitor, so each keeps its own grid state (a `Grid`).
+local function host_focus(id)
+    -- on_current_monitor: the monitor you are on always ends up showing it (if another
+    -- monitor was showing it, they swap) instead of focus jumping over to that monitor.
+    hl.dispatch(hl.dsp.focus({ workspace = id, on_current_monitor = true }))
+end
+local grid_host = {
+    focus = host_focus,
     -- Moves the focused window and follows it.
     move = function(id) hl.dispatch(hl.dsp.window.move({ workspace = id })) end,
     animate = function(style)
         hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier = "default", style = style })
     end,
     after = function(ms, fn) hl.timer(fn, { timeout = ms, type = "oneshot" }) end,
-}, {
-    -- Put the sideways slide back once the up/down one has played: a little longer
-    -- than the animation itself (SLIDE_SPEED tenths of a second).
-    restore_ms = SLIDE_SPEED * 100 + 150,
-})
+}
+-- Can this monitor move through workspace `id`? Not when another monitor has it: one that
+-- monitor is showing, or holds windows (they are laid out for that monitor, so showing or
+-- sliding it here would half-draw them). A workspace that does not exist yet or is empty is
+-- free. Stepping, rows and swipes only ever use such workspaces; asking for one by number
+-- (Super+1..0, a bar chip, the overview) still takes it over.
+local function usable_for(name)
+    return function(id)
+        local ws = hl.get_workspace(id)
+        if not ws then return true end
+        local m = ws.monitor
+        if not m or m.name == name then return true end
+        return ws.windows == 0 and not ws.visible
+    end
+end
+local grids = {}      -- monitor name -> Grid
+local function grid_for(name)
+    if not grids[name] then
+        -- Each grid reads the workspace its own monitor is showing.
+        local host = setmetatable({
+            active_id = function()
+                local m = hl.get_monitor(name)
+                local ws = m and m.active_workspace
+                return ws and ws.id
+            end,
+            usable = usable_for(name),
+        }, { __index = grid_host })
+        grids[name] = Grid.new(host, {
+            -- Put the sideways slide back once the up/down one has played: a little longer
+            -- than the animation itself (SLIDE_SPEED tenths of a second).
+            restore_ms = SLIDE_SPEED * 100 + 150,
+        })
+    end
+    return grids[name]
+end
+-- The grid of the monitor you are on.
+local function grid_now()
+    local m = hl.get_active_monitor()
+    return grid_for(m and m.name or "")
+end
+local grid = setmetatable({}, { __index = function(_, k)
+    return function(...) local g = grid_now(); return g[k](...) end
+end })
 hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier = "default", style = "slide" })
 
 -- Every arrival, however it happened (key, swipe, panel click, window carried
@@ -90,11 +135,15 @@ hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier 
 -- The overview (home/quickshell/Overview.qml) takes you to a row through this...
 coel_grid = grid
 -- ...and reads which workspace each row returns to from this file, kept up to date
--- on every change of workspace (five numbers: see grid.snapshot()).
+-- on every change of workspace: a line per monitor, "<monitor name>:<five ids>" (see grid.snapshot()).
 local rows_file = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/coel-grid-rows"
 local function save_rows()
     local f = io.open(rows_file, "w")
-    if f then f:write(grid.snapshot()); f:close() end
+    if not f then return end
+    for name, g in pairs(grids) do
+        if name ~= "" and name ~= "FALLBACK" then f:write(name, ":", g.snapshot(), "\n") end
+    end
+    f:close()
 end
 -- The compositor's grid swipe (patches/hyprland-grid-swipe.patch) slides to
 -- whichever workspace is named for the swipe's direction, so tell it on every change.
@@ -107,19 +156,73 @@ local function publish_targets()
         workspace_swipe_grid_up = t.up, workspace_swipe_grid_down = t.down,
     } })
 end
-local function sync()
-    grid.arrived()
+local function real_monitors()
+    local out = {}
+    for _, m in ipairs(hl.get_monitors()) do
+        if m.name ~= "FALLBACK" then out[#out + 1] = m end
+    end
+    return out
+end
+
+-- When monitors appear (or at login) they should all sit on the same row, each on a
+-- workspace of its own: a new monitor starts out on whatever workspace Hyprland picked.
+-- The focused monitor stays where it is; the others are moved to the first column of its
+-- row that no other monitor is showing. Done a moment after the event, never inside it.
+local function place_monitors()
+    local here = hl.get_active_monitor()
+    local ws0 = here and here.active_workspace
+    local id0 = ws0 and ws0.id
+    if not id0 or id0 < 1 then return end
+    local row = Grid.row_of(id0)
+    local chosen = {}
+    for _, m in ipairs(real_monitors()) do
+        local ws = m.active_workspace
+        local id = ws and ws.id
+        if m.name ~= here.name and id and id > 0 and (id > Grid.SLOT or Grid.row_of(id) ~= row) then
+            local free = usable_for(m.name)
+            local col = 0
+            while (chosen[Grid.id_of(row, col)] or not free(Grid.id_of(row, col)) or Grid.id_of(row, col) == id0)
+                and col < Grid.ROW - 1 do
+                col = col + 1
+            end
+            local target = Grid.id_of(row, col)
+            chosen[target] = true
+            hl.dispatch(hl.dsp.focus({ monitor = m.name }))
+            hl.dispatch(hl.dsp.focus({ workspace = target }))
+        end
+    end
+    hl.dispatch(hl.dsp.focus({ monitor = here.name }))
+end
+local function place_soon() hl.timer(place_monitors, { timeout = 400, type = "oneshot" }) end
+
+local function sync_now()
+    for _, m in ipairs(real_monitors()) do grid_for(m.name).arrived() end
     save_rows()
     publish_targets()
+end
+-- Events arrive while Hyprland is still in the middle of the change (the focused monitor
+-- may not have switched yet), so look again a moment later as well.
+local sync_pending = false
+local function sync()
+    sync_now()
+    if not sync_pending then
+        sync_pending = true
+        hl.timer(function() sync_pending = false; sync_now() end, { timeout = 60, type = "oneshot" })
+    end
 end
 hl.on("workspace.active", sync)
 -- At login no workspace is active yet when this file loads and the first one may
 -- never raise workspace.active, so the targets would stay empty (no gestures until a
 -- keybind changed workspace). These catch the first workspace and any monitor change.
-hl.on("hyprland.start", sync)
-hl.on("monitor.added", sync)
+hl.on("hyprland.start", function() sync(); place_soon() end)
+hl.on("monitor.added", function() sync(); place_soon() end)
 hl.on("monitor.focused", sync)
 hl.on("workspace.created", sync)
+-- Which workspaces another monitor holds (and so may not be swiped onto) changes with these.
+hl.on("workspace.removed", sync)
+hl.on("window.open", sync)
+hl.on("window.close", sync)
+hl.on("window.move_to_workspace", sync)
 save_rows()
 publish_targets()   -- a fresh session starts with a fresh file, never a stale one
 

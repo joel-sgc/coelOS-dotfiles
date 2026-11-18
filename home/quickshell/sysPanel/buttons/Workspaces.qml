@@ -29,7 +29,7 @@ RowLayout {
         }
         return null
       }
-      property bool focused: wsData !== null && wsData.focused
+      property bool focused: wsData !== null && wsData.id === root.barWsId   // the one this bar's monitor shows
 
       Layout.alignment: Qt.AlignVCenter
       implicitWidth: Math.max(22, wsText.implicitWidth + 8)
@@ -40,7 +40,9 @@ RowLayout {
       MouseArea {
         id: wsMouseArea
         anchors.fill: parent
-        onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = " + wsDelegate.wsNum + " })")
+        // The monitor this bar is on takes the workspace (swapping with another monitor if
+        // that one was showing it), and an empty workspace is created on it.
+        onClicked: Hyprland.dispatch("function() hl.dispatch(hl.dsp.focus({ monitor = '" + (root.screen ? root.screen.name : "") + "' })) hl.dispatch(hl.dsp.focus({ workspace = " + wsDelegate.wsNum + ", on_current_monitor = true })) end")
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
       }
@@ -55,7 +57,7 @@ RowLayout {
         font.weight: wsDelegate.focused ? Font.DemiBold : Font.Normal
         opacity: {
           if (!wsDelegate.wsData) return wsMouseArea.containsMouse ? .5 : .2
-          if (wsDelegate.wsData.focused) return 1
+          if (wsDelegate.focused) return 1
           if (wsDelegate.wsData.toplevels.values.length > 0) return .5
           if (wsMouseArea.containsMouse) return .5
           return .2
@@ -78,7 +80,7 @@ RowLayout {
         radius: Globals.eyeCandyOff ? 0 : 1
         color: root.colors[wsDelegate.index % root.colors.length]
         opacity: {
-          if (wsDelegate.wsData && wsDelegate.wsData.focused) return 1
+          if (wsDelegate.focused) return 1
           if (wsMouseArea.containsMouse) return .5
           return 0
         }

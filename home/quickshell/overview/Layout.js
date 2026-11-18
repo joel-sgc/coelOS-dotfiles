@@ -60,8 +60,20 @@ function parseRemembered(text) {
   return out;
 }
 
+// The rows file has a line per monitor, "<monitor name>:<five ids>": the ids of `name`.
+function rememberedFor(fileText, name) {
+  var lines = String(fileText || "").split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var at = lines[i].lastIndexOf(":");
+    if (at > 0 && lines[i].slice(0, at) === name) return lines[i].slice(at + 1).trim();
+  }
+  return "";
+}
+
 // clients: `hyprctl -j clients`. opts:
-//   monitorId, monX, monY  only windows on this monitor, positioned relative to it
+//   monitorId, monX, monY  the monitor being shown; windows are placed relative to it
+//   monitors               `hyprctl -j monitors`: windows that are on another monitor are fitted
+//                          into this one's shape (same proportions, centred, nothing stretched)
 //   focusedId              the workspace you are on (-1 / <= 0 when a scratchpad is up)
 //   remembered             grid.lua's snapshot text, or an array from parseRemembered()
 //
@@ -73,19 +85,30 @@ function rowsOf(clients, opts) {
   opts = opts || {};
   var focusedId = opts.focusedId >= 1 ? opts.focusedId : -1;
   var remembered = Array.isArray(opts.remembered) ? opts.remembered : parseRemembered(opts.remembered);
+  var mons = {};
+  (opts.monitors || []).forEach(function (m) { mons[m.id] = m; });
+  var target = mons[opts.monitorId];
   var monX = opts.monX || 0, monY = opts.monY || 0;
 
   var byWs = {};
   (clients || []).forEach(function (c) {
     if (!c || !c.workspace || c.workspace.id < 1) return;                // scratchpads
     if (c.mapped === false || c.hidden === true) return;
-    if (opts.monitorId !== undefined && opts.monitorId !== null && opts.monitorId >= 0 && c.monitor !== opts.monitorId) return;
     var id = c.workspace.id;
     if (rowOf(id) >= ROWS) return;
     var at = c.at || [0, 0], size = c.size || [0, 0];
+    var x = at[0] - monX, y = at[1] - monY, w = size[0] || 0, h = size[1] || 0;
+    var from = mons[c.monitor];
+    if (target && from && from.id !== target.id && from.width > 0 && from.height > 0) {
+      // On another monitor: fit that monitor's screen into this one's, keeping proportions.
+      var k = Math.min(target.width / from.width, target.height / from.height);
+      x = (target.width - from.width * k) / 2 + (at[0] - from.x) * k;
+      y = (target.height - from.height * k) / 2 + (at[1] - from.y) * k;
+      w *= k; h *= k;
+    }
     (byWs[id] = byWs[id] || []).push({
       address: c.address, cls: c.class || c.initialClass || "", name: appName(c.class || c.initialClass), title: c.title || "",
-      x: at[0] - monX, y: at[1] - monY, w: Math.max(1, size[0] || 0), h: Math.max(1, size[1] || 0),
+      x: x, y: y, w: Math.max(1, w), h: Math.max(1, h),
       floating: !!c.floating,
     });
   });

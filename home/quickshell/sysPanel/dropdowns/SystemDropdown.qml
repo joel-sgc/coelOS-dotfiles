@@ -43,7 +43,20 @@ Item {
   readonly property string hostUser: Quickshell.env("USER") || "user"
   property string hostName: "coelos"
 
+  // Everything below that polls is started by a Timer while the popup is open. Each
+  // command is wrapped in `timeout`: a command that hangs (df on an unreachable network
+  // mount, ps waiting on a process stuck in the kernel) would otherwise leave its Process
+  // "running" for as long as it hangs, and since nothing re-runs a running Process, that
+  // part of the dropdown stays empty until it finally returns -- up to a minute or more.
+  property int coreCount: 1
+  Process {
+    id: coreCountProc
+    command: ["sh", "-c", "grep -c '^processor' /proc/cpuinfo"]
+    stdout: StdioCollector { onStreamFinished: dropdownRoot.coreCount = Math.max(1, parseInt(text.trim()) || 1) }
+  }
+
   Component.onCompleted: {
+    coreCountProc.running = true;
     hostnameProc.running = true;
     cpuModelProc.running = true;
     cpuTempPathProc.running = true;
@@ -129,12 +142,21 @@ Item {
   // uses for the aggregate figure, just kept across ticks here instead
   // of sleeping 0.3s inline, and done for every core at once).
   property var lastCpuTimes: ({})
+  // The first sample after the popup opens takes two readings a quarter of a second
+  // apart in one go, so the bars and the total show at once instead of after the second
+  // 2-second tick (and never compare against a reading from the last time it was open).
+  property bool cpuPrimed: false
+  onPopupOpenChanged: if (popupOpen) cpuPrimed = false
   Process {
     id: cpuStatProc
-    command: ["sh", "-c", "grep '^cpu' /proc/stat; grep 'cpu MHz' /proc/cpuinfo"]
+    command: dropdownRoot.cpuPrimed
+      ? ["sh", "-c", "timeout 3 grep '^cpu' /proc/stat; timeout 3 grep 'cpu MHz' /proc/cpuinfo"]
+      : ["sh", "-c", "timeout 3 grep '^cpu' /proc/stat; sleep 0.25; timeout 3 grep '^cpu' /proc/stat; timeout 3 grep 'cpu MHz' /proc/cpuinfo"]
     stdout: StdioCollector {
       onStreamFinished: {
-        const times = {};
+        // One reading per "cpu" aggregate line; the double sample has two.
+        const samples = [];
+        let times = null;
         const freqs = [];
         for (const line of text.split("\n")) {
           if (line.indexOf("cpu MHz") === 0) {
@@ -143,13 +165,18 @@ Item {
           } else if (line.indexOf("cpu") === 0) {
             const parts = line.trim().split(/\s+/);
             if (!/^cpu\d*$/.test(parts[0])) continue;
+            if (parts[0] === "cpu") { times = {}; samples.push(times); }
+            if (!times) continue;
             const nums = parts.slice(1, 9).map(Number); // user nice system idle iowait irq softirq steal
             times[parts[0]] = { idle: nums[3] + nums[4], total: nums.reduce((a, b) => a + b, 0) };
           }
         }
+        if (samples.length === 0) return;
         if (freqs.length > 0) dropdownRoot.cpuFreq = (freqs.reduce((a, b) => a + b, 0) / freqs.length) / 1000;
 
-        const prev = dropdownRoot.lastCpuTimes;
+        const prev = samples.length >= 2 ? samples[0] : dropdownRoot.lastCpuTimes;
+        times = samples[samples.length - 1];
+        dropdownRoot.cpuPrimed = true;
         if (prev["cpu"] && times["cpu"]) {
           const dIdle = times["cpu"].idle - prev["cpu"].idle;
           const dTotal = times["cpu"].total - prev["cpu"].total;
@@ -219,7 +246,9 @@ Item {
   property var disks: []
   Process {
     id: disksProc
-    command: ["sh", "-c", "df -B1 --output=target,fstype,source,size,used,avail 2>/dev/null | tail -n +2"]
+    // -x: the network/fuse mounts are left out before df asks them anything (asking an
+    // unreachable sshfs mount blocks df for a minute or more); `timeout` is the backstop.
+    command: ["sh", "-c", "timeout 4 df -B1 -x fuse.sshfs -x fuse.portal -x fuse.gvfsd-fuse -x nfs -x nfs4 -x cifs -x tmpfs -x devtmpfs --output=target,fstype,source,size,used,avail 2>/dev/null | tail -n +2"]
     stdout: StdioCollector {
       onStreamFinished: {
         // tmpfs/proc/sysfs/etc are pseudo filesystems, not real storage;
@@ -365,7 +394,10 @@ Item {
   property var processes: []
   Process {
     id: processesProc
-    command: ["sh", "-c", "ps -eo pid,comm:32,user,nlwp,rss,pcpu,args --no-headers --sort=-pcpu"]
+    // Without `args`: reading every process's command line can stall on a process the
+    // kernel is holding (a hung network mount), which would hold up the whole list. The
+    // command lines come from their own, separate, time-limited request below.
+    command: ["sh", "-c", "timeout 6 ps -eo pid,comm:32,user,nlwp,rss,pcpu --no-headers --sort=-pcpu"]
     stdout: StdioCollector {
       onStreamFinished: {
         // ps/nmcli/df/etc are this dropdown's own polling commands
@@ -377,10 +409,10 @@ Item {
         // milliseconds, not from it actually using that much CPU. That
         // artifact is specific to sampling processes THIS young, which
         // in practice mostly means this dropdown's own helpers.
-        const selfSpawned = new Set(["ps", "nmcli", "df", "cat", "grep", "cut", "sh", "hostname"]);
+        const selfSpawned = new Set(["ps", "nmcli", "df", "cat", "grep", "cut", "sh", "hostname", "timeout", "sleep"]);
         const out = [];
         for (const line of text.split("\n")) {
-          const m = line.match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+([\d.]+)\s*(.*)$/);
+          const m = line.match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+([\d.]+)\s*$/);
           if (!m) continue;
           const rssKb = parseInt(m[5]);
           if (rssKb <= 0) continue; // kernel threads etc. -- no real memory footprint, not user-relevant
@@ -397,8 +429,7 @@ Item {
             // over a literal nproc since it's the same live core count
             // the per-core cpu grid above already uses.
             thr: parseInt(m[4]), memMb: rssKb / 1024,
-            cpu: parseFloat(m[6]) / Math.max(1, dropdownRoot.cores.length),
-            cmd: m[7].length > 0 ? m[7] : name,
+            cpu: parseFloat(m[6]) / dropdownRoot.coreCount,
           });
         }
         // Reassigning `processes` (a plain JS array) hands the ListView a
@@ -416,12 +447,31 @@ Item {
       }
     }
   }
+  // pid -> full command line (what search matches and the status line shows). Arrives a
+  // little after the list, and is simply missing for a process whose command line could not
+  // be read in time (the name stands in).
+  property var cmdByPid: ({})
+  function cmdOf(p) { return cmdByPid[p.pid] || p.name; }
+  Process {
+    id: argsProc
+    command: ["sh", "-c", "timeout 4 ps -eo pid,args --no-headers"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        const map = {};
+        for (const line of text.split("\n")) {
+          const m = line.match(/^\s*(\d+)\s+(.*)$/);
+          if (m) map[m[1]] = m[2];
+        }
+        dropdownRoot.cmdByPid = map;
+      }
+    }
+  }
   Timer {
     interval: 2500
     running: dropdownRoot.popupOpen
     repeat: true
     triggeredOnStart: true
-    onTriggered: processesProc.running = true
+    onTriggered: { processesProc.running = true; argsProc.running = true; }
   }
 
   property string sortKey: "cpu" // "cpu" | "mem" | "name" | "pid"
@@ -452,7 +502,7 @@ Item {
     if (q.length > 0) {
       list = list.filter(p =>
         p.name.toLowerCase().includes(q) ||
-        p.cmd.toLowerCase().includes(q) ||
+        cmdOf(p).toLowerCase().includes(q) ||
         p.user.toLowerCase().includes(q) ||
         String(p.pid).includes(q)
       );
@@ -1053,7 +1103,7 @@ Item {
             Text {
               Layout.fillWidth: true
               elide: Text.ElideRight
-              text: dropdownRoot.selectedProcess ? (dropdownRoot.selectedProcess.name + " · running · " + dropdownRoot.selectedProcess.cmd) : ""
+              text: dropdownRoot.selectedProcess ? (dropdownRoot.selectedProcess.name + " · running · " + dropdownRoot.cmdOf(dropdownRoot.selectedProcess)) : ""
               color: dropdownRoot.mutedColor
               font.family: "JetBrains Mono"
               font.pixelSize: 12

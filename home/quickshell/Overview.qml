@@ -145,7 +145,10 @@ Scope {
             win.clients = clients;
             win.layoutOpts = {
               monitorId: mon.id !== undefined ? mon.id : -1, monX: mon.x || 0, monY: mon.y || 0,
-              focusedId: active.id !== undefined ? active.id : -1, remembered: parts[1] || "",
+              monitors: mons,
+              // The workspace this monitor shows (every monitor shows one of the shared grid).
+              focusedId: mon.activeWorkspace && mon.activeWorkspace.id >= 1 ? mon.activeWorkspace.id : (active.id !== undefined ? active.id : -1),
+              remembered: L.rememberedFor(parts[1] || "", mon.name || ""),
             };
             win.rows = L.rowsOf(clients, win.layoutOpts);
             // "eDP-1: 2256x1504, scale: 1, currently displaying: image: /path/to.jpg"
@@ -203,7 +206,7 @@ Scope {
         // focused directly.
         onChosen: (row, id, rep) => Hyprland.dispatch(rep
           ? "function() coel_grid.goto_row(" + row + ") end"
-          : "function() hl.dispatch(hl.dsp.focus({ workspace = " + id + " })) end")
+          : "function() hl.dispatch(hl.dsp.focus({ workspace = " + id + ", on_current_monitor = true })) end")
         // A window was dropped on another workspace: Hyprland moves it (it stays where
         // you are), and the map is laid out again with it in its new place.
         onWindowMoved: (address, workspace, fx, fy) => {
