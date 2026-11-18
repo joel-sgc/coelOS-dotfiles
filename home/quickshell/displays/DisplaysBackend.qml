@@ -475,9 +475,22 @@ QtObject {
     countdown.start();
     startWatchdog();
   }
+  // "Keep" makes the layout permanent: the live layout is written into
+  // settings.toml's [monitors.*] (see coel-settings sync-monitors), which
+  // Hyprland reads on every config load. Quitting waits for that write to
+  // finish, with a timer as a backstop if coel-settings is missing or hangs.
+  property bool keepFinishing: false
   function keep() {
     stopTimers();
     watchdog.running = false;
+    keepFinishing = false;
+    persistProc.running = true;
+    persistBackstop.start();
+  }
+  function keepDone() {
+    if (keepFinishing) return;
+    keepFinishing = true;
+    persistBackstop.stop();
     finish();
   }
   // Leave after a layout change: let the layer surfaces be re-arranged
@@ -547,6 +560,18 @@ QtObject {
     stdout: StdioCollector { onStreamFinished: restoreSettle.start() }
   }
   property Process watchdog: Process {}
+  // --no-apply: the live layout already is what is being saved.
+  property Process persistProc: Process {
+    command: ["coel-settings", "sync-monitors", "--no-apply"]
+    stderr: StdioCollector {
+      onStreamFinished: if (text.trim().length) console.warn("coel-settings: " + text.trim())
+    }
+    onExited: root.keepDone()
+  }
+  property Timer persistBackstop: Timer {
+    interval: 3000
+    onTriggered: root.keepDone()
+  }
 
   // ----- timers -----
   // Give the compositor a moment to finish reconfiguring before nudging.

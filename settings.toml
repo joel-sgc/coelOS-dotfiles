@@ -1,0 +1,84 @@
+# CoelOS runtime settings -- edit freely, no rebuild needed.
+#
+# Hyprland reads this file whenever its config loads, so after editing run
+#     coel-settings apply          (or:  hyprctl reload)
+# or change values from the shell and apply in one go:
+#     coel-settings set display.scale 1.25
+#     coel-settings get monitors
+#
+# Missing or broken values fall back to the defaults in home/hyprland/hyprland.lua,
+# so a typo here can't break the session. Check syntax with:  coel-settings validate
+
+# ---------------------------------------------------------------- display
+[display]
+# Default scale for any monitor entry below that doesn't set its own.
+# Fractional values (1.25, 1.5) work; XWayland apps get blurry above 1.
+scale = 1.0
+
+# ---------------------------------------------------------------- monitors
+# One table per monitor, named by description ("desc:...", survives a dock
+# changing connector names) or by connector (DP-10). `default` is the
+# wildcard for any monitor not listed. Keys: mode, position ("auto",
+# "auto-center-up", "1920x0"), scale, transform (0-7), mirror ("eDP-1"),
+# disabled (true).
+#
+# The Displays picker (quickshell) rewrites these when you press "keep" on a
+# layout, so a layout you pick now sticks across reloads and reboots.
+[monitors.default]
+mode = "preferred"
+position = "auto-center-up"
+
+[monitors."desc:BOE 0x0BCA"]
+mode = "2256x1504@59.999"
+position = "0x0"
+scale = 1.0
+
+[monitors."desc:Dell Inc. DELL P2219H 74GVXS2"]
+mode = "1920x1080@60.000"
+position = "168x-1080"
+scale = 1.0
+
+# ---------------------------------------------------------------- idle
+# Minutes without input before each step. 0 (or false) turns a step off.
+# Fractions work (0.5 = 30 s). Applied by `coel-settings apply`, which
+# restarts hypridle only if these values changed.
+#   lock       -> lock the session (goes to the login screen if this session
+#                 is the one on screen; see modules/session-hub.nix)
+#   screen_off -> blank the display
+#   suspend    -> last-resort suspend if this session is still on screen
+# Bad values fall back to the defaults below, never to "no lock".
+[idle]
+enabled = true
+lock_minutes = 10
+screen_off_minutes = 15
+suspend_minutes = 20
+
+# ---------------------------------------------------------------- environment
+# Exported to everything Hyprland starts. Only affects apps launched after
+# the change (running apps keep the environment they started with).
+[env]
+NIXOS_OZONE_WL = "1"
+MOZ_ENABLE_WAYLAND = "1"
+# GDK_SCALE = "2"
+# XCURSOR_SIZE = "24"
+
+# ---------------------------------------------------------------- hyprland options
+# Anything under [config.*] is passed straight to hl.config(), so every
+# Hyprland option is available here (https://wiki.hypr.land). Arrays of four
+# for gaps are top, right, bottom, left.
+[config.general]
+gaps_in = 4
+gaps_out = [8, 12, 12, 12]
+border_size = 2
+
+[config.decoration]
+rounding = 8
+
+[config.input]
+# kb_layout = "us"
+# repeat_rate = 35
+# repeat_delay = 250
+
+[config.input.touchpad]
+natural_scroll = true
+clickfinger_behavior = true

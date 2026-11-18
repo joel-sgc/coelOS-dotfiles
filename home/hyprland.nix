@@ -77,6 +77,10 @@ in
   # tests in home/hyprland/grid_test.lua). Lives next to hyprland.lua.
   xdg.configFile."hypr/grid.lua".source = ./hyprland/grid.lua;
 
+  # Loader for the runtime-editable settings.toml (repo root); see
+  # home/settings.nix for the matching `coel-settings` CLI.
+  xdg.configFile."hypr/settings.lua".source = ./hyprland/settings.lua;
+
   # Start every rebuild with an empty compiled-QML cache, so a stale compile can
   # never survive an edit; the first login after a rebuild recompiles once, the
   # ones after it start from the cache.

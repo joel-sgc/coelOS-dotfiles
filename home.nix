@@ -34,6 +34,7 @@
     ./home/chromium.nix
     ./home/mimeapps.nix
     ./home/hyprland.nix
+    ./home/settings.nix
     ./home/hypridle.nix
     ./home/wallpaper.nix
     ./home/theme.nix

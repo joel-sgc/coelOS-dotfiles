@@ -9,11 +9,55 @@ local terminal = "ghostty"
 local qs       = "@quickshell@/bin/quickshell ipc -p ~/.nixos/home/quickshell call"
 
 ------------------------------------------------------------------ monitors
-hl.monitor({ output = "eDP-1", mode = "2256x1504@59.999", position = "0x0", scale = 1 })
--- A wildcard for whatever else is plugged in. auto-center-up stacks it above
--- eDP-1 and centres it horizontally, computed from the connecting monitor's own
--- real size (not a hardcoded offset).
-hl.monitor({ output = "", mode = "preferred", position = "auto-center-up", scale = 1 })
+
+-- Runtime-editable settings (settings.toml in the repo; see its header). Loaded
+-- defensively: a missing or broken file gives {} and the built-in defaults in
+-- this file apply, so a typo there can't take the session down.
+package.path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/?.lua;" .. package.path
+local Settings = require("settings")
+local S, settings_err = Settings.load()
+if settings_err then print("settings.toml: " .. settings_err .. " (using built-in defaults)") end
+
+local default_scale = Settings.get(S, "display.scale", 1)
+
+-- One hl.monitor() rule from a [monitors.*] table. output "" is the wildcard.
+local function apply_monitor(output, c)
+    if c.disabled then
+        hl.monitor({ output = output, disabled = true })
+        return
+    end
+    local rule = {
+        output   = output,
+        mode     = c.mode or "preferred",
+        position = c.position or "auto",
+        scale    = c.scale or default_scale,
+    }
+    if c.transform then rule.transform = c.transform end
+    if c.mirror then rule.mirror = c.mirror end
+    hl.monitor(rule)
+end
+
+local mons = type(S.monitors) == "table" and S.monitors or {}
+if next(mons) == nil then
+    -- No [monitors] in settings.toml: the original rules.
+    hl.monitor({ output = "eDP-1", mode = "2256x1504@59.999", position = "0x0", scale = default_scale })
+    hl.monitor({ output = "", mode = "preferred", position = "auto-center-up", scale = default_scale })
+else
+    local names = {}
+    for name, c in pairs(mons) do
+        if name ~= "default" and type(c) == "table" then names[#names + 1] = name end
+    end
+    table.sort(names)
+    for _, name in ipairs(names) do
+        local ok, err = pcall(apply_monitor, name, mons[name])
+        if not ok then print("settings.toml [monitors." .. name .. "]: " .. tostring(err)) end
+    end
+    -- The wildcard for whatever else is plugged in. auto-center-up stacks it
+    -- above eDP-1 and centres it horizontally, computed from the connecting
+    -- monitor's own real size (not a hardcoded offset).
+    pcall(apply_monitor, "", type(mons.default) == "table" and mons.default
+        or { mode = "preferred", position = "auto-center-up" })
+end
 
 ------------------------------------------------------------------ environment
 -- Also set here (not just home.sessionVariables) so it reaches everything
@@ -25,6 +69,8 @@ hl.env("MOZ_ENABLE_WAYLAND", "1")
 -- wrapper bakes in a QT_PLUGIN_PATH.
 hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 hl.env("QT_PLUGIN_PATH", "@profileDir@/lib/qt-6/plugins")
+-- settings.toml [env]: extra or overriding variables.
+for k, v in pairs(type(S.env) == "table" and S.env or {}) do hl.env(k, tostring(v)) end
 
 ------------------------------------------------------------------ look and feel
 hl.config({
@@ -54,6 +100,18 @@ hl.config({
         },
     },
 })
+
+-- settings.toml [config.*]: any Hyprland option, layered over the defaults above.
+-- Arrays of four for gaps mean top, right, bottom, left.
+if type(S.config) == "table" then
+    local g = type(S.config.general) == "table" and S.config.general or {}
+    for _, k in ipairs({ "gaps_in", "gaps_out" }) do
+        local v = g[k]
+        if type(v) == "table" and #v == 4 then g[k] = { top = v[1], right = v[2], bottom = v[3], left = v[4] } end
+    end
+    local ok, err = pcall(hl.config, S.config)
+    if not ok then print("settings.toml [config]: " .. tostring(err)) end
+end
 
 ------------------------------------------------------------------ workspace grid
 -- The logic (rows of 100, a remembered column per row, vertical vs sideways slide,

@@ -120,6 +120,8 @@
     "--operator=joelsgc"
     "--accept-routes"
     "--ssh"
+    "--exit-node=100.98.151.60" # jsgc-server; a MagicDNS name or the node ID also works
+    "--exit-node-allow-lan-access"
   ];
   networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
@@ -440,6 +442,13 @@
   virtualisation.podman.enable = true;
 
   services.udev.extraRules = ''
+    # Dolphin lists both the raw LUKS container partition ("Encrypted Drive",
+    # nvme0n1p2/p3) and the unlocked mapping on top of it ("Internal Drive",
+    # dm-0/dm-1) -- the same storage twice. Hide the raw containers (matched by
+    # the LUKS UUIDs from hardware-configuration.nix) from UDisks/Solid; the
+    # unlocked volumes stay visible and nothing about unlocking/mounting changes.
+    ENV{ID_FS_TYPE}=="crypto_LUKS", ENV{ID_FS_UUID}=="e5e26cad-5394-4351-a7b4-d2f44f8f4972", ENV{UDISKS_PRESENTATION_HIDE}="1", ENV{UDISKS_IGNORE}="1"
+    ENV{ID_FS_TYPE}=="crypto_LUKS", ENV{ID_FS_UUID}=="2ad05545-2e7b-4191-93ad-3f654549bb9d", ENV{UDISKS_PRESENTATION_HIDE}="1", ENV{UDISKS_IGNORE}="1"
     KERNEL=="sda", GROUP="kvm", MODE="0660"
 
     # The Bluetooth radio keeps ending up soft-blocked for no reason (seen

@@ -1,4 +1,9 @@
-{ lib, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
 
 let
   theme = import ./theme/onedark.nix;
@@ -22,46 +27,59 @@ let
   # you are using. The Quickshell lock screen itself is still the in-session
   # lock (started by coel-hub).
   lockCmd = "/run/current-system/sw/bin/coel-hub lock";
+
+  # Last resort only. Normally the lock has already gone to the login screen,
+  # which blanks and suspends the machine itself (modules/session-hub.nix).
+  # This one suspends only if THIS session is still the one on screen (locked
+  # in place because the login screen is not running); with the login screen or
+  # another session on screen it does nothing, so a session in the background
+  # never suspends the machine while someone is using another.
+  suspendCmd = "/run/current-system/sw/bin/coel-hub suspend-fallback";
 in
 {
-  # Idle + lock screen. Timings match the old Arch/Omarchy setup:
-  # 5min -> lock, 10min -> screen off, 20min -> suspend.
+  # Idle + lock screen. The three timeouts (lock / screen off / suspend) are not
+  # set here: they live in settings.toml's [idle] table (repo root) so they can
+  # be changed without a rebuild. This unit renders hypridle's config from that
+  # file each time it starts (`coel-settings render-hypridle`); `coel-settings
+  # apply` restarts it when the [idle] values changed. Defaults, used when the
+  # file or a key is missing (and for the guest account, which has no
+  # settings.toml): 10 min -> lock, 15 -> screen off, 20 -> suspend.
   #
   # Scoped to hyprland-session.target via home/hyprland.nix's
   # wayland.systemd.target, so this only runs during a Hyprland session.
-  services.hypridle = {
-    enable = true;
-    settings = {
-      general = {
-        lock_cmd = lockCmd;
-        before_sleep_cmd = lockCmd;
-        after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
+  # (Replaces home-manager's services.hypridle, which can only ship a fixed
+  # config file from the Nix store.)
+  systemd.user.services.hypridle =
+    let
+      dpms = state: "hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
+      run = pkgs.writeShellScript "hypridle-run" ''
+        conf="''${XDG_RUNTIME_DIR:-/tmp}/hypridle.conf"
+        ${pkgs.python3}/bin/python3 ${./settings/coel_settings.py} render-hypridle \
+          --out "$conf" \
+          --lock-cmd ${lib.escapeShellArg lockCmd} \
+          --suspend-cmd ${lib.escapeShellArg suspendCmd} \
+          --dpms-on-cmd ${lib.escapeShellArg (dpms "on")} \
+          --dpms-off-cmd ${lib.escapeShellArg (dpms "off")}
+        exec ${pkgs.hypridle}/bin/hypridle -c "$conf"
+      '';
+    in
+    {
+      Install.WantedBy = [ config.wayland.systemd.target ];
+      Unit = {
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+        Description = "hypridle";
+        After = [ config.wayland.systemd.target ];
+        PartOf = [ config.wayland.systemd.target ];
+        # Rebuilds that change this script restart the service; settings.toml
+        # edits do not need that (see above).
+        X-Restart-Triggers = [ "${run}" ];
       };
-
-      listener = [
-        {
-          timeout = 600;
-          on-timeout = lockCmd;
-        }
-        {
-          timeout = 900;
-          on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"off\" })'";
-          on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'";
-        }
-        {
-          # Last resort only. Normally the lock at 10 minutes has already gone to
-          # the login screen, which blanks and suspends the machine itself
-          # (modules/session-hub.nix). This one suspends only if THIS session is
-          # still the one on screen (locked in place because the login screen is
-          # not running); with the login screen or another session on screen it
-          # does nothing, so a session in the background never suspends the
-          # machine while someone is using another.
-          timeout = 1200;
-          on-timeout = "/run/current-system/sw/bin/coel-hub suspend-fallback";
-        }
-      ];
+      Service = {
+        ExecStart = "${run}";
+        Restart = "always";
+        RestartSec = "10";
+      };
     };
-  };
 
   # No longer wired to lock_cmd/before_sleep_cmd/the idle listener above (or
   # the $mainMod+L keybind in home/hyprland.nix) -- all three now point at

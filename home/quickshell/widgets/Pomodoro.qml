@@ -23,6 +23,10 @@ WidgetCard {
   property int longMin: 15
   property bool autoStart: false
   property bool showHints: true
+  // One copy of the widget per monitor: only the primary (the main screen's) finishes a
+  // session, sends the notification and answers IPC; the others show and edit the same
+  // state through pomodoro.json.
+  property bool primary: true
 
   // ----- timer state -----
   property string mode: "focus"        // focus | short | long
@@ -140,6 +144,7 @@ WidgetCard {
   // `quickshell ipc -p ~/.nixos/home/quickshell call pomodoro toggle|reset|skip`
   // -- for keybinds, and handy for poking the timer without the mouse.
   IpcHandler {
+    enabled: root.primary
     target: "pomodoro"
     function toggle(): void { root.toggle(); }
     function reset(): void { root.reset(); }
@@ -153,7 +158,7 @@ WidgetCard {
     repeat: true
     onTriggered: {
       root.nowMs = Date.now();
-      if (root.nowMs >= root.endAt) root.advance(true);
+      if (root.nowMs >= root.endAt && root.primary) root.advance(true);
     }
   }
 
@@ -176,28 +181,39 @@ WidgetCard {
     lastSaved = text;
     pfile.setText(text);
   }
+  // Take over the state in pomodoro.json (at start, and when another copy of the widget -- on
+  // another monitor -- changed it).
+  function applyState(j) {
+    if (["focus", "short", "long"].indexOf(j.mode) >= 0) root.mode = j.mode;
+    root.frozen = typeof j.left === "number" ? j.left : -1;
+    root.running = !!j.running;
+    root.endAt = j.endAt || 0;
+    root.cycle = j.cycle || 0;
+    root.taskId = typeof j.taskId === "number" ? j.taskId : -1;
+    if (j.day === root.dayKey()) { root.doneToday = j.doneToday || 0; root.minsToday = j.minsToday || 0; }
+    root.day = root.dayKey();
+    root.nowMs = Date.now();
+  }
   FileView {
     id: pfile
     path: WidgetState.dirReady ? WidgetState.dataDir + "/pomodoro.json" : ""
+    watchChanges: true
+    onFileChanged: reload()
     onLoaded: {
-      if (root.loaded) return;
+      const t = text();
+      if (root.loaded) {
+        if (t === root.lastSaved) return;     // our own write coming back
+        try { root.applyState(JSON.parse(t)); } catch (e) { console.warn("pomodoro: pomodoro.json unreadable:", e); }
+        return;
+      }
       try {
-        const j = JSON.parse(text());
-        if (["focus", "short", "long"].indexOf(j.mode) >= 0) root.mode = j.mode;
-        root.frozen = typeof j.left === "number" ? j.left : -1;
-        root.running = !!j.running;
-        root.endAt = j.endAt || 0;
-        root.cycle = j.cycle || 0;
-        root.taskId = typeof j.taskId === "number" ? j.taskId : -1;
-        if (j.day === root.dayKey()) { root.doneToday = j.doneToday || 0; root.minsToday = j.minsToday || 0; }
-        root.day = root.dayKey();
+        root.applyState(JSON.parse(t));
       } catch (e) {
         console.warn("pomodoro: pomodoro.json unreadable, starting fresh:", e);
       }
       root.loaded = true;
-      root.nowMs = Date.now();
       // it finished while the shell was down
-      if (root.running && root.nowMs >= root.endAt) root.advance(true);
+      if (root.primary && root.running && root.nowMs >= root.endAt) root.advance(true);
     }
     onLoadFailed: root.loaded = true
   }

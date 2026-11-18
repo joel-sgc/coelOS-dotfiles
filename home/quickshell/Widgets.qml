@@ -5,10 +5,14 @@ import QtQuick
 import "./widgets"
 
 // ===== DESKTOP WIDGETS =====
-// Weather + calendar stacked on the left, kanban to their right, all on the
-// main screen only (MainScreen.qml; a widget duplicated across monitors would be two kanban
-// boards editing the same file). Each widget is a layer-shell Bottom-layer
-// window -- see widgets/WidgetColumn.qml / WidgetCard.qml. Colors live in widgets/Pal.qml.
+// Weather + calendar stacked on the left, kanban to their right, pomodoro and
+// server status bottom right, on every monitor. The main screen's set
+// (MainScreen.qml) is the primary one: it alone runs the pomodoro's timer
+// events (finishing a session, the notification) and answers the IPC calls; the
+// sets on the other monitors follow the same files (kanban.json, pomodoro.json,
+// widgets.json, which all the widgets watch for changes) and can be used just the
+// same. Each widget is a layer-shell Bottom-layer window -- see
+// widgets/WidgetColumn.qml / WidgetCard.qml. Colors live in widgets/Pal.qml.
 //
 // `quickshell ipc -p ~/.nixos/home/quickshell call widgets toggle` hides or
 // shows all of them; `... call widgets newcard` opens the kanban editor.
@@ -22,54 +26,69 @@ Scope {
   readonly property int left: 16 + 4
   readonly property int gap: 20
 
+  // The main screen's kanban, for `newcard`.
+  property var mainKanban: null
+
   IpcHandler {
     target: "widgets"
     function toggle(): void { root.shown = !root.shown; }
-    function newcard(): void { kanban.openNew(0); }
+    function newcard(): void { if (root.mainKanban) root.mainKanban.openNew(0); }
   }
 
-  // Weather + calendar share one window so the calendar slides up when the
-  // weather card minimizes (see WidgetColumn.qml for why).
-  WidgetColumn {
-    screen: root.screen
-    shown: root.shown
-    marginTop: root.top
-    marginLeft: root.left
-    gap: root.gap
+  Variants {
+    model: Quickshell.screens
 
-    Weather {}
-    Calendar {}
-  }
+    delegate: Scope {
+      id: set
+      required property var modelData
+      readonly property bool primary: set.modelData === root.screen
 
-  Kanban {
-    id: kanban
-    screen: root.screen
-    shown: root.shown
-    marginTop: root.top
-    marginRight: root.left
-  }
+      Binding { target: root; property: "mainKanban"; value: kanban; when: set.primary }
 
-  // Bottom right: pomodoro in the corner, server to its left. Separate
-  // columns (the server is shorter, so it sits on the same bottom edge).
-  WidgetColumn {
-    screen: root.screen
-    shown: root.shown
-    anchorRight: true
-    anchorBottom: true
-    marginRight: root.left
-    marginBottom: root.left
+      // Weather + calendar share one window so the calendar slides up when the
+      // weather card minimizes (see WidgetColumn.qml for why).
+      WidgetColumn {
+        screen: set.modelData
+        shown: root.shown
+        marginTop: root.top
+        marginLeft: root.left
+        gap: root.gap
 
-    Pomodoro { id: pomodoro }
-  }
+        Weather {}
+        Calendar {}
+      }
 
-  WidgetColumn {
-    screen: root.screen
-    shown: root.shown
-    anchorRight: true
-    anchorBottom: true
-    marginRight: root.left + pomodoro.cardWidth + root.gap
-    marginBottom: root.left
+      Kanban {
+        id: kanban
+        screen: set.modelData
+        shown: root.shown
+        marginTop: root.top
+        marginRight: root.left
+      }
 
-    ServerStatus {}
+      // Bottom right: pomodoro in the corner, server to its left. Separate
+      // columns (the server is shorter, so it sits on the same bottom edge).
+      WidgetColumn {
+        screen: set.modelData
+        shown: root.shown
+        anchorRight: true
+        anchorBottom: true
+        marginRight: root.left
+        marginBottom: root.left
+
+        Pomodoro { id: pomodoro; primary: set.primary }
+      }
+
+      WidgetColumn {
+        screen: set.modelData
+        shown: root.shown
+        anchorRight: true
+        anchorBottom: true
+        marginRight: root.left + pomodoro.cardWidth + root.gap
+        marginBottom: root.left
+
+        ServerStatus {}
+      }
+    }
   }
 }
