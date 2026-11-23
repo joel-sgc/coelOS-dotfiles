@@ -23,8 +23,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    opencode.url = "github:GutMutCode/opencode-nix";
-
     nix-flatpak.url = "github:gmodena/nix-flatpak";
 
     # Declarative per-game Steam config (Proton version, launch options,
@@ -34,28 +32,6 @@
       url = "github:different-name/steam-config-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # Ultraleap Gemini hand tracking (Leap Motion camera driver). Ultraleap's
-    # own Linux downloads have gone dark; this builds the service from the
-    # last hash-pinned .deb it still references and packages leapc-cffi/
-    # leapc-python-api properly for Nix. See modules/ultraleap.nix.
-    ultraleap-nix = {
-      url = "github:Makesesama/ultraleap-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # Not in nixpkgs yet; the project ships its own flake (crane + fenix,
-    # pins its own Rust toolchain independent of nixpkgs' rustc), so this is
-    # a real declarative build straight from source, not a wrapped installer
-    # script. First build compiles a substantial Rust codebase from
-    # scratch -- expect it to take a while.
-    #
-    # Pinned to our own fork/branch rather than upstream: .tsx/.jsx files
-    # were being parsed with the plain (non-JSX-capable) TypeScript grammar,
-    # which broke JSX tag/attribute highlighting and indentation. Fix is up
-    # as https://github.com/joel-sgc/fresh/tree/fix/tsx-grammar-and-jsx-indent
-    # (not yet merged upstream) -- revert to sinelaw/fresh once it lands there.
-    fresh.url = "github:joel-sgc/fresh/fix/tsx-grammar-and-jsx-indent";
   };
 
   outputs =
@@ -89,19 +65,21 @@
         in
         {
           hyprland-grid =
-            checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; } ''
-              cd ${./home/hyprland}
-              lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
-              cat "$TMPDIR/results.txt"
-              cp "$TMPDIR/results.txt" $out
-            '';
+            checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; }
+              ''
+                cd ${./home/hyprland}
+                lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+                cat "$TMPDIR/results.txt"
+                cp "$TMPDIR/results.txt" $out
+              '';
 
           overview-layout =
-            checkPkgs.runCommand "overview-layout-tests" { nativeBuildInputs = [ checkPkgs.nodejs ]; } ''
-              node ${./home/quickshell/overview}/Layout.test.js > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
-              cat "$TMPDIR/results.txt"
-              cp "$TMPDIR/results.txt" $out
-            '';
+            checkPkgs.runCommand "overview-layout-tests" { nativeBuildInputs = [ checkPkgs.nodejs ]; }
+              ''
+                node ${./home/quickshell/overview}/Layout.test.js > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+                cat "$TMPDIR/results.txt"
+                cp "$TMPDIR/results.txt" $out
+              '';
         };
 
       nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {

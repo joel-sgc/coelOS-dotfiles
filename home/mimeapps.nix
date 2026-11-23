@@ -34,6 +34,10 @@ let
     "video/3gpp"
   ];
 
+  # Plain-text-ish types open in micro in a Ghostty window (micro.desktop, see
+  # home/micro.nix). The list is shared with that file.
+  textTypes = import ./text-mime.nix;
+
   # Firefox's built-in pdf.js viewer.
   documents = [
     "application/pdf"
@@ -43,7 +47,9 @@ in
   xdg.mimeApps = {
     enable = true;
 
-    defaultApplications = lib.genAttrs (images ++ videos ++ documents) (_: [ zen ]) // {
+    defaultApplications = lib.genAttrs (images ++ videos ++ documents) (_: [ zen ])
+    // lib.genAttrs textTypes (_: [ "micro.desktop" ])
+    // {
       # Ported from the previous unmanaged ~/.config/mimeapps.list (Zen
       # had registered itself as the browser there). Must be carried over:
       # this file replaces that one outright.
@@ -59,7 +65,6 @@ in
       "x-scheme-handler/http" = [ "coel-url-router.desktop" ];
       "x-scheme-handler/https" = [ "coel-url-router.desktop" ];
       "x-scheme-handler/chrome" = [ zen ];
-      "text/markdown" = [ "micro.desktop" ];
 
       # Bambu Studio's "Open in Bambu Studio" links (Printables,
       # MakerWorld) open in OrcaSlicer instead. Orca's binary carries its

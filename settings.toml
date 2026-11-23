@@ -82,3 +82,9 @@ rounding = 8
 [config.input.touchpad]
 natural_scroll = true
 clickfinger_behavior = true
+
+[monitors."desc:Hitevision Group Newline STV+ 0x00000001"]
+mode = "3840x2160@30.000"
+position = "auto"
+scale = 1.0
+mirror = "0"

@@ -23,7 +23,6 @@
     # Programs
     ./home/zsh.nix
     ./home/micro.nix
-    ./home/fresh.nix
     ./home/quickshell.nix
     ./home/gcal-sync.nix
     ./home/kicad.nix
@@ -54,7 +53,6 @@
     ./home/server-mount.nix
     ./home/keyring.nix
     ./home/flatpak.nix
-    inputs.opencode.homeManagerModules.default
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
     inputs.steam-config-nix.homeModules.default
     ./home/steam.nix
@@ -63,11 +61,6 @@
   ##############################################################################
   # Services
   ##############################################################################
-
-  services.opencode = {
-    enable = true;
-    package = inputs.opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
-  };
 
   programs.direnv = {
     enable = true;

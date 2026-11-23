@@ -14,7 +14,16 @@ local qs       = "@quickshell@/bin/quickshell ipc -p ~/.nixos/home/quickshell ca
 -- defensively: a missing or broken file gives {} and the built-in defaults in
 -- this file apply, so a typo there can't take the session down.
 package.path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/?.lua;" .. package.path
-local Settings = require("settings")
+-- The loader itself is guarded too: if settings.lua is not deployed yet (a reload
+-- that lands before home-manager has linked it), run on the built-in defaults.
+local have_settings, Settings = pcall(require, "settings")
+if not have_settings then
+    print("settings.lua not loadable (" .. tostring(Settings) .. "); using built-in defaults")
+    Settings = {
+        load = function() return {}, "settings.lua missing" end,
+        get = function(_, _, default) return default end,
+    }
+end
 local S, settings_err = Settings.load()
 if settings_err then print("settings.toml: " .. settings_err .. " (using built-in defaults)") end
 

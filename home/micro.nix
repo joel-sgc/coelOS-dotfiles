@@ -1,6 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 let
+  textMimeTypes = import ./text-mime.nix;
+
   # Real LSP client for micro (AndCake/micro-plugin-lsp) -- diagnostics,
   # hover, completion, go-to-definition, unlike micro's bundled `linter`
   # plugin, which just shells out to external linters.
@@ -25,7 +27,8 @@ in
         if [ -f $out/share/applications/micro.desktop ]; then
           substituteInPlace $out/share/applications/micro.desktop \
             --replace "Terminal=true" "Terminal=false" \
-            --replace "Exec=micro" "Exec=ghostty -e micro"
+            --replace "Exec=micro" "Exec=ghostty -e micro" \
+            --replace "MimeType=" "MimeType=${lib.concatStringsSep ";" textMimeTypes};"
         fi
       '';
     });

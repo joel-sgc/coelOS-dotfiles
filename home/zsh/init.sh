@@ -7,6 +7,7 @@
 # -----------------------------------------------------------------------------
 typeset -g -a zle_highlight
 zle_highlight+=(region:standout)
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 
 # --- Selection & Deletion ---
 .zle_select-all() { MARK=0; CURSOR=$#BUFFER; REGION_ACTIVE=1; }

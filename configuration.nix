@@ -12,7 +12,6 @@
     ./modules/globalprotect.nix
     ./modules/nix-ld.nix
     ./modules/filesystems.nix
-    ./modules/ultraleap.nix
     ./modules/greeter.nix
     ./modules/session-hub.nix
     ./modules/guest.nix
@@ -170,6 +169,16 @@
   services.udisks2.enable = true;
   services.upower.enable = true;
 
+  # The USB-C hub dongle (VIA hub 2109:0817 + Realtek r8152 Ethernet + card
+  # reader) on xhci 0000:c3:00.3 reset itself every ~10 s the moment the Ethernet
+  # link carried traffic (kernel: "Tx status -71", then "usb 6-1: reset
+  # SuperSpeed USB device"), which kept dropping the shared connection to the
+  # Raspberry Pi. Turning USB3 link power management (U1/U2) off on that
+  # controller's ports stopped it. Glob so it does not depend on the bus number.
+  systemd.tmpfiles.rules = [
+    "w /sys/bus/pci/devices/0000:c3:00.3/usb*/*-0:1.0/usb*-port*/usb3_lpm_permit - - - - 0"
+  ];
+
   # The Plasma module also supplied the system fonts and default families;
   # without them GTK/wx apps (OrcaSlicer, ...) fall back to DejaVu and
   # render missing glyphs as boxes.
@@ -255,7 +264,11 @@
   # control both rely on to write there without running as root. Keeping
   # `pkgs.swayosd` here only as the source of that rule file, not because
   # anything actually runs it anymore.
-  services.udev.packages = [ pkgs.swayosd ];
+  # libmtp's rules tag phones/players as MTP devices (ID_MTP_DEVICE,
+  # ID_MEDIA_PLAYER). Dolphin's MTP support (kio-extras' kmtpd) only lists
+  # devices carrying those tags, so without this an unlocked, working phone
+  # never shows up there even though `mtp-detect` can read it.
+  services.udev.packages = [ pkgs.swayosd pkgs.libmtp.out ];
 
   # Per-desktop portal backend selection (matched against
   # $XDG_CURRENT_DESKTOP) instead of a flat default, so screen sharing/file
@@ -371,6 +384,20 @@
     "nix-command"
     "flakes"
   ];
+
+  # Registers a binfmt_misc handler so `./foo.AppImage` just runs (the
+  # kernel hands it to appimage-run automatically) instead of needing
+  # `appimage-run ./foo.AppImage` by hand every time.
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+    # Base appimage-run's FHS env doesn't ship WebKitGTK (too big to
+    # include by default) -- added for OrcaSlicer-Nonplanar's AppImage,
+    # which embeds a webview and needs libwebkit2gtk-4.1.so.0.
+    package = pkgs.appimage-run.override {
+      extraPkgs = pkgs: [ pkgs.webkitgtk_4_1 ];
+    };
+  };
 
   environment.systemPackages = [
     pkgs.framework-tool

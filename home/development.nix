@@ -22,5 +22,7 @@
     
     android-tools
     sqlite
+
+    claude-code
   ];  
 }

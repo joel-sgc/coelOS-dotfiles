@@ -28,7 +28,10 @@ let
   '';
 in
 {
-  home.file."server".source = config.lib.file.mkOutOfStoreSymlink mountPoint;
+  # (~/server -> the mount point is made by the service below, directly, rather than by
+  # home-manager: its links go through a store path, and sandboxed apps -- the Flatpak
+  # slicers -- cannot follow a link into /nix. Flatpak apps also need the mount point itself
+  # shared: see services.flatpak.overrides in home/flatpak.nix.)
 
   # One-off migration: ~/server used to be a real directory. A symlink cannot replace a
   # directory, so any old directory is moved aside first (never deleted): a still-live mount
@@ -66,6 +69,8 @@ in
         # Clear any stale/dead mount and stray files, then make the mount point.
         "${cleanMountPoint}"
         "${pkgs.coreutils}/bin/mkdir -p %t/server"
+        # -n: replace the link itself, never create one inside a directory.
+        "${pkgs.coreutils}/bin/ln -sfn %t/server %h/server"
       ];
       # -f keeps sshfs in the foreground so systemd tracks it; it exits when
       # the connection dies (ServerAlive*), which triggers the restart.
