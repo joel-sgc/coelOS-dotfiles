@@ -48,10 +48,11 @@ modules/gcast/
   engine/hls.py          HLS HTTP server (CORS, token, device-only) + readiness check
   engine/gcast_engine.py capture -> hlssink2 -> serve -> connect -> LOAD -> watch -> stop; JSON status file
   ctl/gcast_ctl.py       coel-gcast
-  tests/mock_cast.py     a fake Cast device (TLS, CASTV2, fetches the stream like a receiver)
-  tests/integration.py   engine <-> mock end to end
-  engine/test_*.py       codec/client, discovery, HLS server
 ```
+
+The tests live in the repo-level `tests/gcast/` (see `tests/README.md`): `mock_cast.py` (a fake Cast device: TLS, CASTV2,
+fetches the stream like a receiver), `integration.py` (engine <-> mock end to end) and `test_castv2.py`,
+`test_discover.py`, `test_hls.py` (codec/client, discovery, HLS server).
 
 Status file: `$XDG_RUNTIME_DIR/gcast-source.json` (`state`: starting / choosing / preparing / connecting / loading /
 casting / ended / error, plus `device`, `url`, `player`, `error`/`reason`) for a future Quickshell front end, the same
@@ -60,10 +61,9 @@ shape idea as the Miracast engine's.
 ## Testing without a device
 
 ```
-cd modules/gcast
-python3 -m unittest discover -s engine -p 'test_*.py'      # protocol, discovery, HLS server (needs openssl)
-PATH=<gstreamer>/bin GST_PLUGIN_SYSTEM_PATH_1_0=... python3 -m unittest tests/integration.py
-python3 tests/mock_cast.py --port 18009 &                  # a mock device you can point coel-gcast at:
+python3 tests/run.py gcast                                 # protocol, discovery, HLS server (needs openssl) + integration
+PATH=<gstreamer>/bin GST_PLUGIN_SYSTEM_PATH_1_0=... python3 tests/run.py gcast-integration   # needs gst-launch-1.0 + x264/hlssink2/fdkaac
+python3 tests/gcast/mock_cast.py --port 18009 &            # a mock device you can point coel-gcast at:
 coel-gcast cast 127.0.0.1:18009 --source test --foreground
 ```
 

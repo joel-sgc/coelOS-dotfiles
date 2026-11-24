@@ -1,6 +1,6 @@
 """gcast_engine end to end against the mock Cast device (needs gst-launch-1.0 with x264/hlssink2/fdkaac and openssl).
 
-    PATH=<gstreamer>/bin GST_PLUGIN_SYSTEM_PATH_1_0=... python3 -m unittest tests/integration.py
+    PATH=<gstreamer>/bin GST_PLUGIN_SYSTEM_PATH_1_0=... python3 tests/run.py gcast-integration
 """
 import asyncio
 import json
@@ -13,11 +13,11 @@ import unittest
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-sys.path.insert(0, os.path.join(here, "..", "engine"))
+sys.path.insert(0, os.path.join(here, "..", "..", "modules", "gcast", "engine"))
 import castv2  # noqa: E402
 import mock_cast  # noqa: E402
 
-ENGINE = os.path.join(here, "..", "engine", "gcast_engine.py")
+ENGINE = os.path.join(here, "..", "..", "modules", "gcast", "engine", "gcast_engine.py")
 
 
 @unittest.skipUnless(shutil.which("gst-launch-1.0") and shutil.which("openssl"), "needs gst-launch-1.0 and openssl")

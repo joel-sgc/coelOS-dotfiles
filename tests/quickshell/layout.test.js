@@ -1,14 +1,18 @@
-// Tests for Layout.js:  node home/quickshell/overview/Layout.test.js
-// (Layout.js is a QML library, so its `.pragma library` line is stripped first.)
+// Tests for home/quickshell/overview/Layout.js:  python3 tests/run.py overview-layout
+// (or directly: node tests/quickshell/layout.test.js). Layout.js is a QML library, so its `.pragma library` line is stripped first.
+// require()ing this file runs the tests and EXPORTS { passed, failed, results } without printing or exiting; running it as a
+// script prints a summary and sets the exit code.
 const fs = require("fs");
 const path = require("path");
-const src = fs.readFileSync(path.join(__dirname, "Layout.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
+const src = fs.readFileSync(path.join(__dirname, "..", "..", "home", "quickshell", "overview", "Layout.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
 const L = new Function(src + "\nreturn { ROW, ROWS, rowOf, colOf, idOf, parseRemembered, rememberedFor, rowsOf, appName };")();
 
 let passed = 0, failed = 0;
 const failures = [];
+const results = [];
 function test(name, fn) {
-  try { fn(); passed++; } catch (e) { failed++; failures.push("  FAIL  " + name + "\n        " + e.message); }
+  try { fn(); passed++; results.push({ name, ok: true }); }
+  catch (e) { failed++; failures.push("  FAIL  " + name + "\n        " + e.message); results.push({ name, ok: false, error: e.message }); }
 }
 function eq(a, b, msg) {
   if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || "differs") + ": expected " + JSON.stringify(b) + ", got " + JSON.stringify(a));
@@ -232,6 +236,9 @@ test("fuzz: 3000 random worlds keep every invariant", () => {
   }
 });
 
-failures.forEach(f => console.log(f));
-console.log(passed + " passed, " + failed + " failed");
-process.exit(failed === 0 ? 0 : 1);
+module.exports = { passed, failed, results };
+if (require.main === module) {
+  failures.forEach(f => console.log(f));
+  console.log(passed + " passed, " + failed + " failed");
+  process.exit(failed === 0 ? 0 : 1);
+}

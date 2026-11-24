@@ -1,18 +1,23 @@
 -- Unit tests for grid.lua (the workspace grid logic). No Hyprland needed:
 --
---   lua home/hyprland/grid_test.lua          (Hyprland embeds Lua 5.5)
+--   python3 tests/run.py hyprland-grid       (or directly: lua tests/hyprland/grid_test.lua; Hyprland embeds Lua 5.5)
+--
+-- Loading this file with dofile() runs the tests and RETURNS the results as a table (it does not print or
+-- exit); running it as a script prints a summary and sets the exit code.
 --
 -- The tests drive the real grid.lua against a fake host that behaves like the
 -- parts of Hyprland the grid relies on: focusing a workspace makes it active and
 -- fires the "workspace changed" event, moving a window follows it, timers run
 -- when the test clock advances.
 
-package.path = (arg and arg[0] and arg[0]:match("(.*/)") or "./") .. "?.lua;" .. package.path
+local SELF = debug.getinfo(1, "S").source:sub(2)       -- this file, also when loaded with dofile()
+local HERE = SELF:match("(.*/)") or "./"
+package.path = HERE .. "../../home/hyprland/?.lua;" .. package.path
 local Grid = require("grid")
 local ROW = Grid.ROW
 
 ---------------------------------------------------------------- tiny harness
-local passed, failed, failures = 0, 0, {}
+local passed, failed, failures, results = 0, 0, {}, {}
 
 local function fmt(v)
     if type(v) == "table" then
@@ -33,9 +38,11 @@ local function test(name, fn)
     local ok, err = pcall(fn)
     if ok then
         passed = passed + 1
+        results[#results + 1] = { name = name, ok = true }
     else
         failed = failed + 1
         failures[#failures + 1] = "  FAIL  " .. name .. "\n        " .. tostring(err)
+        results[#results + 1] = { name = name, ok = false, error = tostring(err) }
     end
 end
 
@@ -739,6 +746,10 @@ test("fuzz: 8 seeds x 4000 random operations when the arrival event is missed", 
 end)
 
 ---------------------------------------------------------------- report
-for _, f in ipairs(failures) do print(f) end
-print(("%d passed, %d failed"):format(passed, failed))
-os.exit(failed == 0 and 0 or 1)
+local summary = { passed = passed, failed = failed, results = results }
+if arg ~= nil and arg[0] ~= nil and arg[0]:match("grid_test%.lua$") then
+    for _, f in ipairs(failures) do print(f) end
+    print(("%d passed, %d failed"):format(passed, failed))
+    os.exit(failed == 0 and 0 or 1)
+end
+return summary

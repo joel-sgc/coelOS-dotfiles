@@ -125,7 +125,7 @@ end
 ------------------------------------------------------------------ workspace grid
 -- The logic (rows of 100, a remembered column per row, vertical vs sideways slide,
 -- one row per swipe) is in grid.lua, a plain module with its own unit tests
--- (grid_test.lua). This only plugs Hyprland into it.
+-- (tests/hyprland/grid_test.lua). This only plugs Hyprland into it.
 package.path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/?.lua;" .. package.path
 
 -- One speed for both slides (sideways and up/down), in tenths of a second, so they

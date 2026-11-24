@@ -5,10 +5,13 @@ Run:  python3 -m unittest test_miracast_linkd   (from this directory)
 The fixture is the Fire TV's DeviceFoundProperties as captured from
 wpa_supplicant 2.12 on this machine.
 """
+import sys
+import os
 import time
 import unittest
 
-import miracast_linkd as m
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "miracast", "linkd"))
+import miracast_linkd as m  # noqa: E402
 
 FIRE_TV = {
     "DeviceName": "Joel's Fire TV",

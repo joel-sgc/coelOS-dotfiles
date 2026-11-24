@@ -54,32 +54,33 @@
     in
     {
       # Unit tests, run by `nix flake check` or one at a time with
-      # `nix build .#checks.x86_64-linux.<name>`:
-      #  - hyprland-grid: the workspace grid logic (home/hyprland/grid_test.lua),
-      #    under Lua 5.5, the version Hyprland embeds.
-      #  - overview-layout: the overview's layout logic
-      #    (home/quickshell/overview/Layout.test.js), under Node.
+      # `nix build .#checks.x86_64-linux.<name>`. They are the same suites as
+      # `python3 tests/run.py <name>` (see tests/README.md); the sandbox gets the
+      # interpreter each one needs (Lua 5.5 is the version Hyprland embeds).
       checks.${system} =
         let
           checkPkgs = nixpkgs.legacyPackages.${system};
+          suite = name: tools:
+            checkPkgs.runCommand "${name}-tests" { nativeBuildInputs = [ checkPkgs.python3 ] ++ tools; } ''
+              export PYTHONDONTWRITEBYTECODE=1
+              cd ${./.}
+              python3 tests/run.py ${name} --nix never > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
+              cat "$TMPDIR/results.txt"
+              cp "$TMPDIR/results.txt" $out
+            '';
         in
         {
-          hyprland-grid =
-            checkPkgs.runCommand "hyprland-grid-tests" { nativeBuildInputs = [ checkPkgs.lua5_5 ]; }
-              ''
-                cd ${./home/hyprland}
-                lua grid_test.lua > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
-                cat "$TMPDIR/results.txt"
-                cp "$TMPDIR/results.txt" $out
-              '';
-
-          overview-layout =
-            checkPkgs.runCommand "overview-layout-tests" { nativeBuildInputs = [ checkPkgs.nodejs ]; }
-              ''
-                node ${./home/quickshell/overview}/Layout.test.js > "$TMPDIR/results.txt" || { cat "$TMPDIR/results.txt"; exit 1; }
-                cat "$TMPDIR/results.txt"
-                cp "$TMPDIR/results.txt" $out
-              '';
+          hyprland-grid = suite "hyprland-grid" [ checkPkgs.lua5_5 ];
+          hyprland-settings = suite "hyprland-settings" [ checkPkgs.lua5_5 ];
+          overview-layout = suite "overview-layout" [ checkPkgs.nodejs ];
+          settings = suite "settings" [ ];
+          gcast-castv2 = suite "gcast-castv2" [ checkPkgs.openssl ];
+          gcast-discover = suite "gcast-discover" [ ];
+          gcast-hls = suite "gcast-hls" [ ];
+          miracast-wfd = suite "miracast-wfd" [ ];
+          miracast-profiles = suite "miracast-profiles" [ ];
+          miracast-linkd = suite "miracast-linkd" [ ];
+          test-runner = suite "meta" [ ];
         };
 
       nixosConfigurations.coelos = nixpkgs.lib.nixosSystem {

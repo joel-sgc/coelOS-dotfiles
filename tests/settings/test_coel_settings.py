@@ -1,4 +1,4 @@
-"""Tests for coel_settings.py:  python3 home/settings/coel_settings_test.py"""
+"""Tests for home/settings/coel_settings.py:  python3 tests/run.py settings"""
 import os
 import subprocess
 import sys
@@ -6,7 +6,7 @@ import tempfile
 import tomllib
 import unittest
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "home", "settings")   # the code under test
 sys.path.insert(0, HERE)
 import coel_settings as cs  # noqa: E402
 

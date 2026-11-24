@@ -1,6 +1,9 @@
+import sys
+import os
 import unittest
 
-import discover
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "gcast", "engine"))
+import discover  # noqa: E402
 
 BROWSE = r'''+;wlp1s0;IPv4;Chromecast-abc;_googlecast._tcp;local
 =;wlp1s0;IPv6;Chromecast-abc;_googlecast._tcp;local;abc.local;fe80::1;8009;"id=abc123" "fn=Living Room" "md=Chromecast"

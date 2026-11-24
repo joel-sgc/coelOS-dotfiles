@@ -1,9 +1,10 @@
 """Tests for coel_bt_agent against a private session bus with a fake bluetoothd.
 
 Run (needs dbus-daemon and dbus-fast):
-  nix-shell -p dbus python3Packages.dbus-fast --run 'python3 test_coel_bt_agent.py'
+  python3 tests/run.py bluetooth-agent        (or: nix-shell -p dbus python3Packages.dbus-fast --run 'python3 tests/bluetooth_agent/test_coel_bt_agent.py')
 """
 
+import sys
 import asyncio
 import json
 import os
@@ -17,7 +18,9 @@ from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method
 from dbus_fast.constants import PropertyAccess
 
-import coel_bt_agent as agent_mod
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(REPO, "home", "bluetooth-agent"))
+import coel_bt_agent as agent_mod  # noqa: E402
 
 DEV = "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF"
 KNOWN = "/org/bluez/hci0/dev_11_22_33_44_55_66"

@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import os
 import tempfile
@@ -5,7 +6,8 @@ import unittest
 import urllib.error
 import urllib.request
 
-import hls
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "gcast", "engine"))
+import hls  # noqa: E402
 
 
 def fetch(url, method="GET"):

@@ -90,7 +90,7 @@ NixOS (`services.miracast`): `enable`, `interface`, `sinkProfiles`, `keepStation
 - **The Roku reads the first PMT once and only plays streams listed in it.** `mpegtsmux` lists a stream only after its
   pad has caps, so whichever stream produced data first is alone in the first PMT. That caused *every* Roku symptom:
   audio first -> black screen; video first -> picture without sound. The audio branch therefore has its caps declared up
-  front (`udpsrc caps=...`) and the first PMT lists both. Check with a stream dump (`tests/mock_sink.py --dump f.ts`).
+  front (`udpsrc caps=...`) and the first PMT lists both. Check with a stream dump (`tests/miracast/mock_sink.py --dump f.ts`).
 - The Roku **stops answering when told there is no audio** (`wfd_audio_codecs: none`); negotiate AAC and send silence/nothing
   instead (`--audio-source silence|off`).
 - Never call `P2PDevice.Disconnect` on the *main* interface: wpa_supplicant treats it as "deauthenticate this interface"
@@ -447,7 +447,7 @@ the encoder produced ~1 frame per several seconds and the TV showed black.
 
 Lesson learned: the first successful stream stopped after exactly three minutes.
 `--idle-timeout 180` (meant for "no TV ever connected") was applied to the whole
-run. It now only covers the wait for a TV; `tests/engine_e2e.sh` runs with a
+run. It now only covers the wait for a TV; `tests/miracast/engine_e2e.sh` runs with a
 timeout shorter than the session so this can't come back.
 
 Known gaps: no audio (LPCM/AAC in the TS), no HDCP, no forced-keyframe on the
@@ -507,22 +507,21 @@ sudo busctl --system tree fi.w1.wpa_supplicant1 | grep -i peers
 All of these run without hardware, root or a TV.
 
 ```sh
-cd modules/miracast
-python3 -m unittest discover -s engine -p 'test_*.py'      # 46: framing, negotiation, profiles, ADTS, pipelines
-python3 -m unittest discover -s linkd -p 'test_*.py'       # 15 (needs dbus-fast on the path, see below)
-bash tests/engine_e2e.sh            # engine vs a mock TV on localhost (negotiation only)
-bash tests/engine_e2e.sh gst        # ... and stream a test pattern (gst-launch-1.0 + plugins on PATH)
-bash tests/run-integration.sh       # daemon + CLI vs mock_wpa.py on a private session bus (needs dbus-fast)
-bash tests/run-portal-test.sh       # ../castlib/portal_capture.py vs mock_portal.py (session, fd passing, cancel)
+python3 tests/run.py miracast                  # everything below (wraps in nix-shell where dbus/dbus-fast are missing)
+python3 tests/run.py miracast-wfd miracast-profiles miracast-linkd   # unit: framing, negotiation, profiles, ADTS, pipelines, daemon helpers
+python3 tests/run.py miracast-engine-e2e       # engine vs a mock TV on localhost (negotiation only)
+bash tests/miracast/engine_e2e.sh gst          # ... and stream a test pattern (gst-launch-1.0 + plugins on PATH)
+python3 tests/run.py miracast-integration      # daemon + CLI vs mock_wpa.py on a private session bus (needs dbus-fast)
+python3 tests/run.py miracast-portal           # ../castlib/portal_capture.py vs mock_portal.py (session, fd passing, cancel)
 ```
 
-- `tests/mock_sink.py` is a fake TV (`--dump f.ts` writes the MPEG-TS it received: use it to check PIDs, PMT contents,
+- `tests/miracast/mock_sink.py` is a fake TV (`--dump f.ts` writes the MPEG-TS it received: use it to check PIDs, PMT contents,
   timestamp steps). Handy one-liners for stream checks live in this README's investigation log (PMT scan, PTS steps).
-- `tests/mock_wpa.py` is a fake wpa_supplicant (a leftover group interface, `Disconnect` on the main interface is asserted never to happen).
+- `tests/miracast/mock_wpa.py` is a fake wpa_supplicant (a leftover group interface, `Disconnect` on the main interface is asserted never to happen).
 - The portal picker cannot be automated here; real-screen runs need a human to pick a monitor.
 
-To get dbus-fast for the daemon tests: `nix shell --impure nixpkgs#dbus --expr
-'(builtins.getFlake "nixpkgs").legacyPackages.x86_64-linux.python3.withPackages (ps: [ ps.dbus-fast ])' -c <command>`.
+The runner (`tests/run.py`) gets dbus and dbus-fast through `nix-shell -p` when they are not installed; run a test file by hand
+inside `nix-shell -p dbus python3Packages.dbus-fast` if you want to.
 
 ## File map
 
@@ -534,9 +533,8 @@ modules/miracast/
   engine/miracast_source.py the source engine: RTSP session, profile match, GStreamer pipelines, audio relay
   engine/wfd.py             WFD protocol logic: framing, format/audio negotiation, ADTS helpers (pure, unit tested)
   engine/profiles.py        per-display quirk profiles (match + settings)
-  engine/test_wfd.py, engine/test_profiles.py, linkd/test_miracast_linkd.py
   ctl/miracast_ctl.py       coel-miracast CLI (stdlib only)
-  tests/                    mock_wpa.py, mock_sink.py, mock_portal.py, engine_e2e.sh, integration.sh, run-*.sh, portal_e2e.py
+  (tests: ../../tests/miracast/ -- test_wfd.py, test_profiles.py, test_miracast_linkd.py, mock_*.py, engine_e2e.sh, integration.sh, run-*.sh, portal_e2e.py)
 ../castlib/portal_capture.py  xdg-desktop-portal ScreenCast client (shared with ../gcast)
 ```
 

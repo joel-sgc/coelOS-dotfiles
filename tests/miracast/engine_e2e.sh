@@ -11,7 +11,7 @@ if [ "${1:-}" = gst ]; then source=test; listen=4; fi
 
 # --idle-timeout is shorter than the session on purpose: it must only apply while
 # waiting for the TV, not cut a running stream off (a real bug: streams ended at 180s).
-python3 "$here/../engine/miracast_source.py" --port 17236 --source "$source" --idle-timeout 2 \
+python3 "$here/../../modules/miracast/engine/miracast_source.py" --port 17236 --source "$source" --idle-timeout 2 \
     --status-file "$work/status.json" > "$work/engine.log" 2>&1 &
 sleep 1
 report=$(python3 "$here/mock_sink.py" --port 17236 --rtp-port 19000 --listen-seconds "$listen")

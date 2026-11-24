@@ -1,11 +1,13 @@
+import sys
 import argparse
 import json
 import os
 import tempfile
 import unittest
 
-import profiles
-import wfd
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "miracast", "engine"))
+import profiles  # noqa: E402
+import wfd  # noqa: E402
 
 ROKU = {"name": "Roku Express - 898", "manufacturer": "Roku", "model": "Express",
         "device_type": "7-0050F204-1", "content_protection": "HDCP2.1 port=12000", "audio_codecs": ["LPCM", "AAC"]}

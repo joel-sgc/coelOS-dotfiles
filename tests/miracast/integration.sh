@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end test of miracast-linkd + coel-miracast against the mock wpa_supplicant,
 # on a private session bus. No root, no hardware.
-#   nix shell nixpkgs#dbus nixpkgs#python3Packages.dbus-fast -c ./integration.sh   (or via the flake check)
+#   nix shell nixpkgs#dbus nixpkgs#python3Packages.dbus-fast -c ./integration.sh   (or: python3 tests/run.py miracast-integration)
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
@@ -11,10 +11,10 @@ export MIRACAST_STATE="$work/state.json" MIRACAST_SOCKET="$work/linkd.sock"
 
 python3 "$here/mock_wpa.py" > "$work/mock.log" 2>&1 &
 sleep 1
-python3 "$here/../linkd/miracast_linkd.py" --bus session --group "$(id -gn)" \
+python3 "$here/../../modules/miracast/linkd/miracast_linkd.py" --bus session --group "$(id -gn)" \
     --state-file "$MIRACAST_STATE" --socket "$MIRACAST_SOCKET" --device-name test-laptop > "$work/linkd.log" 2>&1 &
 sleep 2
-ctl="python3 $here/../ctl/miracast_ctl.py"
+ctl="python3 $here/../../modules/miracast/ctl/miracast_ctl.py"
 
 echo "--- status (before scan)"; $ctl status
 echo "--- scan";                  $ctl scan 20

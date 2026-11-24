@@ -74,7 +74,7 @@ in
   home.packages = [ pkgs.xdg-desktop-portal-gtk ];
 
   # The workspace grid logic that hyprland.lua requires (a plain module, with unit
-  # tests in home/hyprland/grid_test.lua). Lives next to hyprland.lua.
+  # tests in tests/hyprland/grid_test.lua). Lives next to hyprland.lua.
   xdg.configFile."hypr/grid.lua".source = ./hyprland/grid.lua;
 
   # Loader for the runtime-editable settings.toml (repo root); see

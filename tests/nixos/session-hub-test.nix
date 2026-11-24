@@ -5,14 +5,16 @@
 # graphics: the "hub" is a stub and the "session" is a long sleep -- what is
 # under test is who may show what on which VT, not any UI.
 #
+#   python3 tests/run.py session-hub          (slow: boots a VM; opt-in, or use --all)
+# or by hand:
 #   nix build --impure --expr \
 #     'let f = builtins.getFlake "git+file://$PWD"; pkgs = import f.inputs.nixpkgs { system = "x86_64-linux"; };
-#      in pkgs.testers.runNixOSTest ./modules/session-hub-test.nix'
+#      in pkgs.testers.runNixOSTest ./tests/nixos/session-hub-test.nix'
 {
   name = "session-hub";
 
   nodes.machine = { pkgs, ... }: {
-    imports = [ ./session-hub.nix ./guest.nix ];
+    imports = [ ../../modules/session-hub.nix ../../modules/guest.nix ];
 
     services.coel-hub.enable = true;
     # Short timers so idle behaviour can be watched; a fake backlight, a fake

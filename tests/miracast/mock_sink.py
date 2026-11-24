@@ -14,7 +14,7 @@ import os
 import socket
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "miracast", "engine"))
 import wfd  # noqa: E402
 
 CAPS = {

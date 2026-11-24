@@ -57,7 +57,7 @@ SYSTEMD_MANAGER = "org.freedesktop.systemd1.Manager"
 
 
 # ----------------------------------------------------------------------------
-# Pure helpers (no D-Bus): unit-tested in test_miracast_linkd.py
+# Pure helpers (no D-Bus): unit-tested in tests/miracast/test_miracast_linkd.py
 # ----------------------------------------------------------------------------
 
 def mac_str(raw):

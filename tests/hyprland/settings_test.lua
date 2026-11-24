@@ -1,10 +1,13 @@
--- Tests for settings.lua:   lua home/hyprland/settings_test.lua
--- With COEL_TEST_JSON=<file.json> it also compares the parse of the real
--- settings.toml against Python's tomllib (see tests in coel_settings_test.py).
-package.path = (arg and arg[0] and arg[0]:match("(.*/)") or "./") .. "?.lua;" .. package.path
+-- Tests for home/hyprland/settings.lua:   python3 tests/run.py hyprland-settings
+-- (or directly: lua tests/hyprland/settings_test.lua). With COEL_TEST_JSON=<file.json> and COEL_TEST_FILE=<settings.toml>
+-- it also compares Lua's parse of the real settings.toml against Python's tomllib; the runner sets both.
+-- Loading with dofile() RETURNS the results table instead of printing / exiting.
+local SELF = debug.getinfo(1, "S").source:sub(2)       -- this file, also when loaded with dofile()
+local HERE = SELF:match("(.*/)") or "./"
+package.path = HERE .. "../../home/hyprland/?.lua;" .. package.path
 local S = require("settings")
 
-local passed, failed = 0, 0
+local passed, failed, results = 0, 0, {}
 local function eq(a, b)
     if type(a) ~= type(b) then return false end
     if type(a) ~= "table" then return a == b end
@@ -13,9 +16,13 @@ local function eq(a, b)
     return true
 end
 local function test(name, got, want)
-    if eq(got, want) then passed = passed + 1 else
+    if eq(got, want) then
+        passed = passed + 1
+        results[#results + 1] = { name = name, ok = true }
+    else
         failed = failed + 1
-        io.stderr:write("FAIL " .. name .. "\n")
+        results[#results + 1] = { name = name, ok = false, error = "values differ" }
+        if arg ~= nil and arg[0] ~= nil and arg[0]:match("settings_test%.lua$") then io.stderr:write("FAIL " .. name .. "\n") end
     end
 end
 
@@ -106,5 +113,8 @@ if os.getenv("COEL_TEST_JSON") then
     test("real file agrees with tomllib" .. (err2 and (": " .. err2) or ""), got, want)
 end
 
-print(("%d passed, %d failed"):format(passed, failed))
-os.exit(failed == 0 and 0 or 1)
+if arg ~= nil and arg[0] ~= nil and arg[0]:match("settings_test%.lua$") then
+    print(("%d passed, %d failed"):format(passed, failed))
+    os.exit(failed == 0 and 0 or 1)
+end
+return { passed = passed, failed = failed, results = results }

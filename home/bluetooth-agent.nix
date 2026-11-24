@@ -5,7 +5,7 @@ let
   # questions -- compare this passkey, type a PIN, authorize a service -- to the
   # Quickshell bluetooth dropdown over $XDG_RUNTIME_DIR/coel-bt-agent.sock.
   # Protocol and fallback behaviour are documented at the top of the script;
-  # tests: home/bluetooth-agent/test_coel_bt_agent.py.
+  # tests: tests/bluetooth_agent/test_coel_bt_agent.py (python3 tests/run.py bluetooth-agent).
   python = pkgs.python3.withPackages (ps: [ ps.dbus-fast ]);
   agent = pkgs.writeShellScriptBin "coel-bt-agent" ''
     exec ${python}/bin/python3 ${./bluetooth-agent/coel_bt_agent.py} "$@"

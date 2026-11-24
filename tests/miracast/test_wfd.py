@@ -1,7 +1,10 @@
 """Unit tests for wfd.py (pure protocol logic). Run:  python3 -m unittest test_wfd"""
+import sys
+import os
 import unittest
 
-import wfd
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "modules", "miracast", "engine"))
+import wfd  # noqa: E402
 
 # Typical sink capability reply (shaped like the ones real TVs send).
 SINK_VIDEO = "38 00 02 08 0001FFFF 1CFFFFFF 00000FFF 00 0000 0000 00 none none"
