@@ -5,3 +5,4 @@ coelos-dotfiles/
 *.tsx
 __pycache__/
 example
+server-dotfiles/

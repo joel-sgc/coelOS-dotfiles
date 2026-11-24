@@ -9,7 +9,8 @@
   imports = [
     ./hardware-configuration.nix
     ./modules/kdeconnect.nix
-    ./modules/globalprotect.nix
+    ./modules/globalprotect-routes.nix
+    ./modules/globalprotect-openconnect.nix
     ./modules/nix-ld.nix
     ./modules/filesystems.nix
     ./modules/greeter.nix

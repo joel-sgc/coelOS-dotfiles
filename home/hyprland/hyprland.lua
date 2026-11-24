@@ -422,6 +422,8 @@ hl.bind("XF86MonBrightnessDown",   hl.dsp.exec_cmd(qs .. " osd brightnessDown"))
 
 hl.bind("Print",           hl.dsp.exec_cmd("coel-screenshot"))
 hl.bind("XF86PowerOff",    hl.dsp.exec_cmd("coel-power-menu"))
+-- Screenshot the whole screen silently, have claude solve it, copy the answer.
+hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("coel-ask-screen"))
 -- The laptop's F9 display key sends Super+P, not an XF86 keysym.
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("coel-displays"))
 

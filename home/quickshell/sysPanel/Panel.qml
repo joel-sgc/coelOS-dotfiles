@@ -88,6 +88,27 @@ Scope {
     function stop(): void { panelScope.screenshotting = false; }
   }
 
+  // coel-ask-screen (scripts/coel-ask-screen.sh) status: idle | working |
+  // done | fail. Every bar shows AssistantStatus.qml from these.
+  property string assistantState: "idle"
+  property string assistantPreview: ""
+
+  IpcHandler {
+    target: "assistant"
+    function working(): void { panelScope.assistantState = "working"; panelScope.assistantPreview = ""; }
+    function done(preview: string): void { panelScope.assistantState = "done"; panelScope.assistantPreview = preview; }
+    function fail(message: string): void { panelScope.assistantState = "fail"; panelScope.assistantPreview = message; }
+    function clear(): void { panelScope.assistantState = "idle"; panelScope.assistantPreview = ""; }
+  }
+
+  // Result chip auto-hides; "working" is left alone (the script always
+  // follows it with done/fail/clear, and the 5-minute cap covers a killed one).
+  Timer {
+    interval: panelScope.assistantState === "working" ? 300000 : 10000
+    running: panelScope.assistantState !== "idle"
+    onTriggered: panelScope.assistantState = "idle"
+  }
+
   Timer {
     interval: 10000
     running: panelScope.screenshotting
@@ -206,6 +227,12 @@ Scope {
             unreadCount: root.notifications ? root.notifications.unreadCount : 0
             dnd: root.notifications ? root.notifications.dnd : false
             onClicked: root.openPopup = root.openPopup === "notifications" ? "" : "notifications"
+          }
+
+          AssistantStatus {
+            status: panelScope.assistantState
+            preview: panelScope.assistantPreview
+            onDismissed: panelScope.assistantState = "idle"
           }
         }
 

@@ -1,5 +1,14 @@
 # GlobalProtect VPN automation (LUC)
 
+**Historical: describes the vendored GlobalProtect client (PanGPS/PanGPA),
+retired 2026-11-23 in favor of an openconnect-based backend
+(modules/globalprotect-openconnect.nix). The files this points at
+(gp-connect.exp, modules/globalprotect.nix, lib/globalprotect-fhs.nix) are
+gone. The `coel-vpn-connect`/`coel-vpn-status`/`coel-vpn-disconnect`
+interface and `GP_STATUS:` contract described below carried over to the new
+backend unchanged, so most of this still describes current behavior even
+though the implementation underneath it doesn't match.**
+
 Scriptable connect/disconnect wrappers around the vendored GlobalProtect
 client, designed to be driven by another program (e.g. a Go TUI that toggles
 registered VPNs). The portal password is stored in the login keyring and

@@ -1,0 +1,126 @@
+#!/usr/bin/env expect
+#
+# Authenticate-only phase of the openconnect backend. Runs unprivileged (no
+# tun device is created here -- `openconnect --authenticate` just does the
+# HTTPS portal/gateway login dance and prints a reusable session cookie).
+# Pty-drives the same prompt sequence the vendored client used to (that
+# client is gone; see [[project_globalprotect_luc]]), since the prompts are
+# rendered by LUC's own portal form, not by whichever client is asking.
+#
+# On success, writes COOKIE/CONNECT_URL/HOST/FINGERPRINT/RESOLVE to the
+# session file named by $env(GP_SESSION_FILE) (mode 600, written by this
+# process as the real user -- never printed to stdout/stderr) and exits 0.
+# The root-side coel-openconnect-luc-run reads that file to make the actual
+# connection; see modules/globalprotect-openconnect.nix.
+#
+# Env (exported by coel-vpn-connect):
+#   GP_PORTAL GP_USERNAME GP_PASSWORD GP_SESSION_FILE
+#   GP_MFA_CODE   optional -- MFA code (same as passing argv[0])
+#
+# GP_STATUS values: connecting | mfa-required | mfa-rejected | authenticated
+#                    | password-rejected | mfa-failed | auth-failed
+#                    | unexpected-exit | no-password | mfa-timeout
+#                    | needs-attention | timeout
+# Exit codes: 0 authenticated | 2 auth-failed/password-rejected/mfa-failed/
+#             unexpected-exit | 3 no-password | 4 timeout/needs-attention
+#             | 5 mfa not supplied
+
+proc status {s} { puts "GP_STATUS: $s"; flush stdout }
+
+# Shell-quote for the session file: the GP cookie is a '&'-joined
+# query-string (authcookie=...&portal=...&user=...&domain=...&computer=...)
+# -- written unquoted, coel-openconnect-luc-run's `. "$session_file"` would
+# parse each '&' as a shell background operator and silently truncate the
+# cookie to just its first field. Single-quote, escaping any embedded '.
+proc shq {s} { return "'[string map {' '\\''} $s]'" }
+
+set portal   $env(GP_PORTAL)
+set username $env(GP_USERNAME)
+set session_file $env(GP_SESSION_FILE)
+
+set mfa ""
+if {[info exists env(GP_MFA_CODE)]} { set mfa [string trim $env(GP_MFA_CODE)] }
+if {$argc > 0} { set mfa [string trim [lindex $argv 0]] }
+
+if {![info exists env(GP_PASSWORD)] || $env(GP_PASSWORD) eq ""} {
+    status "no-password"
+    puts stderr "coel-vpn-connect: GP_PASSWORD not set."
+    exit 3
+}
+set password $env(GP_PASSWORD)
+
+status "connecting"
+log_user 0
+set timeout 120
+
+set pw_sent 0
+set mfa_sent 0
+
+spawn openconnect --authenticate --protocol=gp --user=$username $portal
+
+expect {
+    -re {Username\([^)]*\):\s*$} {
+        send -- "$username\r"
+        exp_continue
+    }
+    -re {Username:\s*$} {
+        send -- "$username\r"
+        exp_continue
+    }
+    -re {Password:\s*$} {
+        incr pw_sent
+        if {$pw_sent > 2} { status "password-rejected"; exit 2 }
+        send -- "$password\r"
+        exp_continue
+    }
+    -re {(?i)(verification code|challenge):\s*$} {
+        if {$mfa_sent >= 1} {
+            status "mfa-rejected"
+            set mfa ""
+        }
+        if {$mfa eq ""} {
+            status "mfa-required"
+            set timeout 300
+            expect_user {
+                -re {([^\r\n]+)[\r\n]} { set mfa [string trim $expect_out(1,string)] }
+                timeout { status "mfa-timeout"; exit 5 }
+            }
+            set timeout 120
+        }
+        if {$mfa eq ""} { status "mfa-timeout"; exit 5 }
+        incr mfa_sent
+        if {$mfa_sent > 4} { status "mfa-failed"; exit 2 }
+        send -- "$mfa\r"
+        exp_continue
+    }
+    -re {(?i)(authentication failed|login failed|invalid username or password|incorrect password|failed to obtain|certificate validation failure)} {
+        status "auth-failed"; exit 2
+    }
+    -re {(?i)pem pass ?phrase|do you want to continue.*\?} {
+        status "needs-attention"; exit 4
+    }
+    timeout { status "timeout"; exit 4 }
+    eof {
+        set buf $expect_out(buffer)
+        lassign [wait] pid spawnid os_error_flag exit_status
+
+        if {![regexp {(?m)^COOKIE='?([^'\r\n]*)'?\s*$} $buf -> cookie] || $cookie eq ""} {
+            puts stderr "coel-vpn-connect: openconnect --authenticate exited $exit_status with no COOKIE in output"
+            status "unexpected-exit"; exit 2
+        }
+        regexp {(?m)^HOST='?([^'\r\n]*)'?\s*$} $buf -> host
+        regexp {(?m)^CONNECT_URL='?([^'\r\n]*)'?\s*$} $buf -> connect_url
+        regexp {(?m)^FINGERPRINT='?([^'\r\n]*)'?\s*$} $buf -> fingerprint
+        regexp {(?m)^RESOLVE='?([^'\r\n]*)'?\s*$} $buf -> resolve
+
+        set fh [open $session_file {WRONLY CREAT TRUNC} 0600]
+        puts $fh "COOKIE=[shq $cookie]"
+        if {[info exists host]}        { puts $fh "HOST=[shq $host]" }
+        if {[info exists connect_url]} { puts $fh "CONNECT_URL=[shq $connect_url]" }
+        if {[info exists fingerprint]} { puts $fh "FINGERPRINT=[shq $fingerprint]" }
+        if {[info exists resolve]}     { puts $fh "RESOLVE=[shq $resolve]" }
+        close $fh
+
+        status "authenticated"; exit 0
+    }
+}

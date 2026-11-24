@@ -167,6 +167,22 @@ let
     text = builtins.readFile ../scripts/coel-screenshot.sh;
   };
 
+  # Super+A: silent full-screen capture -> headless claude -> clipboard +
+  # bar status chip. `claude` itself comes from the user profile (not
+  # pinned here) so it tracks however it's installed.
+  askScreen = pkgs.writeShellApplication {
+    name = "coel-ask-screen";
+    runtimeInputs = with pkgs; [
+      grim
+      wl-clipboard
+      quickshell
+      procps
+      coreutils
+      gnugrep
+    ];
+    text = builtins.readFile ../scripts/coel-ask-screen.sh;
+  };
+
   screenrecord = pkgs.writeShellApplication {
     name = "coel-screenrecord";
     runtimeInputs = with pkgs; [
@@ -279,6 +295,7 @@ in
     rebuild
     update
     screenshot
+    askScreen
     pkgs.hyprpicker
     screenrecord
     showDone

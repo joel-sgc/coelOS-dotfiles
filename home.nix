@@ -100,16 +100,17 @@
     sshfs
     wireguard-tools
     proton-vpn
-    rclone # CLI for one-off FTP access to the Bambu Lab printer's SD card
-           # (implicit FTPS, port 990) -- no persistent mount for this
-           # anymore: the printer's embedded FTP server returns directory
-           # listings in a non-deterministic order between requests, which
-           # made the FUSE-mounted version silently ENOENT files that had
-           # just been listed. Talk to it directly instead, e.g.:
-           #   rclone delete ":ftp,host=<ip>,port=990,user=bblp,pass=<obscured>,tls=true,no_check_certificate=true:<path>" --retries 10 --low-level-retries 20 -P
-           # (rclone obscure '<access code>' to get pass=; no_check_certificate
-           # is needed since the printer's FTPS cert is self-signed with no
-           # IP SANs).
+    rclone
+    # CLI for one-off FTP access to the Bambu Lab printer's SD card
+    # (implicit FTPS, port 990) -- no persistent mount for this
+    # anymore: the printer's embedded FTP server returns directory
+    # listings in a non-deterministic order between requests, which
+    # made the FUSE-mounted version silently ENOENT files that had
+    # just been listed. Talk to it directly instead, e.g.:
+    #   rclone delete ":ftp,host=<ip>,port=990,user=bblp,pass=<obscured>,tls=true,no_check_certificate=true:<path>" --retries 10 --low-level-retries 20 -P
+    # (rclone obscure '<access code>' to get pass=; no_check_certificate
+    # is needed since the printer's FTPS cert is self-signed with no
+    # IP SANs).
 
     # Security tools
     john
@@ -132,8 +133,8 @@
 
   home.sessionVariables = {
     TERMINAL = "ghostty";
-    EDITOR = "fresh";
-    VISUAL = "fresh";
+    EDITOR = "micro";
+    VISUAL = "micro";
     GTK_THEME = "Adwaita:dark";
 
     # Makes Electron apps (VS Code) and Firefox-based browsers (Zen) render

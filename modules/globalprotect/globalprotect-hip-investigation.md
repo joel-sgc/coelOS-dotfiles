@@ -4,6 +4,11 @@ Dated 2026-08-14. Context for [[project_globalprotect_luc]] memory and any
 future work on this. Summarizes what was tried, what was ruled out, and
 what the actual root cause appears to be.
 
+**Historical: the vendor client and FHS sandbox this describes were retired
+2026-11-23**, replaced by an openconnect-based backend
+(modules/globalprotect-openconnect.nix) once that was proven working
+against the real gateway. Kept for the record of what was tried and why.
+
 ## Background
 
 LUC's GlobalProtect gateway (`secureaccess.luc.edu`) enforces a Host
