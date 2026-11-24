@@ -62,6 +62,34 @@ Scope {
     return screen;
   }
 
+  // Outer gaps, same source/approach as Widgets.qml (general:gaps_out).
+  property int barHeight: 36
+  property int gapTop: 8
+  property int gapRight: 12
+  Process {
+    id: gapsProc
+    command: ["hyprctl", "getoption", "general:gaps_out", "-j"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          const v = String(JSON.parse(text).css).trim().split(/\s+/).map(Number);
+          if (v.length === 1) v.push(v[0], v[0], v[0]);
+          if (v.length !== 4 || v.some(isNaN)) return;
+          notifScope.gapTop = v[0]; notifScope.gapRight = v[1];
+        } catch (e) {
+          console.warn("notifications: could not read general:gaps_out:", e);
+        }
+      }
+    }
+  }
+  Component.onCompleted: gapsProc.running = true
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "configreloaded") gapsProc.running = true;
+    }
+  }
+
   signal toggleRequested(var screen)
 
   // `quickshell ipc -p ~/.nixos/home/quickshell call notifications toggle`
@@ -88,20 +116,12 @@ Scope {
           top: true
           right: true
         }
-        // Matches where real tiled windows actually sit, not a guessed
-        // gap -- confirmed empirically via `hyprctl -j clients` (a real
-        // window's own `at`: [22, 46] on this monitor) rather than derived
-        // purely from config, since the real figure also includes
-        // general:border_size (2) on top of Panel.qml's own 36px
-        // exclusive zone (`hyprctl -j monitors`' own "reserved": [0,36,0,0])
-        // plus home/hyprland.nix's gaps_out ("8, 20, 20, 20" ->
-        // top/right/bottom/left). top: 36 + 8 + 2 = 46; right: 20 + 2 = 22.
-        // Hardcoded, like every other dropdown's own rightMargin in this
-        // project -- revisit if gaps_out, border_size, or barHeight ever
-        // change.
+        // Same edges tiled windows and the widgets use: the panel's 36px
+        // strip plus general:gaps_out (top/right), read live from Hyprland
+        // below instead of hardcoded, so editing settings.toml moves toasts too.
         margins {
-          top: 44
-          right: 20
+          top: notifScope.barHeight + notifScope.gapTop
+          right: notifScope.gapRight
         }
 
         implicitWidth: 340
@@ -123,6 +143,15 @@ Scope {
               id: toastCard
               required property var modelData
               width: toastColumn.width
+              // Slide in from the right + fade (mockup's nIn keyframe).
+              opacity: 0
+              transform: Translate { id: toastSlide; x: 12 }
+              Component.onCompleted: { if (Globals.eyeCandyOff) { opacity = 1; toastSlide.x = 0; } else toastIn.start(); }
+              ParallelAnimation {
+                id: toastIn
+                NumberAnimation { target: toastCard; property: "opacity"; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                NumberAnimation { target: toastSlide; property: "x"; to: 0; duration: 200; easing.type: Easing.OutCubic }
+              }
               implicitHeight: toastRow.implicitHeight + 22
               // Matches home/hyprland.nix's decoration.rounding (8), not a
               // separately-chosen value -- toasts sit right next to real

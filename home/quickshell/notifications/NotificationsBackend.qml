@@ -104,7 +104,7 @@ Item {
     pruneHistory();
 
     const row = {
-      id: histId, dbusId: n.id, app: n.appName, icon: "app-window", image: n.image || "",
+      id: histId, dbusId: n.id, app: n.appName, icon: iconFor(n.appName, n.summary, urgencyStr), image: n.image || "",
       summary: n.summary, body: n.body || "", desktopEntry: n.desktopEntry || "",
       receivedAt: receivedAt, urgency: urgencyStr, read: false,
     };
@@ -137,6 +137,26 @@ Item {
   // dismissed); Notifications.qml's own Timer ticks `pct` down from it and
   // calls fadeToast() when it runs out.
   readonly property int toastSeconds: 5
+  // Picks a Phosphor glyph from the app name / summary (the D-Bus icon hint
+  // is a themed name or pixmap we can't draw with the icon font). Keyword
+  // table, first match wins; critical falls back to a warning glyph.
+  function iconFor(app, summary, urgency) {
+    const a = String(app || "").toLowerCase(), s = String(summary || "").toLowerCase();
+    const table = [
+      [/discord|vesktop|vencord/, "discord-logo"], [/signal|whatsapp|messag|sms|kde ?connect/, "chat-circle-text"],
+      [/telegram/, "telegram-logo"], [/steam/, "steam-logo"], [/spotify/, "spotify-logo"],
+      [/mail|thunderbird|evolution|geary/, "envelope-simple"], [/calendar|reminder/, "calendar-blank"],
+      [/satty|grim|screenshot|flameshot|spectacle|swappy/, "camera"], [/firefox|chrom|brave|librewolf|download/, "download-simple"],
+      [/nextcloud|syncthing|dropbox|onedrive/, "cloud-check"], [/pacman|nix|apt|dnf|flatpak|update|package/, "package"],
+      [/battery|power|upower/, "battery-warning"], [/vpn|globalprotect|openprotect|tailscale|openconnect/, "shield-check"],
+      [/network|wifi|nm-|networkmanager/, "wifi-high"], [/udisks|disk|storage/, "hard-drives"], [/usb/, "usb"],
+      [/music|player|mpris/, "music-note"], [/systemd|kernel|journal/, "warning-octagon"],
+      [/kitty|alacritty|foot|terminal/, "terminal-window"],
+    ];
+    for (const [re, ic] of table) if (re.test(a) || re.test(s)) return ic;
+    return urgency === "critical" ? "warning-octagon" : "bell-simple";
+  }
+
   property var toasts: []
   function pushToast(row, n) {
     const createdAt = Date.now();
@@ -296,7 +316,7 @@ Item {
       for (let i = 0; i < rs.rows.length; i++) {
         const r = rs.rows.item(i);
         out.push({
-          id: Number(r.hist_id), dbusId: r.dbus_id, app: r.app_name, icon: "app-window", image: r.image || "",
+          id: Number(r.hist_id), dbusId: r.dbus_id, app: r.app_name, icon: iconFor(r.app_name, r.summary, r.urgency === 2 ? "critical" : "normal"), image: r.image || "",
           summary: r.summary, body: r.body || "", desktopEntry: r.desktop_entry || "",
           receivedAt: r.received_at, urgency: r.urgency === 2 ? "critical" : (r.urgency === 0 ? "low" : "normal"),
           read: r.read === 1,

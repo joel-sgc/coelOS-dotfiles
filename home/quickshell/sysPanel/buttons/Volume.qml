@@ -31,6 +31,7 @@ Button {
     : icons[Math.min(icons.length - 1, Math.floor(vol * icons.length))]
 
   icon: iconState
+  iconColor: muted ? root.mutedColor : root.fgColor
   label: muted ? "" : Math.round(vol * 100) + "%"
   active: root.openPopup === "audio"
   onClicked: root.openPopup = root.openPopup === "audio" ? "" : "audio"

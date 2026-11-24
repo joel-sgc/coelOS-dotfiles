@@ -55,7 +55,8 @@ Item {
         spacing: 2
         rightContent: [
           Text {
-            text: "[v] +vlan"
+            textFormat: Text.StyledText
+            text: "[<font color=\"#e5c07b\">v</font>] +vlan"
             color: addVlanMouse.containsMouse ? view.fgColor : view.mutedColor
             font.family: view.mono
             font.pixelSize: 13

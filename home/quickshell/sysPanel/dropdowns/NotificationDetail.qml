@@ -42,14 +42,15 @@ Item {
   Flickable {
     anchors.fill: parent
     contentWidth: width
-    contentHeight: contentCol.implicitHeight
+    contentHeight: Math.max(contentCol.implicitHeight, height)
     clip: true
     boundsBehavior: Flickable.StopAtBounds
 
     ColumnLayout {
       id: contentCol
       width: parent.width
-      spacing: 12
+      height: Math.max(implicitHeight, parent.height)
+      spacing: 14
       visible: detailRoot.n !== null
 
       RowLayout {
@@ -90,7 +91,7 @@ Item {
       }
       Column {
         Layout.fillWidth: true
-        Text { text: detailRoot.n ? detailRoot.n.summary : ""; color: nRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 14; wrapMode: Text.WordWrap; width: parent.width }
+        Text { text: detailRoot.n ? detailRoot.n.summary : ""; color: nRoot.textColor; font.family: "JetBrains Mono"; font.pixelSize: 15; wrapMode: Text.WordWrap; width: parent.width }
         Text { text: detailRoot.n ? (detailRoot.n.app + " · " + detailRoot.n.time) : ""; color: nRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
       }
       Text {
@@ -106,7 +107,7 @@ Item {
     Text {
       Layout.fillWidth: true
       text: detailRoot.n ? detailRoot.n.body : ""
-      color: nRoot.mutedColor
+      color: nRoot.bodyColor
       font.family: "JetBrains Mono"
       font.pixelSize: 13
       wrapMode: Text.WordWrap
@@ -257,21 +258,13 @@ Item {
       }
     }
 
-    // No fillHeight spacer pinning this to the bottom anymore -- that only
-    // made sense against a fixed-height parent; inside a Flickable there's
-    // no fixed height to pin against, so metadata just follows normally
-    // with regular spacing instead.
-
-    // Metadata rows (app/urgency/received/id) -- a Column of Rows, one per
-    // entry, NOT a `Grid { columns: 2 }` with a single two-Text delegate
-    // per entry: Grid treats each *delegate* as one cell among its
-    // `columns`, so pairing key+value inside one delegate while columns:2
-    // silently laid out two whole *entries* side by side instead of one
-    // entry's key/value pair -- a real bug an earlier version of this file
-    // had, caught from a live screenshot showing only 2 of 4 rows with the
-    // rest pushed off to the side.
+    // Pinned to the bottom of the pane (spacer absorbs spare height when the
+    // content is shorter than the pane), separated by a 1px rule.
+    Item { Layout.fillWidth: true; Layout.fillHeight: true }
+    Rectangle { Layout.fillWidth: true; height: 1; color: nRoot.hoverColor }
     Column {
       Layout.fillWidth: true
+      Layout.topMargin: -4
       spacing: 2
       Repeater {
         model: detailRoot.rows

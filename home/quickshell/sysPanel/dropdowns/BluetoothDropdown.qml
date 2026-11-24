@@ -160,6 +160,8 @@ Item {
     pairingDevice = null;
   }
 
+  // Keybind letter in the accent yellow, like the mockup's "[c]onnect" buttons.
+  function kb(k) { return "<font color=\"" + colors[2] + "\">" + k + "</font>"; }
   focus: true
   Keys.onPressed: (event) => {
     if (pairingOpen) {
@@ -543,7 +545,8 @@ Item {
               Text {
                 id: toggleLabel
                 anchors.centerIn: parent
-                text: "[c]" + (dropdownRoot.currentPaired && dropdownRoot.currentPaired.connected ? "disconnect" : "connect")
+                textFormat: Text.StyledText
+                text: "[" + dropdownRoot.kb("c") + "]" + (dropdownRoot.currentPaired && dropdownRoot.currentPaired.connected ? "disconnect" : "connect")
                 color: dropdownRoot.fgColor
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
@@ -558,7 +561,8 @@ Item {
               Text {
                 id: trustLabel
                 anchors.centerIn: parent
-                text: "[t]" + (dropdownRoot.currentPaired && dropdownRoot.currentPaired.trusted ? "untrust" : "trust")
+                textFormat: Text.StyledText
+                text: "[" + dropdownRoot.kb("t") + "]" + (dropdownRoot.currentPaired && dropdownRoot.currentPaired.trusted ? "untrust" : "trust")
                 color: dropdownRoot.fgColor
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
@@ -573,7 +577,8 @@ Item {
               Text {
                 id: forgetLabel
                 anchors.centerIn: parent
-                text: "[f]orget"
+                textFormat: Text.StyledText
+                text: "[" + dropdownRoot.kb("f") + "]orget"
                 color: dropdownRoot.colors[1]
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
@@ -603,7 +608,8 @@ Item {
       spacing: 2
 
       rightContent: Text {
-        text: dropdownRoot.scanning ? "[s]top" : "[s]can"
+        textFormat: Text.StyledText
+        text: dropdownRoot.scanning ? ("[" + dropdownRoot.kb("s") + "]top") : ("[" + dropdownRoot.kb("s") + "]can")
         color: dropdownRoot.mutedColor
         font.family: "JetBrains Mono"
         font.pixelSize: 12
@@ -698,7 +704,8 @@ Item {
       Text {
         visible: dropdownRoot.powered && dropdownRoot.nearbyDevices.length === 0
         x: 8
-        text: dropdownRoot.scanning ? "scanning…" : "nothing found -- [s]can to look again"
+        textFormat: Text.StyledText
+        text: dropdownRoot.scanning ? "scanning…" : ("nothing found -- [" + dropdownRoot.kb("s") + "]can to look again")
         color: dropdownRoot.mutedColor
         font.family: "JetBrains Mono"
         font.pixelSize: 13

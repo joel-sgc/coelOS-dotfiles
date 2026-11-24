@@ -124,7 +124,6 @@
     # baseline dependency
     imagemagick
     rpi-imager
-    obsidian
   ];
 
   ##############################################################################

@@ -185,6 +185,23 @@ const codepoints = {
   plugs: 0xeb56, // ph-plugs (other)
   "plugs-connected": 0xeb5a, // ph-plugs-connected
   "globe-simple": 0xe28e, // ph-globe-simple (carries internet)
+
+  // notifications/NotificationsBackend.qml iconFor() -- per-app glyphs
+  "discord-logo": 0xe61a,
+  "download-simple": 0xe20c,
+  "warning-octagon": 0xe4e4,
+  "chat-circle-text": 0xe16e,
+  "envelope-simple": 0xe218,
+  "steam-logo": 0xead4,
+  "battery-warning": 0xe0c8,
+  "cloud-check": 0xe1b0,
+  "music-note": 0xe33c,
+  "spotify-logo": 0xe66e,
+  "telegram-logo": 0xe5bc,
+  "shield-check": 0xe40c,
+  "bell-ringing": 0xe5e8,
+  "wifi-slash": 0xe4f2,
+  usb: 0xe956,
 };
 
 function icon(name) {

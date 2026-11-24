@@ -51,6 +51,7 @@ Button {
   }
 
   icon: iconState
+  iconColor: (activeWifiNetwork || (wiredDevice && wiredDevice.connected)) ? root.fgColor : root.mutedColor
   label: activeWifiNetwork ? activeWifiNetwork.name : ""
   // Elides rather than pushing the rest of the bar around -- matches the
   // mock's max-width:110px on the essid label.

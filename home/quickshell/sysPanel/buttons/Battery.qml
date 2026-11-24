@@ -22,6 +22,8 @@ Button {
   icon: charging ? Phosphor.icon("battery-charging") : Phosphor.icon("battery-full")
   iconSize: 15
   label: pct + "%"
+  // green while charging, red at <=15%, yellow at <=30%, else normal.
+  iconColor: charging ? root.colors[3] : (device.ready && pct <= 15) ? root.colors[1] : (device.ready && pct <= 30) ? root.colors[2] : root.fgColor
   active: root.openPopup === "power"
   onClicked: root.openPopup = root.openPopup === "power" ? "" : "power"
 }

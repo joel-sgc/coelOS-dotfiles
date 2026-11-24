@@ -25,6 +25,8 @@ Button {
   }
 
   icon: iconState
+  // off = muted, a connected device = blue, powered but idle = normal
+  iconColor: (!adapter || !adapter.enabled) ? root.mutedColor : connectedCount > 0 ? root.colors[0] : root.fgColor
   active: root.openPopup === "bluetooth"
   onClicked: root.openPopup = root.openPopup === "bluetooth" ? "" : "bluetooth"
 }

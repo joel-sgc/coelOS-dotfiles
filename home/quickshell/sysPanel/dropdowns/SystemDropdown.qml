@@ -146,7 +146,9 @@ Item {
   // apart in one go, so the bars and the total show at once instead of after the second
   // 2-second tick (and never compare against a reading from the last time it was open).
   property bool cpuPrimed: false
-  onPopupOpenChanged: if (popupOpen) cpuPrimed = false
+  // (No reset on open any more: the cpu and network samplers below run in the
+  // background even while the popup is closed, so the graphs are already full when it
+  // opens and the last reading is always recent.)
   Process {
     id: cpuStatProc
     command: dropdownRoot.cpuPrimed
@@ -195,14 +197,16 @@ Item {
       }
     }
   }
+  // Always running (not gated on popupOpen) so cpuHistory stays populated; the
+  // 60-sample history is only ~2 minutes, so this is just enough to fill the graph.
   Timer {
     interval: 2000
-    running: dropdownRoot.popupOpen
+    running: true
     repeat: true
     triggeredOnStart: true
     onTriggered: {
       cpuStatProc.running = true;
-      if (dropdownRoot.cpuTempPath.length > 0) cpuTempProc.running = true;
+      if (dropdownRoot.popupOpen && dropdownRoot.cpuTempPath.length > 0) cpuTempProc.running = true;
     }
   }
 
@@ -358,7 +362,8 @@ Item {
   }
   Timer {
     interval: 2000
-    running: dropdownRoot.popupOpen && dropdownRoot.netIface !== "—"
+    // Background-tracked like the cpu sampler above, so the up/down graphs are full on open.
+    running: dropdownRoot.netIface !== "—"
     repeat: true
     triggeredOnStart: true
     onTriggered: netStatsProc.running = true
@@ -584,6 +589,8 @@ Item {
   }
   function cancelKill() { pendingKill = null; }
 
+  // Keybind letter in the accent yellow, like the mockup's "[c]onnect" buttons.
+  function kb(k) { return "<font color=\"" + colors[2] + "\">" + k + "</font>"; }
   focus: true
   Keys.onPressed: (event) => {
     if (event.key === Qt.Key_Escape) {
@@ -981,7 +988,8 @@ Item {
           y: -9
           leftPadding: 6
           rightPadding: 6
-          text: "[s] sort: " + dropdownRoot.sortKey + (dropdownRoot.sortDesc ? " ▼" : " ▲") + "  [S] flip"
+          textFormat: Text.StyledText
+          text: "[" + dropdownRoot.kb("s") + "] sort: " + dropdownRoot.sortKey + (dropdownRoot.sortDesc ? " ▼" : " ▲") + "  [" + dropdownRoot.kb("S") + "] flip"
           color: dropdownRoot.mutedColor
           font.family: "JetBrains Mono"
           font.pixelSize: 12
@@ -1113,7 +1121,7 @@ Item {
               implicitHeight: 18
               radius: Globals.eyeCandyOff ? 0 : 2
               color: killMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
-              Text { id: killLabel; anchors.centerIn: parent; text: "[x] kill"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+              Text { id: killLabel; anchors.centerIn: parent; textFormat: Text.StyledText; text: "[" + dropdownRoot.kb("x") + "] kill"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 12 }
               MouseArea { id: killMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.askKill() }
             }
           }

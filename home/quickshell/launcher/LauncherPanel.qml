@@ -114,7 +114,7 @@ Item {
       { id: "launch", label: "launch", icon: "rocket-launch", items: [
         { label: "Terminal", sub: "ghostty", icon: "terminal-window", right: "", command: ["ghostty"], groupLabel: "shortcuts" },
         { label: "Browser", sub: "zen", icon: "globe", right: "", command: ["zen"], groupLabel: "shortcuts" },
-        { label: "Editor", sub: "$EDITOR", icon: "code", right: "", command: ["ghostty", "-e", "fresh"], groupLabel: "shortcuts" },
+        { label: "Editor", sub: "$EDITOR", icon: "code", right: "", command: ["ghostty", "-e", "micro"], groupLabel: "shortcuts" },
         { label: "Files", sub: "dolphin", icon: "folder", right: "", command: ["dolphin"], groupLabel: "shortcuts" },
       ].concat(apps.installed
         .slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))

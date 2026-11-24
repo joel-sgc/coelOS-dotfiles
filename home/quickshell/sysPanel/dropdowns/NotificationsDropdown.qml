@@ -22,6 +22,10 @@ Item {
 
   property color fgColor: "#abb2bf"
   property color mutedColor: "#5c6370"
+  // Mockup text tiers: primary #d7dae0 (summaries), secondary #7f848e
+  // (bodies); fgColor/mutedColor stay for icons/labels.
+  property color textColor: "#d7dae0"
+  property color bodyColor: "#7f848e"
   property color hoverColor: "#404754"
   property var colors: ["#61afef", "#ef596f", "#e5c07b", "#89ca78", "#d55fde"]
   property bool popupOpen: false
@@ -98,10 +102,44 @@ Item {
   property string statusMsg: ""
   property color statusMsgColor: mutedColor
   Timer { id: statusTimer; interval: 2600; onTriggered: dropdownRoot.statusMsg = "" }
+  // Every status report (say()) pops in: fades up while sliding 8px in from
+  // the left, same quick feel as the mockup's nIn keyframe. Both header
+  // status Texts bind to statusOpacity/statusSlide.
+  property real statusOpacity: 1
+  property real statusSlide: 0
+  ParallelAnimation {
+    id: statusFlash
+    NumberAnimation { target: dropdownRoot; property: "statusOpacity"; from: 0; to: 1; duration: 180; easing.type: Easing.OutCubic }
+    NumberAnimation { target: dropdownRoot; property: "statusSlide"; from: -8; to: 0; duration: 180; easing.type: Easing.OutCubic }
+  }
+  // ----- busy state (same braille spinner + yellow "working" look as the
+  // bluetooth/network dropdowns' connecting states) -----
+  property int spin: 0
+  readonly property string spinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[spin % 10]
+  property string busyText: ""
+  property string doneText: ""
+  property color doneColor: "#89ca78"
+  Timer { interval: 90; repeat: true; running: dropdownRoot.busyText.length > 0; onTriggered: dropdownRoot.spin++ }
+  // Guard so a busy state whose completion never arrives can't spin forever.
+  Timer { id: busyGuard; interval: 4000; onTriggered: dropdownRoot.busyText = "" }
+  // Brief spinner, then resolves to a colored result line.
+  Timer {
+    id: workTimer; interval: 500
+    onTriggered: { dropdownRoot.say(dropdownRoot.doneText, dropdownRoot.doneColor); }
+  }
+  function work(text, done, color) {
+    busyText = text; doneText = done; doneColor = color || colors[3];
+    busyGuard.restart(); workTimer.restart();
+  }
+  readonly property string shownStatus: busyText.length > 0 ? (spinner + " " + busyText) : (statusMsg.length > 0 ? statusMsg : statusText)
+  readonly property color shownStatusColor: busyText.length > 0 ? colors[2] : (statusMsg.length > 0 ? statusMsgColor : statusColor)
   function say(text, color) {
+    busyText = "";
+    busyGuard.stop();
     statusMsg = text;
     statusMsgColor = color || mutedColor;
     statusTimer.restart();
+    if (!Globals.eyeCandyOff) statusFlash.restart();
   }
 
   Timer { id: clearArmTimer; interval: 3000; onTriggered: dropdownRoot.clearArmed = false }
@@ -128,9 +166,9 @@ Item {
         } catch (e) {}
         if (matched) {
           Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + matched.address + "' })"]);
-          dropdownRoot.say("→ focused " + dropdownRoot.pendingOpenTarget);
+          dropdownRoot.say("✓ focused " + dropdownRoot.pendingOpenTarget, dropdownRoot.colors[3]);
         } else {
-          dropdownRoot.say("no window found for " + dropdownRoot.pendingOpenTarget);
+          dropdownRoot.say("✗ no window found for " + dropdownRoot.pendingOpenTarget, dropdownRoot.colors[1]);
         }
       }
     }
@@ -204,6 +242,7 @@ Item {
   // `items` or `backend` directly.
   readonly property var rendered: items.map(n => Object.assign({}, n, {
     time: relTime(n.receivedAt),
+    group: groupKey(n.receivedAt),
     fresh: freshIds.indexOf(n.id) >= 0,
     hasImage: !!(n.image && n.image.length > 0),
     previewImage: extractPreviewImage(n),
@@ -228,14 +267,15 @@ Item {
     return out;
   }
   readonly property var flatFiltered: filtered
+  function groupCount(key) { return filtered.filter(n => n.group === key).length; }
   readonly property bool isEmpty: filtered.length === 0
   readonly property string emptyText: query.trim().length > 0
     ? ("no notifications match \"" + query.trim() + "\"")
     : "nothing here · all caught up"
 
   readonly property int unreadCount: items.filter(n => !n.read).length
-  readonly property string statusText: unreadCount > 0 ? (unreadCount + " unread") : "✓ all read"
-  readonly property color statusColor: unreadCount > 0 ? colors[2] : colors[3]
+  readonly property string statusText: dnd ? "◉ do not disturb · critical only" : (unreadCount > 0 ? ("● " + unreadCount + " unread") : "✓ all read")
+  readonly property color statusColor: dnd ? colors[2] : (unreadCount > 0 ? colors[0] : colors[3])
 
   readonly property var current: {
     const found = flatFiltered.find(n => n.id === selId);
@@ -251,6 +291,8 @@ Item {
 
   function selectId(id) { selId = id; }
   function dismiss(id) {
+    const gone = rendered.find(r => r.id === id);
+    say("✓ dismissed" + (gone ? " " + gone.app : ""), mutedColor);
     if (backend) backend.dismiss(id);
     if (replyingId === id) { replyingId = -1; replyText = ""; }
   }
@@ -267,30 +309,31 @@ Item {
     const n = items.length;
     if (backend) backend.clearAll();
     clearArmed = false;
-    say("→ cleared " + n + " notification" + (n === 1 ? "" : "s"));
+    say("✓ cleared " + n + " notification" + (n === 1 ? "" : "s"), colors[3]);
   }
   function toggleDnd() {
     if (backend) backend.toggleDnd();
-    say(dropdownRoot.dnd ? "do not disturb off" : "do not disturb on · critical still shows");
+    say(dropdownRoot.dnd ? "◉ do not disturb on · critical still shows" : "○ do not disturb off", dropdownRoot.dnd ? colors[2] : mutedColor);
   }
   function toggleMute(app) {
     const wasMuted = isMuted(app);
     if (backend) backend.toggleMute(app);
-    say(wasMuted ? ("unmuted " + app) : ("muted " + app + " · no popups, still logged here"));
+    say(wasMuted ? ("○ unmuted " + app) : ("◉ muted " + app + " · no popups, still logged here"), wasMuted ? mutedColor : colors[2]);
   }
   function copyNotif(n) {
     Quickshell.execDetached(["wl-copy", n.summary + "\n\n" + n.body]);
-    say("→ copied to clipboard");
+    say("✓ copied to clipboard", colors[3]);
   }
-  function markRead(id) { if (backend) backend.markRead(id); }
+  function markRead(id) { say("✓ marked read", colors[3]); if (backend) backend.markRead(id); }
   function openApp(n) {
     pendingOpenTarget = (n.desktopEntry && n.desktopEntry.length > 0)
       ? n.desktopEntry.replace(/\.desktop$/, "")
       : n.app;
+    busyText = "focusing " + pendingOpenTarget + "…"; busyGuard.restart();
     openAppProc.running = true;
   }
   function runAction(n, a) {
-    say("→ " + a.label);
+    work("running " + a.label + "…", "✓ " + a.label, colors[0]);
     if (backend) backend.invokeAction(n.id, a.id);
   }
   // Also pins `selId` to this exact notification -- `current` falls back
@@ -303,11 +346,11 @@ Item {
   // different path (confirmed live -- startReply fired with the right id,
   // but the next notification's arrival moved `current` again since
   // nothing had actually pinned selection to it).
-  function startReply(n) { selId = n.id; replyingId = n.id; replyText = ""; }
+  function startReply(n) { say("↩ replying to " + n.app, colors[0]); selId = n.id; replyingId = n.id; replyText = ""; }
   function sendReply() {
     if (replyingId < 0 || !replyText.trim()) return;
     if (backend) backend.sendReply(replyingId, replyText);
-    say("→ reply sent");
+    work("sending reply…", "✓ reply sent", colors[3]);
     replyingId = -1;
     replyText = "";
   }
@@ -370,13 +413,13 @@ Item {
   // list plus a flexible detail pane), and Panel.qml's Popup now auto-sizes
   // (contentWidth: 0) specifically so this can change live when `v` toggles
   // view mode instead of clipping against a fixed frame.
-  implicitWidth: viewMode === "split" ? 700 : 480
+  implicitWidth: viewMode === "split" ? 820 : 600
   implicitHeight: column.implicitHeight
 
   Column {
     id: column
     width: parent.width
-    spacing: 10
+    spacing: 14
 
     // ----- header -----
     // Split view (700px) has room for title+stats and the controls
@@ -495,8 +538,10 @@ Item {
         // it instead of being contained (confirmed live with the old,
         // longer clear-confirm wording).
         Text {
-          text: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsg : dropdownRoot.statusText
-          color: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsgColor : dropdownRoot.statusColor
+          text: dropdownRoot.shownStatus
+          color: dropdownRoot.shownStatusColor
+          opacity: dropdownRoot.statusOpacity
+          transform: Translate { x: dropdownRoot.statusSlide }
           font.family: "JetBrains Mono"
           font.pixelSize: 13
           elide: Text.ElideRight
@@ -538,8 +583,10 @@ Item {
         // shares this line in list mode, but still bounded + elided
         // defensively so a long message can't widen the whole dropdown.
         Text {
-          text: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsg : dropdownRoot.statusText
-          color: dropdownRoot.statusMsg.length > 0 ? dropdownRoot.statusMsgColor : dropdownRoot.statusColor
+          text: dropdownRoot.shownStatus
+          color: dropdownRoot.shownStatusColor
+          opacity: dropdownRoot.statusOpacity
+          transform: Translate { x: dropdownRoot.statusSlide }
           font.family: "JetBrains Mono"
           font.pixelSize: 13
           elide: Text.ElideRight
@@ -652,7 +699,7 @@ Item {
     Column {
       visible: !dropdownRoot.isEmpty && dropdownRoot.viewMode === "list"
       width: parent.width
-      spacing: 12
+      spacing: 16
 
       Repeater {
         model: dropdownRoot.groups
@@ -660,7 +707,7 @@ Item {
           id: groupCol
           required property var modelData
           width: parent.width
-          spacing: 6
+          spacing: 8
 
           // An Item, not a Row -- the divider line below needs both an
           // anchored vertical-center AND a width computed from its
@@ -693,8 +740,8 @@ Item {
     RowLayout {
       visible: !dropdownRoot.isEmpty && dropdownRoot.viewMode === "split"
       width: parent.width
-      height: 440
-      spacing: 14
+      height: 520
+      spacing: 16
 
       // A real ListView, not a Column+Repeater -- the latter had no
       // bound on its own total height, so once there were enough
@@ -706,12 +753,25 @@ Item {
       // "a list that can grow past its visible area."
       ListView {
         id: compactList
-        Layout.preferredWidth: 220
+        Layout.preferredWidth: 280
         Layout.fillHeight: true
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        spacing: 4
+        spacing: 6
         model: dropdownRoot.flatFiltered
+
+        // Same now / earlier today / yesterday / older headers as list view
+        // (items are newest-first, so each group is contiguous).
+        section.property: "group"
+        section.criteria: ViewSection.FullString
+        section.delegate: Item {
+          required property string section
+          width: compactList.width
+          height: 22
+          Text { id: secLabel; anchors.verticalCenter: parent.verticalCenter; text: parent.section; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+          Text { id: secCount; x: secLabel.implicitWidth + 8; anchors.verticalCenter: parent.verticalCenter; text: dropdownRoot.groupCount(parent.section); color: dropdownRoot.hoverColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+          Rectangle { x: secCount.x + secCount.implicitWidth + 8; width: parent.width - x; height: 1; anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.hoverColor }
+        }
 
         delegate: Rectangle {
           required property var modelData
@@ -722,7 +782,7 @@ Item {
           // clipped the second line instead of containing it. Driven off
           // the actual content height plus matching top/bottom padding
           // instead of a guessed constant.
-          implicitHeight: compactCol.implicitHeight + 12
+          implicitHeight: compactCol.implicitHeight + 18
           radius: Globals.eyeCandyOff ? 0 : 4
           color: dropdownRoot.current && dropdownRoot.current.id === modelData.id ? "#2f343e" : (compactMouse.containsMouse ? "#2f343e" : "transparent")
           border.width: 1
@@ -731,14 +791,25 @@ Item {
           // visible default border instead of none.
           border.color: modelData.urgency === "critical" ? dropdownRoot.colors[1] : ((dropdownRoot.current && dropdownRoot.current.id === modelData.id) ? dropdownRoot.colors[0] : dropdownRoot.hoverColor)
 
+          Text {
+            id: compactIcon
+            x: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: Phosphor.icon(modelData.icon)
+            font.family: "Phosphor"
+            font.pixelSize: 15
+            color: modelData.urgency === "critical" ? dropdownRoot.colors[1] : ((dropdownRoot.current && dropdownRoot.current.id === modelData.id) ? dropdownRoot.colors[0] : dropdownRoot.fgColor)
+          }
           Column {
             id: compactCol
-            x: 8
-            y: 6
-            width: parent.width - 16
-            Text { text: modelData.summary; color: modelData.read ? dropdownRoot.mutedColor : dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
-            Text { text: modelData.app + " · " + modelData.time; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 11 }
+            x: compactIcon.x + 15 + 9
+            y: 9
+            width: parent.width - x - 22
+            Text { text: modelData.summary; color: modelData.urgency === "low" && !(dropdownRoot.current && dropdownRoot.current.id === modelData.id) ? dropdownRoot.fgColor : dropdownRoot.textColor; font.family: "JetBrains Mono"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
+            Text { text: modelData.app + " · " + modelData.time; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
           }
+          Text { visible: modelData.urgency === "critical"; anchors.right: parent.right; anchors.rightMargin: modelData.fresh ? 20 : 8; anchors.verticalCenter: parent.verticalCenter; text: "!"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+          Rectangle { visible: modelData.fresh; anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: dropdownRoot.colors[0] }
           MouseArea { id: compactMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.selectId(modelData.id) }
         }
       }

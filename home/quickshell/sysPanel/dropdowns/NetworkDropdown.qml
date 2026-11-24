@@ -303,6 +303,8 @@ Item {
 
   // ----- edit view: password, autoconnect, ip config, MAC, forget are
   // all real -----
+  // Keybind letter in the accent yellow, like the mockup's "[c]onnect" buttons.
+  function kb(k) { return "<font color=\"" + colors[2] + "\">" + k + "</font>"; }
   property var draft: null
   function openEdit(entry, mode) {
     if (!entry) return;
@@ -314,6 +316,9 @@ Item {
       origIpMode: "Automatic (DHCP)", origAddr: "", origGw: "", origDns: "",
       mac: "Stable", origMac: "Stable",
       auto: true, mode: m,
+      // Enterprise (802.1X) fields -- only used when isEnterprise(sec).
+      eap: "PEAP", phase2: "MSCHAPv2", identity: "", anon: "", validate: "System CAs",
+      ca: "", clientCert: "", privKey: "", keyPass: "",
     };
     view = "edit";
     // Only an already-known network has a real nmcli profile to read --
@@ -321,7 +326,8 @@ Item {
     // first successful connect, so there's nothing to prefetch yet.
     if (m === "edit") {
       profileDetailsProc.command = ["nmcli", "-t", "-f",
-        "ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns,wifi.cloned-mac-address,connection.autoconnect",
+        "ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns,wifi.cloned-mac-address,connection.autoconnect"
+          + (isEnterprise(entry.sec) ? ",802-1x.eap,802-1x.phase2-auth,802-1x.identity,802-1x.anonymous-identity,802-1x.ca-cert,802-1x.system-ca-certs,802-1x.client-cert,802-1x.private-key" : ""),
         "connection", "show", entry.ssid];
       profileDetailsProc.running = true;
     }
@@ -343,14 +349,72 @@ Item {
         const dns = (d["ipv4.dns"] || "").split(",").filter(s => s.length > 0).join(" ");
         const mac = (d["wifi.cloned-mac-address"] || "").trim() === "random" ? "Random" : "Stable";
         const auto = d["connection.autoconnect"] !== "no";
+        const path = v => (v || "").replace(/^file:\/\//, "").replace(/\\0$/, "").replace(/^--$/, "");
+        const eapKey = (d["802-1x.eap"] || "").split(",")[0].toLowerCase();
+        const eapMap = { peap: "PEAP", ttls: "TTLS", tls: "TLS", leap: "LEAP", fast: "FAST" };
+        const p2Map = { mschapv2: "MSCHAPv2", pap: "PAP", gtc: "GTC", mschap: "MSCHAP", chap: "CHAP", md5: "MD5" };
+        const ent = dropdownRoot.isEnterprise(dropdownRoot.draft.sec) ? {
+          eap: eapMap[eapKey] || "PEAP",
+          phase2: p2Map[(d["802-1x.phase2-auth"] || "").toLowerCase()] || "MSCHAPv2",
+          identity: d["802-1x.identity"] || "", anon: d["802-1x.anonymous-identity"] || "",
+          ca: path(d["802-1x.ca-cert"]),
+          validate: path(d["802-1x.ca-cert"]) ? "CA file" : (d["802-1x.system-ca-certs"] === "yes" ? "System CAs" : "None"),
+          clientCert: path(d["802-1x.client-cert"]), privKey: path(d["802-1x.private-key"]),
+        } : {};
         dropdownRoot.draft = Object.assign({}, dropdownRoot.draft, {
           ipMode, addr, gw, dns, origIpMode: ipMode, origAddr: addr, origGw: gw, origDns: dns,
           mac, origMac: mac, auto,
-        });
+        }, ent);
       }
     }
   }
   function setDraft(patch) { draft = Object.assign({}, draft, patch); }
+  // `nmcli connection add` has nothing to clear, so drop property/value
+  // pairs whose value is empty (modify keeps them to clear stale values).
+  function nonEmptyPairs(args) {
+    const out = [];
+    for (let i = 0; i + 1 < args.length; i += 2) if (args[i + 1] !== "") out.push(args[i], args[i + 1]);
+    return out;
+  }
+  function isEnterprise(sec) { return typeof sec === "string" && sec.endsWith("-ent"); }
+  readonly property bool draftEnt: draft !== null && isEnterprise(draft.sec)
+  readonly property bool draftTls: draftEnt && draft.eap === "TLS"
+
+  // nmcli 802-1x.* args for the draft's enterprise settings. Secrets
+  // (password / key password) are only included when typed, so editing a
+  // saved profile without retyping them keeps what's stored.
+  function enterpriseArgs(d) {
+    const a = ["802-1x.eap", d.eap.toLowerCase(), "802-1x.identity", d.identity,
+               "802-1x.anonymous-identity", d.anon];
+    if (d.eap === "TLS") {
+      a.push("802-1x.phase2-auth", "", "802-1x.client-cert", d.clientCert, "802-1x.private-key", d.privKey);
+      if (d.keyPass.length > 0) a.push("802-1x.private-key-password", d.keyPass);
+    } else {
+      a.push("802-1x.phase2-auth", d.phase2.toLowerCase());
+      if (d.pass.length > 0) a.push("802-1x.password", d.pass);
+    }
+    if (d.validate === "CA file") a.push("802-1x.ca-cert", d.ca, "802-1x.system-ca-certs", "no");
+    else if (d.validate === "System CAs") a.push("802-1x.ca-cert", "", "802-1x.system-ca-certs", "yes");
+    else a.push("802-1x.ca-cert", "", "802-1x.system-ca-certs", "no");
+    return a;
+  }
+  // A brand-new enterprise network has no profile yet and connectWithPsk()
+  // can't express EAP, so build the profile with nmcli, then bring it up.
+  Process {
+    id: entAddProc
+    stderr: StdioCollector { id: entAddErr }
+    onExited: (code) => {
+      if (code !== 0) { dropdownRoot.netError = entAddErr.text.trim() || "could not create enterprise profile"; return; }
+      entUpProc.command = ["nmcli", "connection", "up", "id", dropdownRoot.entSsid];
+      entUpProc.running = true;
+    }
+  }
+  property string entSsid: ""
+  Process {
+    id: entUpProc
+    stderr: StdioCollector { id: entUpErr }
+    onExited: (code) => { if (code !== 0) dropdownRoot.netError = entUpErr.text.trim() || "enterprise connect failed"; }
+  }
 
   // Password, IP config and MAC changes for a network you're already
   // connected/saved to aren't something Quickshell.Networking exposes --
@@ -400,7 +464,13 @@ Item {
     if (!draft) return;
     const entry = draft.entry, shouldConnect = draft.mode === "connect";
     if (entry && entry.network) {
-      if (shouldConnect && draft.sec !== "open" && entry.network.connectWithPsk) {
+      if (shouldConnect && isEnterprise(draft.sec)) {
+        netError = "";
+        entSsid = entry.ssid;
+        entAddProc.command = ["nmcli", "connection", "add", "type", "wifi", "ifname", ifaceName,
+          "con-name", entry.ssid, "ssid", entry.ssid, "wifi-sec.key-mgmt", "wpa-eap"].concat(dropdownRoot.nonEmptyPairs(enterpriseArgs(draft)));
+        entAddProc.running = true;
+      } else if (shouldConnect && draft.sec !== "open" && entry.network.connectWithPsk) {
         entry.network.connectWithPsk(draft.pass);
       } else if (shouldConnect) {
         entry.network.connect();
@@ -408,7 +478,10 @@ Item {
         const modifyArgs = ["nmcli", "connection", "modify", entry.ssid];
         let needsReconnect = false;
 
-        if (draft.sec !== "open" && draft.pass.length > 0) {
+        if (isEnterprise(draft.sec)) {
+          for (const x of enterpriseArgs(draft)) modifyArgs.push(x);
+          needsReconnect = true;
+        } else if (draft.sec !== "open" && draft.pass.length > 0) {
           modifyArgs.push("wifi-sec.psk", draft.pass);
           needsReconnect = true;
         }
@@ -1047,7 +1120,7 @@ Item {
             implicitHeight: 18
             radius: Globals.eyeCandyOff ? 0 : 2
             color: editMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
-            Text { id: editLabel; anchors.centerIn: parent; text: "[e]dit"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+            Text { id: editLabel; anchors.centerIn: parent; textFormat: Text.StyledText; text: "[" + dropdownRoot.kb("e") + "]dit"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
             MouseArea { id: editMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.openEdit(dropdownRoot.currentEntry, "edit") }
           }
           Rectangle {
@@ -1055,7 +1128,7 @@ Item {
             implicitHeight: 18
             radius: Globals.eyeCandyOff ? 0 : 2
             color: discMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
-            Text { id: discLabel; anchors.centerIn: parent; text: "[d]isconnect"; color: discMouse.containsMouse ? dropdownRoot.colors[1] : dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+            Text { id: discLabel; anchors.centerIn: parent; textFormat: Text.StyledText; text: "[" + dropdownRoot.kb("d") + "]isconnect"; color: discMouse.containsMouse ? dropdownRoot.colors[1] : dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
             MouseArea { id: discMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.disconnectCurrent() }
           }
         }
@@ -1152,7 +1225,8 @@ Item {
         spacing: 2
 
         rightContent: Text {
-          text: dropdownRoot.scanning ? "scanning…" : "[r]escan"
+          textFormat: Text.StyledText
+          text: dropdownRoot.scanning ? "scanning…" : ("[" + dropdownRoot.kb("r") + "]escan")
           color: dropdownRoot.mutedColor
           font.family: "JetBrains Mono"
           font.pixelSize: 12
@@ -1218,7 +1292,7 @@ Item {
                   implicitHeight: 18
                   radius: Globals.eyeCandyOff ? 0 : 2
                   color: editRowMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
-                  Text { id: editRowLabel; anchors.centerIn: parent; text: "[e]"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+                  Text { id: editRowLabel; anchors.centerIn: parent; textFormat: Text.StyledText; text: "[" + dropdownRoot.kb("e") + "]"; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
                   MouseArea { id: editRowMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.openEdit(netRow.modelData, "connect") }
                 }
                 Text {
@@ -1285,7 +1359,8 @@ Item {
         Text {
           visible: dropdownRoot.availableNetworks.length === 0
           x: 8
-          text: dropdownRoot.scanning ? "scanning…" : "nothing found -- [r]escan"
+          textFormat: Text.StyledText
+          text: dropdownRoot.scanning ? "scanning…" : ("nothing found -- [" + dropdownRoot.kb("r") + "]escan")
           color: dropdownRoot.mutedColor
           font.family: "JetBrains Mono"
           font.pixelSize: 13
@@ -1419,16 +1494,127 @@ Item {
             hoverColor: dropdownRoot.hoverColor
           }
           FormField {
-            visible: dropdownRoot.draft && dropdownRoot.draft.sec !== "open"
-            label: "password"
-            mode: dropdownRoot.draft && dropdownRoot.draft.show ? "text" : "password"
-            value: dropdownRoot.draft ? dropdownRoot.draft.pass : ""
-            placeholder: dropdownRoot.draft && dropdownRoot.draft.mode === "edit" ? "leave blank to keep current password" : ""
-            showToggle: true
+            visible: dropdownRoot.draftEnt
+            label: "eap method"
+            mode: "cycle"
+            value: dropdownRoot.draft ? dropdownRoot.draft.eap : ""
             fgColor: dropdownRoot.fgColor
             labelColor: dropdownRoot.mutedColor
             hoverColor: dropdownRoot.hoverColor
             accentColor: dropdownRoot.colors[0]
+            onCycled: dropdownRoot.setDraft({ eap: dropdownRoot.cyc(["PEAP", "TTLS", "TLS"], dropdownRoot.draft.eap) })
+          }
+          FormField {
+            visible: dropdownRoot.draftEnt && !dropdownRoot.draftTls
+            label: "phase 2"
+            mode: "cycle"
+            value: dropdownRoot.draft ? dropdownRoot.draft.phase2 : ""
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onCycled: dropdownRoot.setDraft({ phase2: dropdownRoot.cyc(["MSCHAPv2", "PAP", "GTC"], dropdownRoot.draft.phase2) })
+          }
+          FormField {
+            visible: dropdownRoot.draftEnt
+            label: "username"
+            mode: "text"
+            value: dropdownRoot.draft ? dropdownRoot.draft.identity : ""
+            placeholder: "user@domain or username"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ identity: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draftEnt && !dropdownRoot.draftTls
+            label: "anonymous id"
+            mode: "text"
+            value: dropdownRoot.draft ? dropdownRoot.draft.anon : ""
+            placeholder: "optional outer identity"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ anon: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draftEnt
+            label: "server check"
+            mode: "cycle"
+            value: dropdownRoot.draft ? dropdownRoot.draft.validate : ""
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onCycled: dropdownRoot.setDraft({ validate: dropdownRoot.cyc(["System CAs", "CA file", "None"], dropdownRoot.draft.validate) })
+          }
+          FormField {
+            visible: dropdownRoot.draftEnt && dropdownRoot.draft.validate === "CA file"
+            label: "ca certificate"
+            mode: "text"
+            value: dropdownRoot.draft ? dropdownRoot.draft.ca : ""
+            placeholder: "/path/to/ca.pem"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ ca: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draftTls
+            label: "client cert"
+            mode: "text"
+            value: dropdownRoot.draft ? dropdownRoot.draft.clientCert : ""
+            placeholder: "/path/to/client.pem"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ clientCert: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draftTls
+            label: "private key"
+            mode: "text"
+            value: dropdownRoot.draft ? dropdownRoot.draft.privKey : ""
+            placeholder: "/path/to/client.key"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ privKey: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draftTls
+            label: "key password"
+            mode: "password"
+            value: dropdownRoot.draft ? dropdownRoot.draft.keyPass : ""
+            placeholder: "leave blank to keep / no password"
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            onValueEdited: (v) => dropdownRoot.setDraft({ keyPass: v })
+            onAccepted: dropdownRoot.saveDraft()
+          }
+          FormField {
+            visible: dropdownRoot.draft && dropdownRoot.draft.sec !== "open" && !dropdownRoot.draftTls
+            label: "password"
+            mode: dropdownRoot.draft && dropdownRoot.draft.show ? "text" : "password"
+            value: dropdownRoot.draft ? dropdownRoot.draft.pass : ""
+            placeholder: dropdownRoot.draft && dropdownRoot.draft.mode === "edit" ? "leave blank to keep current password" : ""
+            fgColor: dropdownRoot.fgColor
+            labelColor: dropdownRoot.mutedColor
+            hoverColor: dropdownRoot.hoverColor
+            accentColor: dropdownRoot.colors[0]
+            showToggle: true
             onValueEdited: (v) => dropdownRoot.setDraft({ pass: v })
             onAccepted: dropdownRoot.saveDraft()
             onToggleVisibility: dropdownRoot.setDraft({ show: !dropdownRoot.draft.show })

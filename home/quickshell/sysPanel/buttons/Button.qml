@@ -37,6 +37,10 @@ Item {
   // its popup is open, same as the hover background, not just on hover
   // (matches Clock.qml's own `active` and the mock's {{ xBtnBg }} pattern).
   property bool active: false
+  // Per-button state tinting (battery low/charging, muted volume, offline
+  // network...); defaults to the normal foreground.
+  property color iconColor: root.fgColor
+  property color labelColor: iconColor
   // Carries which mouse button triggered the click -- Cpu.qml needs this
   // to only toggle its popup on left-click while still letting right-click
   // fall through to rightCommand (plain terminal) unchanged.
@@ -59,7 +63,7 @@ Item {
 
     Text {
       text: buttonRoot.icon
-      color: root.fgColor
+      color: buttonRoot.iconColor
       font.family: "Phosphor"
       font.pixelSize: buttonRoot.iconSize
     }
@@ -67,7 +71,7 @@ Item {
     Text {
       visible: buttonRoot.label.length > 0
       text: buttonRoot.label
-      color: root.fgColor
+      color: buttonRoot.labelColor
       font.family: "JetBrains Mono"
       font.pixelSize: buttonRoot.labelSize
       horizontalAlignment: Text.AlignRight

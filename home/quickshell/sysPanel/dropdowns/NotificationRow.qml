@@ -48,7 +48,7 @@ Item {
   // turned off.
   readonly property bool canExpand: n.expanded || bodyText.truncated
 
-  implicitHeight: col.implicitHeight + 16
+  implicitHeight: col.implicitHeight + 24
 
   Rectangle {
     anchors.fill: parent
@@ -89,10 +89,10 @@ Item {
   // if there isn't one.
   Item {
     id: iconSlot
-    x: 10
-    y: 6
-    width: 20
-    height: 20
+    x: 12
+    y: 10
+    width: 22
+    height: 22
 
     Image {
       id: iconImage
@@ -110,17 +110,17 @@ Item {
       anchors.centerIn: parent
       text: Phosphor.icon(rowRoot.n.icon)
       font.family: "Phosphor"
-      font.pixelSize: 17
-      color: rowRoot.isCritical ? nRoot.colors[1] : nRoot.colors[0]
+      font.pixelSize: 19
+      color: rowRoot.isCritical ? nRoot.colors[1] : (rowRoot.selected ? nRoot.colors[0] : (rowRoot.n.urgency === "low" ? nRoot.mutedColor : nRoot.fgColor))
     }
   }
 
   Column {
       id: col
-      x: iconSlot.x + iconSlot.width + 10
-      y: 8
-      width: parent.width - x - 10
-      spacing: 3
+      x: iconSlot.x + iconSlot.width + 12
+      y: 12
+      width: parent.width - x - 12
+      spacing: 5
 
       RowLayout {
         width: parent.width
@@ -150,12 +150,12 @@ Item {
         }
       }
 
-      Text { width: parent.width; text: rowRoot.n.summary; color: nRoot.fgColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+      Text { width: parent.width; text: rowRoot.n.summary; color: rowRoot.n.urgency === "low" && !rowRoot.selected ? nRoot.fgColor : nRoot.textColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
       Text {
         id: bodyText
         width: parent.width
         text: rowRoot.n.body
-        color: nRoot.mutedColor
+        color: nRoot.bodyColor
         font.family: "JetBrains Mono"
         font.pixelSize: 13
         wrapMode: Text.WordWrap
