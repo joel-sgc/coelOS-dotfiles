@@ -365,6 +365,8 @@ Scope {
             hoverColor: root.hoverColor
             colors: root.colors
             onCloseRequested: root.openPopup = ""
+            // an agent question (passkey to confirm, PIN to type...) pops the dropdown open
+            onAttentionRequested: root.openPopup = "bluetooth"
           }
         }
 

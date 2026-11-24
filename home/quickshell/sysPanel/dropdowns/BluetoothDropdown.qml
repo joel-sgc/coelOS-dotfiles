@@ -1,6 +1,8 @@
 import QtQuick
 import "../.."
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import Quickshell.Bluetooth
 import "../Phosphor.js" as Phosphor
 import "../components"
@@ -11,30 +13,15 @@ import "../components"
 // signed off first; this pass swaps that for the real adapter/device
 // list and leaves the visual structure alone.
 //
-// TODO(bluetooth pairing UI): no real PIN/passkey confirmation flow yet
-// -- left as-is deliberately, noted here to pick back up later rather
-// than build now. Current state:
-//   - home/bluetooth-agent.nix registers a NoInputNoOutput bluetoothctl
-//     agent for the session, which is *enough* for "Just Works" SSP
-//     pairing (most consumer headphones/speakers/mice/keyboards) --
-//     that's what was actually broken before and is now fixed.
-//   - Devices that require real Numeric Comparison (both sides show a
-//     6-digit code, human confirms they match) or Passkey/PIN entry
-//     still can't pair: a NoInputNoOutput agent has no I/O capability to
-//     satisfy that, by definition, so BlueZ can't ask it. The pairing
-//     modal below reflects that honestly -- a live "pairing…" status
-//     plus cancel, not a fabricated confirmation code -- rather than
-//     pretend this is handled.
-// The real fix needs an actual org.bluez.Agent1 implementation with a
-// real capability (DisplayYesNo or KeyboardDisplay), which Quickshell
-// itself can't provide -- checked its QML modules for a general D-Bus
-// *service*-export API (as opposed to the client-side bindings it does
-// have for bluez/UPower/etc): there isn't one. That means this needs a
-// small companion process (e.g. Python+dbus / a compiled helper)
-// registered as the agent, bridged back to this UI somehow (a socket or
-// FileView-watched state file this dropdown reads the live passkey from
-// and writes the user's confirm/reject decision back to) -- a genuinely
-// new piece, not a tweak to what's here.
+// Pairing: home/bluetooth-agent/coel_bt_agent.py (systemd user service
+// bluetooth-agent) registers as BlueZ's default KeyboardDisplay agent and
+// forwards every question -- compare a passkey, type a PIN/passkey, allow a
+// connection -- over $XDG_RUNTIME_DIR/coel-bt-agent.sock as JSON lines (the
+// protocol is documented at the top of that script). This dropdown connects
+// below ("pairing agent link"), drives the staged pairing modal from those
+// events, and sends the answer back. With the agent unreachable, pairing
+// still works for Just Works devices (the agent auto-accepts those itself),
+// the modal just never gets a passkey to show.
 //
 // Rows that mix several fixed-width text columns (the paired/nearby
 // device lists) use manual x positioning, not RowLayout -- learned the
@@ -136,7 +123,7 @@ Item {
   function toggleConnect(entry) {
     if (!entry) return;
     if (entry.connected) entry.device.disconnect();
-    else entry.device.connect();
+    else startConnect(entry);
   }
   function toggleTrust(entry) {
     if (!entry) return;
@@ -147,18 +134,156 @@ Item {
     entry.device.forget();
   }
 
-  // ----- pairing flow (see header comment: no real PIN/passkey agent) -----
-  property var pairingDevice: null
-  readonly property bool pairingOpen: pairingDevice !== null && pairingDevice.pairing
-  function startPairing(entry) {
-    if (!entry) return;
-    pairingDevice = entry.device;
-    entry.device.pair();
+  // ----- pairing flow -----
+  // `pair` is the modal's state, or null when it's closed:
+  //   { stage, dev:{name,address,icon}, code, entered, reqId, left, deadline, reason, ours }
+  // stage: request (waiting) | confirm | type | passkey | pin | authorize | done | failed
+  property var pairingDevice: null          // Quickshell Device we called pair() on, if any
+  property var pair: null
+  property bool userCancelled: false
+  readonly property bool pairingOpen: pair !== null
+  signal attentionRequested()               // an agent question arrived: Panel opens this dropdown
+
+  function setPair(patch) { pair = Object.assign({}, pair || {}, patch); }
+  function devInfo(d) { return { name: d.name || d.deviceName || d.address, address: d.address, icon: d.icon || "" }; }
+  function pad6(n) { return String(n).padStart(6, "0"); }
+
+  // Pair/connect go through the agent when it is reachable (real step events and BlueZ's own error
+  // text); otherwise straight through Quickshell, which only reports pairing/paired/connected.
+  readonly property var pairSteps: ["reaching the device", "authenticating", "paired"]
+  readonly property var connectSteps: ["reaching the device", "connecting services", "connected"]
+  function sendAgent(obj) { agentSock.write(JSON.stringify(obj) + "\n"); agentSock.flush(); }
+  function beginOp(mode, dev, quickshellDevice) {
+    userCancelled = false;
+    pairingDevice = quickshellDevice;
+    const viaAgent = agentOnline && agentVersion >= 2;       // an older agent (not rebuilt yet) lacks the commands
+    pair = { stage: "request", mode: mode, dev: dev, reqId: -1, left: -1, ours: true, step: 0, viaAgent: viaAgent, kind: dev.icon };
+    if (viaAgent) {
+      requestGuard.stop();
+      sendAgent({ cmd: mode, address: dev.address });
+    } else {
+      requestGuard.restart();
+      if (mode === "pair") quickshellDevice.pair(); else quickshellDevice.connect();
+    }
+  }
+  function startPairing(entry) { if (entry) beginOp("pair", devInfo(entry.device), entry.device); }
+  function startConnect(entry) { if (entry) beginOp("connect", devInfo(entry.device), entry.device); }
+  function retryPairing() {
+    if (!pair || !pairingDevice) { closePair(); return; }
+    beginOp(pair.mode || "pair", pair.dev, pairingDevice);
+  }
+  function closePair() {
+    requestGuard.stop(); doneTimer.stop();
+    pair = null;
+    pairingDevice = null;
+    userCancelled = false;
+    dropdownRoot.forceActiveFocus();
   }
   function cancelPairing() {
-    if (pairingDevice) pairingDevice.cancelPair();
-    pairingDevice = null;
+    if (!pair) return;
+    if (pair.stage === "failed" || pair.stage === "done") { closePair(); return; }
+    userCancelled = true;
+    if (pair.reqId >= 0) sendReply(false, null);
+    if (pair.viaAgent) sendAgent({ cmd: "cancel", address: pair.dev.address });
+    else if (pairingDevice && pair.mode !== "connect") pairingDevice.cancelPair();
+    closePair();
   }
+  function failPair(reason) {
+    if (!pair || pair.stage === "done") return;
+    requestGuard.stop();
+    setPair({ stage: "failed", reason: reason, reqId: -1, left: -1 });
+  }
+  function donePair() {
+    if (!pair || pair.stage === "done") return;
+    requestGuard.stop();
+    setPair({ stage: "done", reqId: -1, left: -1 });
+    doneTimer.restart();
+  }
+  Timer { id: doneTimer; interval: 1100; onTriggered: dropdownRoot.closePair() }
+  // BlueZ can refuse a Pair() so fast that `pairing` never visibly flips, which would leave the
+  // modal on "requesting" forever -- give up if nothing at all happened.
+  Timer {
+    id: requestGuard; interval: 20000
+    onTriggered: if (dropdownRoot.pair && dropdownRoot.pair.stage === "request") dropdownRoot.failPair("no response from the device")
+  }
+  Connections {
+    target: dropdownRoot.pairingDevice
+    function onPairingChanged() {
+      const d = dropdownRoot.pairingDevice;
+      if (!d || d.pairing || !dropdownRoot.pair || dropdownRoot.pair.viaAgent) return;
+      if (d.paired) dropdownRoot.donePair();
+      else if (!dropdownRoot.userCancelled) dropdownRoot.failPair("pairing failed -- the device refused, timed out or went out of range");
+    }
+    function onPairedChanged() { if (dropdownRoot.pairingDevice && dropdownRoot.pairingDevice.paired && dropdownRoot.pair && !dropdownRoot.pair.viaAgent) dropdownRoot.donePair(); }
+    function onConnectedChanged() { const p = dropdownRoot.pair; if (p && !p.viaAgent && p.mode === "connect" && dropdownRoot.pairingDevice.connected) dropdownRoot.donePair(); }
+  }
+
+  // ----- pairing agent link -----
+  // Reconnects every 3s while the socket is down (agent restarting, not yet started).
+  readonly property string agentSocketPath: Quickshell.env("COEL_BT_AGENT_SOCKET") || ((Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/coel-bt-agent.sock")
+  readonly property bool agentOnline: agentSock.connected
+  property int agentVersion: 0
+  Socket {
+    id: agentSock
+    path: dropdownRoot.agentSocketPath
+    connected: true
+    parser: SplitParser { onRead: line => dropdownRoot.onAgentLine(line) }
+  }
+  Timer {
+    interval: 3000; repeat: true; running: !agentSock.connected
+    onTriggered: { agentSock.connected = false; agentSock.connected = true; }
+  }
+  function sendReply(accept, value) {
+    if (!pair || pair.reqId < 0) return;
+    agentSock.write(JSON.stringify({ cmd: "reply", id: pair.reqId, accept: accept, value: value }) + "\n");
+    agentSock.flush();
+    setPair({ stage: "request", reqId: -1, left: -1, deadline: 0 });
+    requestGuard.restart();
+  }
+  readonly property var serviceNames: ({
+    "0000110b": "audio output (A2DP)", "0000110a": "audio source", "0000111e": "hands-free calls",
+    "00001108": "headset calls", "00001124": "keyboard / mouse (HID)", "00001812": "keyboard / mouse (HID)",
+  })
+  function onAgentLine(line) {
+    let m;
+    try { m = JSON.parse(line); } catch (e) { return; }
+    if (m.event === "hello") { agentVersion = m.version || 1; return; }
+    if (m.event === "request") {
+      // A question about a device we didn't start pairing with (it started it): open a modal for it.
+      if (!pair || pair.dev.address !== m.device.address) pair = { stage: "request", dev: m.device, reqId: -1, left: -1, ours: false };
+      const base = { dev: m.device, reqId: m.id, left: m.timeout, deadline: Date.now() + m.timeout * 1000, entered: 0 };
+      if (m.kind === "confirm") setPair(Object.assign(base, { stage: "confirm", code: pad6(m.passkey) }));
+      else if (m.kind === "passkey" || m.kind === "pincode") setPair(Object.assign(base, { stage: m.kind === "passkey" ? "passkey" : "pin", input: "" }));
+      else setPair(Object.assign(base, { stage: "authorize", service: m.kind === "service" ? (serviceNames[String(m.uuid).slice(0, 8)] || "a service") : "" }));
+      requestGuard.stop();
+      if (pair.step < 1) setPair({ step: 1 });
+      attentionRequested();
+    } else if (m.event === "display") {
+      if (!pair || pair.dev.address !== m.device.address) pair = { stage: "request", dev: m.device, reqId: -1, left: -1, ours: false };
+      setPair({ stage: "type", dev: m.device, code: m.kind === "passkey" ? pad6(m.passkey) : String(m.passkey), entered: m.entered, reqId: -1, left: -1 });
+      requestGuard.stop();
+      attentionRequested();
+    } else if (m.event === "cancel") {
+      if (pair && pair.reqId === m.id) failPair(m.reason === "timeout" ? "timed out waiting for an answer" : "cancelled by the device");
+    } else if (m.event === "status") {
+      if (!pair || !pair.viaAgent || pair.dev.address.toUpperCase() !== String(m.address).toUpperCase() || pair.stage === "done" || pair.stage === "failed") return;
+      if (m.step === "linking") setPair({ step: Math.max(pair.step, 0) });
+      else if (m.step === "linked") setPair({ step: Math.max(pair.step, 1) });
+      else if (m.step === "resolved") setPair({ step: Math.max(pair.step, 2) });
+      else if (m.step === "done") donePair();
+      else if (m.step === "failed" && !userCancelled) failPair(m.reason || "failed");
+    } else if (m.event === "paired") {
+      if (pair && pair.dev.address === m.device.address && m.paired) donePair();
+    }
+  }
+  // Seconds left on a request (drives the title-bar counter and the bar).
+  Timer {
+    interval: 500; repeat: true; running: dropdownRoot.pair !== null && dropdownRoot.pair.deadline > 0
+    onTriggered: if (dropdownRoot.pair && dropdownRoot.pair.deadline > 0) dropdownRoot.setPair({ left: Math.max(0, Math.ceil((dropdownRoot.pair.deadline - Date.now()) / 1000)) })
+  }
+  property int pairSpin: 0
+  readonly property string pairSpinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[pairSpin % 10]
+  Timer { interval: 80; repeat: true; running: dropdownRoot.pair !== null && dropdownRoot.pair.stage === "request"; onTriggered: dropdownRoot.pairSpin++ }
 
   // Keybind letter in the accent yellow, like the mockup's "[c]onnect" buttons.
   function kb(k) { return "<font color=\"" + colors[2] + "\">" + k + "</font>"; }
@@ -166,8 +291,22 @@ Item {
   Keys.onPressed: (event) => {
     if (pairingOpen) {
       event.accepted = true;
-      if (event.key === Qt.Key_Escape) cancelPairing();
-      else event.accepted = false;
+      const st = pair.stage, k = event.key;
+      if (st === "confirm" || st === "authorize") {
+        if (k === Qt.Key_Y || k === Qt.Key_Return || k === Qt.Key_Enter) sendReply(true, null);
+        else if (k === Qt.Key_N || k === Qt.Key_Escape) cancelPairing();
+      } else if (st === "failed") {
+        if (k === Qt.Key_R) retryPairing();
+        else if (k === Qt.Key_Escape) closePair();
+      } else if (st === "done") {
+        closePair();
+      } else if (k === Qt.Key_Escape) {
+        cancelPairing();
+      } else if (st !== "pin" && st !== "passkey") {
+        event.accepted = true;
+      } else {
+        event.accepted = false;      // typed digits belong to the input field
+      }
       return;
     }
     event.accepted = true;
@@ -230,7 +369,7 @@ Item {
   }
 
   implicitWidth: 448
-  implicitHeight: column.implicitHeight
+  implicitHeight: Math.max(column.implicitHeight, pairingOpen ? 330 : 0)
 
   Column {
     id: column
@@ -736,87 +875,225 @@ Item {
   }
 
   // ----- pairing modal -----
-  // Deliberately just a live status + cancel, not a fake confirmation
-  // code -- see the header comment on why a real PIN/passkey flow isn't
-  // implemented yet.
+  // Staged like the mockup's: request -> confirm / type / passkey / pin / authorize -> done | failed.
+  // Border + legend colour follow the stage (yellow asking, green done, red failed).
   Item {
+    id: pairModal
     visible: dropdownRoot.pairingOpen
     anchors.fill: parent
+    readonly property var p: dropdownRoot.pair || ({ stage: "request", dev: { name: "", address: "", icon: "" }, left: -1, entered: 0, code: "" })
+    readonly property string st: p.stage
+    readonly property bool isConnect: p.mode === "connect"
+    readonly property bool checklist: st === "request" && !!p.viaAgent
+    readonly property var stepLabels: isConnect ? dropdownRoot.connectSteps : dropdownRoot.pairSteps
+    property int spin: 0
+    Timer { interval: 80; repeat: true; running: pairModal.visible && pairModal.checklist; onTriggered: pairModal.spin++ }
+    readonly property string spinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[spin % 10]
+    readonly property color accent: st === "failed" ? dropdownRoot.colors[1] : st === "done" ? dropdownRoot.colors[3] : dropdownRoot.colors[2]
+    readonly property bool showCode: st === "confirm" || st === "type"
+    readonly property bool typed: st === "pin" || st === "passkey"
+    readonly property bool counting: p.left >= 0 && (st === "confirm" || st === "authorize" || typed)
+    readonly property string message: st === "request" ? dropdownRoot.pairSpinner + " requesting pairing…"
+      : st === "confirm" ? "Check that this passkey is shown on the device, then confirm on both sides."
+      : st === "type" ? (p.entered > 0 ? "Receiving keystrokes… " + p.entered + "/" + p.code.length : "Type this code on " + p.dev.name + ", then press Enter on it.")
+      : st === "passkey" ? "Enter the passkey shown on " + p.dev.name + "."
+      : st === "pin" ? "Enter the PIN for " + p.dev.name + " (often 0000 or 1234)."
+      : st === "authorize" ? p.dev.name + " wants to connect" + (p.service ? " (" + p.service + ")" : "") + ". Allow it?"
+      : st === "done" ? (isConnect ? "✓ connected to " + p.dev.name : "✓ paired with " + p.dev.name)
+      : "✗ " + (p.reason || "pairing failed")
+    readonly property color messageColor: st === "request" ? dropdownRoot.colors[2] : st === "done" ? dropdownRoot.colors[3] : st === "failed" ? dropdownRoot.colors[1] : dropdownRoot.fgColor
+    onTypedChanged: if (typed) Qt.callLater(() => pairInput.forceActiveFocus())
 
-    Rectangle {
-      anchors.fill: parent
-      color: "#1e2127"
-      opacity: 0.82
-    }
+    Rectangle { anchors.fill: parent; color: "#1e2127"; opacity: 0.82 }
+    MouseArea { anchors.fill: parent }
 
     Rectangle {
       anchors.centerIn: parent
-      width: Math.min(320, parent.width - 32)
+      width: Math.min(360, parent.width - 32)
       height: modalCol.implicitHeight + 28
       color: "#282c34"
       radius: Globals.eyeCandyOff ? 0 : 2
       border.width: 1
-      border.color: dropdownRoot.colors[2]
+      border.color: pairModal.accent
 
       Text {
-        x: 8
-        y: -9
-        leftPadding: 6
-        rightPadding: 6
-        text: "pairing"
-        color: dropdownRoot.colors[2]
-        font.family: "JetBrains Mono"
-        font.pixelSize: 13
+        x: 8; y: -9; leftPadding: 6; rightPadding: 6
+        text: pairModal.isConnect ? (pairModal.st === "failed" ? "✗ connection failed" : pairModal.st === "done" ? "✓ connected" : "connecting")
+          : pairModal.st === "failed" ? "✗ pairing failed" : pairModal.st === "done" ? "✓ paired" : pairModal.st === "authorize" ? "⚠ connection request" : (pairModal.st === "request" && pairModal.p.viaAgent) ? "pairing" : "⚠ pairing request"
+        color: pairModal.accent
+        font.family: "JetBrains Mono"; font.pixelSize: 13
+        Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
+      }
+      Text {
+        visible: pairModal.counting
+        anchors.right: parent.right; anchors.rightMargin: 8; y: -9; leftPadding: 6; rightPadding: 6
+        text: pairModal.p.left + "s"
+        color: dropdownRoot.mutedColor
+        font.family: "JetBrains Mono"; font.pixelSize: 13
         Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
       }
 
       Column {
         id: modalCol
-        x: 16
-        y: 14
+        x: 16; y: 14
         width: parent.width - 32
         spacing: 10
 
         RowLayout {
           spacing: 8
-          Text {
-            text: Phosphor.icon("bluetooth")
-            color: dropdownRoot.fgColor
-            font.family: "Phosphor"
-            font.pixelSize: 15
+          Text { text: Phosphor.icon(dropdownRoot.iconFor(pairModal.p.dev.icon)); color: dropdownRoot.fgColor; font.family: "Phosphor"; font.pixelSize: 16 }
+          Text { text: pairModal.p.dev.name; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+          Text { text: pairModal.p.dev.address; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
+        }
+
+        // step checklist (agent-driven): same markers as the wi-fi connect card
+        Column {
+          visible: pairModal.checklist
+          width: parent.width
+          spacing: 2
+          Repeater {
+            model: pairModal.stepLabels
+            delegate: RowLayout {
+              required property string modelData
+              required property int index
+              readonly property bool done: index < pairModal.p.step
+              readonly property bool cur: index === pairModal.p.step
+              width: parent.width
+              spacing: 8
+              Text {
+                Layout.preferredWidth: 16
+                horizontalAlignment: Text.AlignHCenter
+                text: parent.done ? "✓" : parent.cur ? pairModal.spinner : "○"
+                color: parent.done ? dropdownRoot.colors[3] : parent.cur ? dropdownRoot.colors[2] : dropdownRoot.mutedColor
+                font.family: "JetBrains Mono"; font.pixelSize: parent.cur ? 15 : 13
+                font.weight: parent.done || parent.cur ? Font.Bold : Font.Normal
+              }
+              Text {
+                Layout.fillWidth: true
+                text: parent.modelData
+                color: parent.done ? "#7f848e" : parent.cur ? dropdownRoot.fgColor : dropdownRoot.mutedColor
+                font.family: "JetBrains Mono"; font.pixelSize: 13
+              }
+            }
           }
-          Text {
-            text: dropdownRoot.pairingDevice ? (dropdownRoot.pairingDevice.name || dropdownRoot.pairingDevice.address) : ""
-            color: dropdownRoot.fgColor
-            font.family: "JetBrains Mono"
-            font.weight: Font.DemiBold
-            font.pixelSize: 13
-          }
+        }
+        Text {
+          visible: pairModal.checklist && !pairModal.isConnect && (pairModal.p.kind === "phone" || pairModal.p.kind === "computer")
+          width: parent.width
+          wrapMode: Text.WordWrap
+          text: "On the other device, open its Bluetooth settings and keep that screen open -- phones only accept new pairings while it is showing."
+          color: dropdownRoot.mutedColor
+          font.family: "JetBrains Mono"; font.pixelSize: 12
         }
 
         Text {
+          visible: !pairModal.checklist
           width: parent.width
           wrapMode: Text.WordWrap
-          text: "pairing… the device may prompt you to confirm a code itself."
-          color: dropdownRoot.mutedColor
-          font.family: "JetBrains Mono"
-          font.pixelSize: 13
+          text: pairModal.message
+          color: pairModal.messageColor
+          font.family: "JetBrains Mono"; font.pixelSize: 13
         }
 
-        Rectangle {
-          implicitWidth: cancelLabel.implicitWidth + 20
-          implicitHeight: 22
-          radius: Globals.eyeCandyOff ? 0 : 2
-          color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
-          Text {
-            id: cancelLabel
-            anchors.centerIn: parent
-            text: "< esc cancel >"
-            color: dropdownRoot.colors[1]
-            font.family: "JetBrains Mono"
-            font.pixelSize: 13
+        // the code, one box per digit, a gap after the third (6-digit passkeys)
+        Row {
+          visible: pairModal.showCode
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: 6
+          Repeater {
+            model: pairModal.p.code ? pairModal.p.code.split("") : []
+            delegate: Rectangle {
+              required property string modelData
+              required property int index
+              readonly property bool typedDigit: pairModal.st === "type" && index < pairModal.p.entered
+              width: 30; height: 38
+              radius: Globals.eyeCandyOff ? 0 : 2
+              color: "transparent"
+              border.width: 1
+              border.color: typedDigit ? dropdownRoot.colors[3] : dropdownRoot.hoverColor
+              Text {
+                anchors.centerIn: parent
+                text: parent.modelData
+                color: parent.typedDigit ? dropdownRoot.colors[3] : dropdownRoot.colors[2]
+                font.family: "JetBrains Mono"; font.weight: Font.Medium; font.pixelSize: 22
+              }
+              // extra gap after the third digit of a 6-digit code
+              Item { width: parent.index === 2 && pairModal.p.code.length === 6 ? 10 : 0; height: 1; anchors.left: parent.right }
+            }
           }
-          MouseArea { id: cancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.cancelPairing() }
+        }
+
+        // remaining time as a block bar, red when nearly out
+        Text {
+          visible: pairModal.counting && !pairModal.typed
+          anchors.horizontalCenter: parent.horizontalCenter
+          readonly property int on: Math.round(Math.max(0, pairModal.p.left) / Math.max(1, pairModal.p.deadline ? 30 : 30) * 10)
+          text: "█".repeat(Math.min(10, on)) + "░".repeat(10 - Math.min(10, on))
+          color: pairModal.p.left <= 8 ? dropdownRoot.colors[1] : dropdownRoot.mutedColor
+          font.family: "JetBrains Mono"; font.pixelSize: 13
+        }
+
+        // PIN / passkey entry
+        Rectangle {
+          visible: pairModal.typed
+          width: parent.width
+          implicitHeight: 28
+          color: "#1e2127"
+          radius: Globals.eyeCandyOff ? 0 : 2
+          border.width: 1
+          border.color: pairInput.activeFocus ? dropdownRoot.colors[2] : dropdownRoot.hoverColor
+          TextInput {
+            id: pairInput
+            anchors.fill: parent; anchors.margins: 6
+            color: dropdownRoot.fgColor
+            font.family: "JetBrains Mono"; font.pixelSize: 15; font.letterSpacing: 3
+            inputMethodHints: pairModal.st === "passkey" ? Qt.ImhDigitsOnly : Qt.ImhNone
+            maximumLength: pairModal.st === "passkey" ? 6 : 16
+            onAccepted: if (text.length > 0) { dropdownRoot.sendReply(true, text); text = ""; }
+            Keys.onEscapePressed: dropdownRoot.cancelPairing()
+          }
+        }
+
+        Row {
+          spacing: 8
+          Rectangle {
+            visible: pairModal.st === "confirm" || pairModal.st === "authorize"
+            implicitWidth: yesLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: yesMouse.containsMouse ? dropdownRoot.fgColor : dropdownRoot.colors[3]
+            Text { id: yesLabel; anchors.centerIn: parent; text: pairModal.st === "confirm" ? "< y codes match >" : "< y allow >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.Medium; font.pixelSize: 13 }
+            MouseArea { id: yesMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.sendReply(true, null) }
+          }
+          Rectangle {
+            visible: pairModal.typed
+            implicitWidth: submitLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: submitMouse.containsMouse ? dropdownRoot.fgColor : dropdownRoot.colors[0]
+            Text { id: submitLabel; anchors.centerIn: parent; text: "< ⏎ submit >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.Medium; font.pixelSize: 13 }
+            MouseArea { id: submitMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pairInput.accepted() }
+          }
+          Rectangle {
+            visible: pairModal.st === "failed"
+            implicitWidth: retryLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: retryMouse.containsMouse ? dropdownRoot.fgColor : dropdownRoot.colors[0]
+            Text { id: retryLabel; anchors.centerIn: parent; text: "< r retry >"; color: "#282c34"; font.family: "JetBrains Mono"; font.weight: Font.Medium; font.pixelSize: 13 }
+            MouseArea { id: retryMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.retryPairing() }
+          }
+          Rectangle {
+            visible: pairModal.st !== "done"
+            implicitWidth: cancelLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: cancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
+            Text {
+              id: cancelLabel
+              anchors.centerIn: parent
+              text: pairModal.st === "failed" ? "< esc dismiss >" : (pairModal.st === "confirm" || pairModal.st === "authorize") ? "< n reject >" : "< esc cancel >"
+              color: dropdownRoot.colors[1]
+              font.family: "JetBrains Mono"; font.pixelSize: 13
+            }
+            MouseArea { id: cancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.cancelPairing() }
+          }
         }
       }
     }
