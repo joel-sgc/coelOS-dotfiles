@@ -54,7 +54,7 @@ FocusScope {
 
   Rectangle {
     anchors.fill: parent
-    radius: Globals.eyeCandyOff ? 0 : 16
+    radius: Globals.eyeCandyOff ? 0 : Globals.windowRounding
     color: Pal.card
     border.width: 1
     border.color: card.focused ? Pal.faint : Pal.edge

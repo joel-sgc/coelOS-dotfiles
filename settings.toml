@@ -73,6 +73,11 @@ border_size = 2
 
 [config.decoration]
 rounding = 8
+active_opacity = 1
+# inactive_opacity = 0.7
+
+[config.decoration.blur]
+enabled = false
 
 [config.input]
 # kb_layout = "us"

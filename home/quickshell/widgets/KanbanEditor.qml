@@ -73,7 +73,7 @@ PanelWindow {
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
     height: dialogCol.implicitHeight + 20
-    radius: Globals.eyeCandyOff ? 0 : 16
+    radius: Globals.eyeCandyOff ? 0 : Globals.windowRounding
     color: Pal.card
     border.width: 1
     border.color: Pal.faint

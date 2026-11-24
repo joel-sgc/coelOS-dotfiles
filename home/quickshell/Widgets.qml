@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import QtQuick
 
 import "./widgets"
@@ -22,9 +23,44 @@ Scope {
   property int barHeight: 36
   property bool shown: true
   readonly property var screen: MainScreen.screen
-  readonly property int top: barHeight + 16
-  readonly property int left: 16 + 4
+  // Outer gaps: the same general:gaps_out Hyprland puts around windows
+  // (settings.toml [config.general]), re-read whenever the config reloads, so
+  // the widgets sit exactly where a window's edge would. The panel's reserved
+  // strip is added on top. Defaults match the built-in gaps until the first read.
+  property int gapTop: 8
+  property int gapRight: 12
+  property int gapBottom: 12
+  property int gapLeft: 12
+  readonly property int top: barHeight + gapTop
+  readonly property int left: gapLeft
+  readonly property int right: gapRight
+  readonly property int bottom: gapBottom
   readonly property int gap: 20
+
+  Process {
+    id: gapsProc
+    command: ["hyprctl", "getoption", "general:gaps_out", "-j"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          const v = String(JSON.parse(text).css).trim().split(/\s+/).map(Number);
+          if (v.length === 1) v.push(v[0], v[0], v[0]);
+          if (v.length !== 4 || v.some(isNaN)) return;
+          root.gapTop = v[0]; root.gapRight = v[1];
+          root.gapBottom = v[2]; root.gapLeft = v[3];
+        } catch (e) {
+          console.warn("widgets: could not read general:gaps_out:", e);
+        }
+      }
+    }
+  }
+  Component.onCompleted: gapsProc.running = true
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "configreloaded") gapsProc.running = true;
+    }
+  }
 
   // The main screen's kanban, for `newcard`.
   property var mainKanban: null
@@ -63,7 +99,7 @@ Scope {
         screen: set.modelData
         shown: root.shown
         marginTop: root.top
-        marginRight: root.left
+        marginRight: root.right
       }
 
       // Bottom right: pomodoro in the corner, server to its left. Separate
@@ -73,8 +109,8 @@ Scope {
         shown: root.shown
         anchorRight: true
         anchorBottom: true
-        marginRight: root.left
-        marginBottom: root.left
+        marginRight: root.right
+        marginBottom: root.bottom
 
         Pomodoro { id: pomodoro; primary: set.primary }
       }
@@ -84,8 +120,8 @@ Scope {
         shown: root.shown
         anchorRight: true
         anchorBottom: true
-        marginRight: root.left + pomodoro.cardWidth + root.gap
-        marginBottom: root.left
+        marginRight: root.right + pomodoro.cardWidth + root.gap
+        marginBottom: root.bottom
 
         ServerStatus {}
       }

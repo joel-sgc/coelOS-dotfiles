@@ -1,5 +1,7 @@
 pragma Singleton
 import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
 import QtQuick
 
 // Single global switch for whether Quickshell's own rendered chrome
@@ -20,4 +22,30 @@ import QtQuick
 // directly.
 Singleton {
   property bool eyeCandyOff: false
+
+  // Hyprland's own window corner radius (decoration:rounding, i.e. settings.toml
+  // [config.decoration]), re-read on every config reload. Desktop widget cards
+  // use it so they round like windows do. eyeCandyOff still wins where checked.
+  property int windowRounding: 8
+  Process {
+    id: roundingProc
+    command: ["hyprctl", "getoption", "decoration:rounding", "-j"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          const v = Number(JSON.parse(text).int);
+          if (!isNaN(v) && v >= 0) windowRounding = v;
+        } catch (e) {
+          console.warn("globals: could not read decoration:rounding:", e);
+        }
+      }
+    }
+  }
+  Component.onCompleted: roundingProc.running = true
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "configreloaded") roundingProc.running = true;
+    }
+  }
 }
