@@ -30,7 +30,7 @@ enter on a result shows its tests, failure messages and output, `r` reruns the f
 | `hyprland/` | workspace grid logic and the settings.lua TOML parser, under Lua 5.5 | lua |
 | `quickshell/` | the overview's layout logic, under Node | node |
 | `nixos/` | the session hub / VT guard as a NixOS VM test (slow) | nix |
-| `hyprland-swipe/` | synthetic trackpad swipes for a nested Hyprland (manual: see TODO.md) | — |
+| `hyprland-swipe/` | synthetic trackpad swipes for a nested Hyprland | — |
 | `coeltest/` | the runner itself, plus its own `meta` suite | — |
 
 `home/theme/theme-test.sh` (`coel-theme-test`) is a visual check you run by eye; it stays where its package expects it and is

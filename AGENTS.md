@@ -25,3 +25,26 @@ Rules:
   ```
   LC_ALL=C grep -c -P '\xee[\x80-\xbf][\x80-\xbf]|\xef[\x80-\xa3][\x80-\xbf]|\xf3[\xb0-\xbf][\x80-\xbf][\x80-\xbf]' <file>
   ```
+
+## Keep documentation small. Docs are reference, not a changelog.
+
+Earlier sessions turned several docs into session-by-session changelogs
+(STATUS.md reached 1400 lines, the Miracast README 850) that cost every later
+agent tokens and buried the facts that matter. Rules:
+
+- Git history is the changelog. Don't write "this session I...", dated
+  update blocks, "fixed X" narratives, or commit hashes into docs.
+- Keep only what a future agent can't get from the code: non-obvious
+  constraints, gotchas that already cost real debugging time (with the
+  cause, in a sentence or two), design decisions the user made on purpose
+  ("don't re-add X"), external contracts, recovery steps, and open items.
+- Don't document what the code or its comments already say, resolved
+  investigations, disproved theories, or step-by-step debugging stories.
+- Update in place: when something changes, edit or delete the old entry.
+  Never stack a new section on top of a superseded one. Delete open items
+  once done.
+- Don't create a new .md file for a feature. Add a short section to the
+  nearest existing doc, or put it in a code comment. A doc over ~250 lines
+  is a smell: trim it before adding to it.
+- One reader in mind: an agent with zero history who needs to change this
+  area safely. If an entry wouldn't change what they do, leave it out.

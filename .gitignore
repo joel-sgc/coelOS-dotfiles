@@ -1,8 +1,5 @@
-coelos_install_*.log
 result
 result-*
 coelos-dotfiles/
-*.tsx
 __pycache__/
 example
-server-dotfiles/
