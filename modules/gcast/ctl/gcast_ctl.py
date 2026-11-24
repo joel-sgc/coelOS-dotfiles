@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """coel-gcast: cast the screen to Google Cast devices (stdlib only).
 
-coel-gcast scan [seconds]                 list Cast devices on the network
+coel-gcast scan [seconds] [--json]        list Cast devices on the network
 coel-gcast cast <name|address[:port]> [--source portal|test] [engine flags]
                                           start casting (the engine runs as a transient user service)
 coel-gcast stop                           stop casting
@@ -46,8 +46,14 @@ def stop_engine():
 
 
 def scan(argv):
+    as_json = "--json" in argv                     # for front ends (the Quickshell cast tab): always valid JSON, exit 0
+    argv = [a for a in argv if a != "--json"]
     seconds = float(argv[0]) if argv else 4.0
     devices = asyncio.run(discover.browse(seconds))
+    if as_json:
+        print(json.dumps([{"name": d["name"], "model": d["model"], "address": (d["addresses"] or [d["host"]])[0],
+                           "port": d["port"], "id": d["id"]} for d in devices]))
+        return 0
     if not devices:
         print("no Cast devices found (guest/campus Wi-Fi often isolates clients and blocks mDNS)")
         return 1

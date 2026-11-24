@@ -206,9 +206,88 @@ Item {
 
   function connect(entry) {
     if (!entry || !entry.network) return;
-    if (entry.known || entry.sec === "open") entry.network.connect();
+    if (entry.known || entry.sec === "open") { beginConnect(entry.ssid); entry.network.connect(); }
     else openEdit(entry, "connect");
   }
+  // ----- connect progress (NetworkManager device state) -----
+  // A popup that follows an attempt step by step, like the GlobalProtect MFA
+  // card: NM walks the wifi device through prepare -> config -> (need-auth) ->
+  // ip-config -> ip-check -> activated, or ends in failed with a reason.
+  // Read by polling `nmcli device show` every 250ms while the card is open --
+  // the output is stable and parsable, unlike `nmcli monitor`'s text. States
+  // are queued and shown for at least 350ms each, since a saved network can
+  // pass through all of them in well under a second.
+  property string connectSsid: ""
+  property bool connectOpen: false
+  property var connSeen: []          // NM state codes in the order they were observed
+  property int connShown: 0          // how many of connSeen have been revealed
+  property string connResult: ""     // "" | "ok" | "fail"
+  property string connReason: ""
+  property double connStartMs: 0
+  property int connLastState: -1
+  readonly property var connLabels: ({ 40: "preparing the radio", 50: "associating + authenticating", 60: "waiting for credentials",
+                                       70: "getting an address (dhcp)", 80: "checking connectivity", 90: "bringing up secondary links" })
+  function beginConnect(ssid) {
+    connectSsid = ssid; connSeen = []; connShown = 0; connResult = ""; connReason = "";
+    connLastState = -1; connStartMs = Date.now(); connectOpen = true;
+    connPoll.restart();
+  }
+  function closeConnect() { connectOpen = false; connPoll.stop(); connResult = ""; dropdownRoot.forceActiveFocus(); }
+  function retryConnect() {
+    const e = allNetworks.find(x => x.ssid === connectSsid);
+    if (!e) { closeConnect(); return; }
+    beginConnect(connectSsid);
+    e.network.connect();
+  }
+  function abortConnect() {
+    const e = allNetworks.find(x => x.ssid === connectSsid);
+    if (connResult === "" && e && e.network) e.network.disconnect();
+    closeConnect();
+  }
+  function connFinish(result, reason) {
+    if (connResult !== "") return;
+    connResult = result; connReason = reason || "";
+    connPoll.stop();
+    if (result === "ok") connCloseTimer.restart();
+  }
+  Timer { id: connCloseTimer; interval: 1300; onTriggered: dropdownRoot.closeConnect() }
+  Timer {
+    id: connPoll
+    interval: 250; repeat: true
+    onTriggered: {
+      if (!connStateProc.running) connStateProc.running = true;
+      // reveal queued states one at a time
+      if (dropdownRoot.connShown < dropdownRoot.connSeen.length) dropdownRoot.connShown++;
+      if (Date.now() - dropdownRoot.connStartMs > 60000) dropdownRoot.connFinish("fail", "timed out after 60s");
+    }
+  }
+  Process {
+    id: connStateProc
+    command: ["nmcli", "-t", "-f", "GENERAL.STATE,GENERAL.REASON", "device", "show", dropdownRoot.ifaceName]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        if (!dropdownRoot.connectOpen || dropdownRoot.connResult !== "") return;
+        let st = -1, reason = "";
+        for (const line of text.split("\n")) {
+          if (line.indexOf("GENERAL.STATE:") === 0) st = parseInt(line.slice(14));
+          else if (line.indexOf("GENERAL.REASON:") === 0) reason = line.slice(15).replace(/^\d+\s*\(?/, "").replace(/\)$/, "");
+        }
+        if (isNaN(st) || st < 0) return;
+        const d = dropdownRoot, last = d.connLastState;
+        if (st !== last) {
+          d.connLastState = st;
+          if (st >= 40 && st <= 90 && d.connSeen.indexOf(st) < 0) d.connSeen = d.connSeen.concat([st]);
+        }
+        const sawProgress = d.connSeen.length > 0;
+        const elapsed = Date.now() - d.connStartMs;
+        const onTarget = d.currentEntry && d.currentEntry.ssid === d.connectSsid;
+        if (st === 120) d.connFinish("fail", reason && reason !== "No reason given" ? reason : "connection failed");
+        else if (st === 100 && ((sawProgress && onTarget) || (elapsed > 3000 && onTarget))) d.connFinish("ok", "");
+        else if (st === 30 && sawProgress && elapsed > 800) d.connFinish("fail", reason && reason !== "No reason given" ? reason : (d.connSeen.indexOf(60) >= 0 ? "authentication failed (wrong password?)" : "disconnected"));
+      }
+    }
+  }
+
   function disconnectCurrent() {
     if (currentEntry && currentEntry.network) currentEntry.network.disconnect();
   }
@@ -464,6 +543,7 @@ Item {
     if (!draft) return;
     const entry = draft.entry, shouldConnect = draft.mode === "connect";
     if (entry && entry.network) {
+      if (shouldConnect) beginConnect(entry.ssid);
       if (shouldConnect && isEnterprise(draft.sec)) {
         netError = "";
         entSsid = entry.ssid;
@@ -919,7 +999,9 @@ Item {
 
   focus: true
   Keys.onPressed: (event) => {
+    if (connectOpen && connResult === "fail" && event.key === Qt.Key_R) { retryConnect(); event.accepted = true; return; }
     if (event.key === Qt.Key_Escape) {
+      if (connectOpen) { abortConnect(); event.accepted = true; return; }
       if (gpMfaPrompt.length > 0) { gpCancelMfa(); event.accepted = true; return; }
       if (view !== "main") { backMain(); event.accepted = true; }
       else event.accepted = false;
@@ -2127,6 +2209,142 @@ Item {
               font.pixelSize: 13
             }
             MouseArea { id: mfaCancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.gpCancelMfa() }
+          }
+        }
+      }
+    }
+  }
+
+  // ----- Wi-Fi connect progress modal -----
+  // Same scrim + floating-label card as the GlobalProtect MFA modal: the
+  // border and legend colour follow the attempt (yellow working, green
+  // connected, red failed), the checklist follows NetworkManager's device
+  // state (see the connect-progress block above).
+  Item {
+    id: connModal
+    visible: dropdownRoot.connectOpen
+    anchors.fill: parent
+    readonly property bool failed: dropdownRoot.connResult === "fail"
+    readonly property bool ok: dropdownRoot.connResult === "ok"
+    readonly property color accent: failed ? dropdownRoot.colors[1] : ok ? dropdownRoot.colors[3] : dropdownRoot.colors[2]
+    // Which NM states get a row: the usual four, plus credentials / secondaries only if seen.
+    readonly property var rows: [40, 50, 60, 70, 80, 90].filter(c => dropdownRoot.connSeen.slice(0, shownCount).indexOf(c) >= 0 || c === 40 || c === 50 || c === 70 || c === 80)
+    readonly property int shownCount: Math.min(dropdownRoot.connShown, dropdownRoot.connSeen.length)
+    // The state currently revealed (last of the shown ones), or -1 before any.
+    readonly property int curState: shownCount > 0 ? dropdownRoot.connSeen[shownCount - 1] : 40
+    property int spin: 0
+    Timer { interval: 80; repeat: true; running: connModal.visible && !connModal.failed && !connModal.ok; onTriggered: connModal.spin++ }
+    readonly property string spinner: "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[spin % 10]
+
+    Rectangle { anchors.fill: parent; color: "#1e2127"; opacity: 0.82 }
+    MouseArea { anchors.fill: parent }
+
+    Rectangle {
+      anchors.centerIn: parent
+      width: Math.min(340, parent.width - 32)
+      height: connCol.implicitHeight + 28
+      color: "#282c34"
+      radius: Globals.eyeCandyOff ? 0 : 2
+      border.width: 1
+      border.color: connModal.accent
+
+      Text {
+        x: 8; y: -9; leftPadding: 6; rightPadding: 6
+        text: connModal.failed ? "✗ connection failed" : connModal.ok ? "✓ connected" : "connecting"
+        color: connModal.accent
+        font.family: "JetBrains Mono"; font.pixelSize: 13
+        Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
+      }
+      Text {
+        anchors.right: parent.right; anchors.rightMargin: 8; y: -9; leftPadding: 6; rightPadding: 6
+        text: dropdownRoot.ifaceName
+        color: dropdownRoot.mutedColor
+        font.family: "JetBrains Mono"; font.pixelSize: 13
+        Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
+      }
+
+      Column {
+        id: connCol
+        x: 16; y: 14
+        width: parent.width - 32
+        spacing: 10
+
+        RowLayout {
+          spacing: 8
+          Text { text: Phosphor.icon(connModal.ok ? "wifi-high" : connModal.failed ? "wifi-slash" : "wifi-medium"); color: connModal.accent; font.family: "Phosphor"; font.pixelSize: 16 }
+          Text { text: dropdownRoot.connectSsid; color: dropdownRoot.fgColor; font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: 13 }
+        }
+
+        Column {
+          width: parent.width
+          spacing: 2
+          Repeater {
+            model: connModal.rows
+            delegate: RowLayout {
+              required property int modelData
+              // Ordered by NetworkManager's own state number, not by the order the poller happened to
+              // see them: a fast attempt can skip states between two polls, and everything before the
+              // current state must still read as finished (skipped ones included).
+              readonly property bool isCur: modelData === connModal.curState && !connModal.ok
+              readonly property bool done: connModal.ok || modelData < connModal.curState
+              readonly property bool bad: connModal.failed && isCur
+              width: parent.width
+              spacing: 8
+              Text {
+                Layout.preferredWidth: 16
+                // Four clearly different markers: ✗ red, ✓ green, spinner yellow (bold, larger), ○ grey for not-yet.
+                text: bad ? "✗" : done ? "✓" : isCur ? connModal.spinner : "○"
+                color: bad ? dropdownRoot.colors[1] : done ? dropdownRoot.colors[3] : isCur ? dropdownRoot.colors[2] : dropdownRoot.mutedColor
+                font.family: "JetBrains Mono"; font.pixelSize: isCur ? 15 : 13
+                font.weight: isCur || bad || done ? Font.Bold : Font.Normal
+                horizontalAlignment: Text.AlignHCenter
+              }
+              Text {
+                Layout.fillWidth: true
+                text: dropdownRoot.connLabels[modelData]
+                color: bad ? dropdownRoot.colors[1] : done ? "#7f848e" : isCur ? dropdownRoot.fgColor : dropdownRoot.mutedColor
+                font.family: "JetBrains Mono"; font.pixelSize: 13
+                wrapMode: Text.WordWrap
+              }
+            }
+          }
+        }
+
+        Text {
+          visible: connModal.failed
+          width: parent.width
+          wrapMode: Text.WordWrap
+          text: dropdownRoot.connReason
+          color: dropdownRoot.colors[1]
+          font.family: "JetBrains Mono"; font.pixelSize: 12
+        }
+        Text {
+          visible: connModal.curState === 60 && !connModal.failed && !connModal.ok
+          width: parent.width
+          wrapMode: Text.WordWrap
+          text: "the network is asking for credentials -- if this sits here, the saved password is probably wrong"
+          color: dropdownRoot.mutedColor
+          font.family: "JetBrains Mono"; font.pixelSize: 12
+        }
+
+        RowLayout {
+          width: parent.width
+          Item { Layout.fillWidth: true }
+          Rectangle {
+            visible: connModal.failed
+            implicitWidth: retryLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: retryMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
+            Text { id: retryLabel; anchors.centerIn: parent; textFormat: Text.StyledText; text: "< <font color=\"" + dropdownRoot.colors[2] + "\">r</font> retry >"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+            MouseArea { id: retryMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.retryConnect() }
+          }
+          Rectangle {
+            visible: !connModal.ok
+            implicitWidth: connCancelLabel.implicitWidth + 20; implicitHeight: 22
+            radius: Globals.eyeCandyOff ? 0 : 2
+            color: connCancelMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
+            Text { id: connCancelLabel; anchors.centerIn: parent; text: connModal.failed ? "< esc close >" : "< esc cancel >"; color: dropdownRoot.colors[1]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+            MouseArea { id: connCancelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.abortConnect() }
           }
         }
       }

@@ -59,6 +59,26 @@ PanelWindow {
     onQuitRequested: Qt.quit()
   }
 
+  // ----- cast tab -----
+  // "wired" = the monitor layout editor, "cast" = wireless displays.
+  property string tab: "wired"
+  readonly property bool castMode: tab === "cast" && be.phase === "pick"
+  function setTab(t) {
+    if (be.phase !== "pick" || tab === t) return;
+    tab = t;
+    if (t === "cast" && cast.found.length === 0 && !cast.scanning) cast.scan();
+    keys.forceActiveFocus();
+  }
+  CastBackend {
+    id: cast
+    onCloseRequested: be.close()
+    onToast: (kind, title, sub) => root.showToast(kind, title, sub)
+    onPhaseChanged: if (phase !== "pin") Qt.callLater(() => keys.forceActiveFocus())
+  }
+  property var toastData: null
+  function showToast(kind, title, sub) { toastData = { kind: kind, title: title, sub: sub }; toastTimer.restart(); }
+  Timer { id: toastTimer; interval: 3500; onTriggered: root.toastData = null }
+
   anchors { top: true; bottom: true; left: true; right: true }
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
@@ -84,6 +104,11 @@ PanelWindow {
         case Qt.Key_Left: k = "ArrowLeft"; break;
         case Qt.Key_Right: k = "ArrowRight"; break;
       }
+      if (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab) {
+        if (be.phase === "pick") { root.setTab(root.tab === "wired" ? "cast" : "wired"); e.accepted = true; }
+        return;
+      }
+      if (root.castMode) { if (cast.handleKey(k)) e.accepted = true; return; }
       if (be.handleKey(k)) e.accepted = true;
     }
   }
@@ -106,7 +131,7 @@ PanelWindow {
     radius: Globals.eyeCandyOff ? 0 : 16
     color: Pal.card
     border.width: 1
-    border.color: be.confirming ? Pal.blue : Pal.faint
+    border.color: be.confirming ? Pal.blue : (root.castMode && cast.phase === "live") ? Pal.green : Pal.faint
     Behavior on border.color { ColorAnimation { duration: Globals.eyeCandyOff ? 0 : 200 } }
 
     MouseArea { anchors.fill: parent }
@@ -124,16 +149,62 @@ PanelWindow {
         PhIcon { name: "monitor"; font.pixelSize: 15; color: Pal.blue }
         Mono { text: "displays"; font.weight: Font.Medium; color: Pal.blue }
         Mono { text: "─ hyprctl ─"; color: Pal.muted }
-        Mono { Layout.fillWidth: true; text: be.countLabel; color: Pal.dim; elide: Text.ElideRight }
+        Mono { Layout.fillWidth: true; text: root.tab === "cast" && be.phase === "pick" ? "wireless" : be.countLabel; color: Pal.dim; elide: Text.ElideRight }
         TextButton {
           onClicked: { if (be.confirming) be.revert(false); else if (!be.applying) be.close(); }
           Mono { text: "[×]"; color: parent.parent.hovered ? Pal.red : Pal.muted }
         }
       }
 
+      // ----- tabs -----
+      Flow {
+        visible: be.phase === "pick"
+        Layout.fillWidth: true
+        Layout.bottomMargin: 4
+        spacing: 6
+        Repeater {
+          model: [
+            { id: "wired", icon: "plugs", label: "displays", count: String(be.monitors.length), countColor: Pal.muted },
+            { id: "cast", icon: "screencast", label: "cast", count: cast.live ? "● live" : (cast.found.length ? String(cast.found.length) : ""), countColor: cast.live ? Pal.green : Pal.muted }
+          ]
+          delegate: Rectangle {
+            id: tabBtn
+            required property var modelData
+            readonly property bool on: root.tab === modelData.id
+            implicitWidth: tabRow.implicitWidth + 20
+            implicitHeight: tabRow.implicitHeight + 2
+            radius: Globals.eyeCandyOff ? 0 : 2
+            border.width: 1
+            border.color: on ? Pal.blue : "transparent"
+            color: on || tabArea.containsMouse ? Pal.edge : "transparent"
+            Row {
+              id: tabRow
+              anchors.centerIn: parent
+              spacing: 6
+              PhIcon { name: tabBtn.modelData.icon; font.pixelSize: 13; color: tabBtn.on ? Pal.fg : Pal.dim; anchors.verticalCenter: parent.verticalCenter }
+              Mono { text: tabBtn.modelData.label; color: tabBtn.on ? Pal.fg : Pal.dim }
+              Mono { text: tabBtn.modelData.count; color: tabBtn.modelData.countColor }
+            }
+            MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.setTab(tabBtn.modelData.id) }
+          }
+        }
+        Row {
+          spacing: 5
+          leftPadding: 4
+          Mono { text: "tab"; color: Pal.yellow }
+          Mono { text: "switch"; color: Pal.muted }
+        }
+      }
+
+      CastTab {
+        visible: root.castMode
+        Layout.fillWidth: true
+        be: cast
+      }
+
       // ----- pick -----
       ColumnLayout {
-        visible: be.phase === "pick"
+        visible: be.phase === "pick" && root.tab === "wired"
         Layout.fillWidth: true
         spacing: 0
 
@@ -429,34 +500,89 @@ PanelWindow {
         spacing: 12
         Hints {
           Layout.fillWidth: true
-          items: be.hints
+          items: root.castMode ? cast.hints : (be.phase === "pick" ? [["tab", "cast"]].concat(be.hints) : be.hints)
         }
         TextButton {
           hPad: 10
-          onClicked: be.confirming ? be.revert(false) : be.close()
-          Mono { text: "< " + be.secondaryLabel + " >"; color: parent.parent.hovered ? Pal.fg : Pal.dim }
+          onClicked: root.castMode ? cast.secondary() : (be.confirming ? be.revert(false) : be.close())
+          Mono { text: "< " + (root.castMode ? cast.secondaryLabel : be.secondaryLabel) + " >"; color: parent.parent.hovered ? Pal.fg : Pal.dim }
         }
         Rectangle {
           id: primaryBtn
           Layout.preferredWidth: primaryText.implicitWidth + 20
           Layout.preferredHeight: primaryText.implicitHeight
           radius: Globals.eyeCandyOff ? 0 : 2
-          color: be.primaryBg
-          opacity: be.primaryOpacity
+          color: root.castMode ? cast.primaryBg : be.primaryBg
+          opacity: root.castMode ? cast.primaryOpacity : be.primaryOpacity
           Mono {
             id: primaryText
             anchors.centerIn: parent
-            text: "< " + be.primaryLabel + " >"
+            text: "< " + (root.castMode ? cast.primaryLabel : be.primaryLabel) + " >"
             font.weight: Font.Medium
             color: Pal.card
           }
           MouseArea {
             anchors.fill: parent
-            enabled: !be.primaryDisabled
+            enabled: root.castMode ? !cast.primaryDisabled : !be.primaryDisabled
             cursorShape: Qt.PointingHandCursor
-            onClicked: be.confirming ? be.keep() : be.apply()
+            onClicked: root.castMode ? cast.primary() : (be.confirming ? be.keep() : be.apply())
           }
         }
+      }
+    }
+  }
+
+  // ----- casting indicator + toast (top right) -----
+  Rectangle {
+    id: livePill
+    visible: cast.live !== null
+    anchors { top: parent.top; right: parent.right; topMargin: 16; rightMargin: 16 }
+    width: pillRow.implicitWidth + 22
+    height: pillRow.implicitHeight + 12
+    radius: Globals.eyeCandyOff ? 0 : 16
+    color: Pal.card
+    border.width: 1
+    border.color: Pal.faint
+    Row {
+      id: pillRow
+      anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+      spacing: 10
+      Rectangle {
+        width: 8; height: 8; radius: 4
+        anchors.verticalCenter: parent.verticalCenter
+        color: Pal.green
+        opacity: Math.floor(cast.now / 1000) % 2 ? 0.45 : 1
+        Behavior on opacity { NumberAnimation { duration: Globals.eyeCandyOff ? 0 : 300 } }
+      }
+      PhIcon { anchors.verticalCenter: parent.verticalCenter; name: cast.liveDev ? cast.liveDev.icon : "screencast"; font.pixelSize: 15; color: cast.liveDev ? cast.liveDev.color : Pal.fg }
+      Mono { anchors.verticalCenter: parent.verticalCenter; text: cast.live ? (cast.live.source === "extend" ? "extending to " : "mirroring to ") : ""; color: Pal.muted }
+      Mono { anchors.verticalCenter: parent.verticalCenter; text: cast.liveDev ? cast.liveDev.name : "" }
+      Mono { anchors.verticalCenter: parent.verticalCenter; text: cast.live ? cast.fmtTime(cast.now - cast.live.start) : ""; color: Pal.dim }
+      TextButton {
+        anchors.verticalCenter: parent.verticalCenter
+        onClicked: cast.stop()
+        Mono { text: "[■ stop]"; color: Pal.red }
+      }
+    }
+  }
+  Rectangle {
+    visible: root.toastData !== null
+    anchors { top: parent.top; right: parent.right; topMargin: cast.live ? 64 : 16; rightMargin: 16 }
+    width: Math.min(320, parent.width - 32)
+    height: toastCol.implicitHeight + 20
+    radius: Globals.eyeCandyOff ? 0 : 16
+    color: Pal.card
+    border.width: 1
+    border.color: Pal.faint
+    Row {
+      anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 12 }
+      spacing: 10
+      PhIcon { anchors.verticalCenter: parent.verticalCenter; name: root.toastData && root.toastData.kind === "stop" ? "stop-circle" : "screencast"; font.pixelSize: 18; color: root.toastData && root.toastData.kind === "stop" ? Pal.dim : Pal.green }
+      Column {
+        id: toastCol
+        width: parent.width - 30
+        Mono { width: parent.width; text: root.toastData ? root.toastData.title : ""; color: root.toastData && root.toastData.kind === "stop" ? Pal.dim : Pal.green; elide: Text.ElideRight }
+        Mono { width: parent.width; text: root.toastData ? root.toastData.sub : ""; color: Pal.muted; elide: Text.ElideRight }
       }
     }
   }

@@ -202,6 +202,13 @@ const codepoints = {
   "bell-ringing": 0xe5e8,
   "wifi-slash": 0xe4f2,
   usb: 0xe956,
+
+  // displays/CastBackend.qml -- cast device icons
+  "television-simple": 0xeae6,
+  "projector-screen": 0xe658,
+  television: 0xe754,
+  "apple-logo": 0xe516,
+  "stop-circle": 0xe46e,
 };
 
 function icon(name) {
