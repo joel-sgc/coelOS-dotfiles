@@ -87,8 +87,8 @@ let
       # env WAYLAND_DISPLAY=wayland-1: rpi-imager relaunches itself as root
       # via pkexec, then reattaches to the caller's display by scanning
       # /run/user/<uid>/ for anything wayland-looking -- and can pick up
-      # home/wallpaper.nix's awww daemon socket instead of the real
-      # compositor socket. Forcing the real value (Hyprland's actual socket
+      # some other daemon's socket instead of the real compositor
+      # socket. Forcing the real value (Hyprland's actual socket
       # name here) skips that broken auto-detection.
       /run/wrappers/bin/pkexec env WAYLAND_DISPLAY=wayland-1 ${pkgs.rpi-imager}/bin/rpi-imager "$@"
     '';

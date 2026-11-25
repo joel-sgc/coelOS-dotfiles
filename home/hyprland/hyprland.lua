@@ -322,8 +322,7 @@ hl.on("hyprland.start", function()
     -- bind below (-> coel-power-menu) is what fires, instead of an immediate
     -- shutdown racing the menu.
     hl.exec_cmd("@systemd@/bin/systemd-inhibit --what=handle-power-key --who=Hyprland --why='Custom power menu' --mode=block sleep infinity")
-    -- Random wallpaper on every login (home/wallpaper.nix); the script retries
-    -- for a few seconds in case it races the awww daemon's startup.
+    -- Random wallpaper on every login (home/wallpaper.nix).
     hl.exec_cmd("coel-random-wallpaper")
     -- -c straight at this repo (not ~/.config/quickshell) so quickshell
     -- hot-reloads on edit while developing the panel. Normal logins use Qt's
@@ -481,9 +480,7 @@ hl.window_rule({
 
 ------------------------------------------------------------------ layer rules
 -- See home/quickshell/sysPanel/Popup.qml's WlrLayershell.namespace comment:
--- stops Hyprland's default layer fade from animating this popup's open/close,
--- which could otherwise be caught mid-fade by a screenshot taken right as
--- HyprlandFocusGrab closes it.
+-- the popup slides itself, so Hyprland's default layer fade must stay off.
 hl.layer_rule({
     name    = "quickshell-popup-no-anim",
     match   = { namespace = "coel-sys-popup" },

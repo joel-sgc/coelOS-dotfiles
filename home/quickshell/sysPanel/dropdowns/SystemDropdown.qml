@@ -434,7 +434,7 @@ Item {
             // over a literal nproc since it's the same live core count
             // the per-core cpu grid above already uses.
             thr: parseInt(m[4]), memMb: rssKb / 1024,
-            cpu: parseFloat(m[6]) / dropdownRoot.coreCount,
+            // cpu: parseFloat(m[6]) / dropdownRoot.coreCount,
           });
         }
         // Reassigning `processes` (a plain JS array) hands the ListView a
@@ -569,8 +569,32 @@ Item {
     const next = Math.max(0, Math.min(list.length - 1, i + delta));
     selPid = list[next].pid;
   }
+  // The search box only holds focus while someone is actually typing: Enter/Tab/arrows
+  // keep the filter and hand the keys to the list, Escape drops it, and any click or
+  // action elsewhere releases it too.
+  function releaseSearch() { if (searchInput.activeFocus) dropdownRoot.forceActiveFocus(); }
+  function commitSearch() {
+    const list = filteredProcesses;
+    if (query.trim().length > 0 && list.length > 0) {
+      selPid = list[0].pid;
+      procList.positionViewAtBeginning();
+    } else if (selPid < 0 && list.length > 0) {
+      selPid = list[0].pid;
+    }
+    releaseSearch();
+  }
+  function cancelSearch() { query = ""; releaseSearch(); }
+  // The popup's FocusScope remembers its focused child, so without this a reopened
+  // popup would start out typing into the old search.
+  onPopupOpenChanged: {
+    if (popupOpen) return;
+    cancelSearch();
+    cancelKill();
+  }
+
   function askKill() {
     if (!selectedProcess) return;
+    releaseSearch();
     pendingKill = { pid: selectedProcess.pid, name: selectedProcess.name, user: selectedProcess.user };
   }
   // sig is "TERM" or "KILL" -- the two confirmation buttons/keys used to
@@ -594,16 +618,11 @@ Item {
   focus: true
   Keys.onPressed: (event) => {
     if (event.key === Qt.Key_Escape) {
-      // Search box swallows every other key while it has focus (typing
-      // "j" types the letter, doesn't move the selection -- same as
-      // every other text field in this codebase), which is correct, but
-      // it means there was no way back to keybind-navigation mode
-      // short of clicking. First Escape just gives focus back to the
-      // dropdown; only a second Escape (now that the search box isn't
-      // focused) actually closes the popup.
-      if (searchInput.activeFocus) { dropdownRoot.forceActiveFocus(); event.accepted = true; return; }
-      if (pendingKill) { cancelKill(); event.accepted = true; return; }
-      closeRequested();
+      // Back out one thing at a time: kill prompt, filter, popup. (The search box
+      // handles its own Escape.)
+      if (pendingKill) cancelKill();
+      else if (query.length > 0) query = "";
+      else closeRequested();
       event.accepted = true;
       return;
     }
@@ -630,6 +649,7 @@ Item {
         break;
       case Qt.Key_Slash:
         searchInput.forceActiveFocus();
+        searchInput.selectAll();
         break;
       case Qt.Key_X:
       case Qt.Key_Return:
@@ -643,6 +663,9 @@ Item {
 
   implicitWidth: 788
   implicitHeight: column.implicitHeight
+
+  // Clicks on anything non-interactive land here and end the search.
+  MouseArea { anchors.fill: parent; onPressed: dropdownRoot.releaseSearch() }
 
   Column {
     id: column
@@ -994,7 +1017,7 @@ Item {
           font.family: "JetBrains Mono"
           font.pixelSize: 12
           Rectangle { z: -1; anchors.fill: parent; color: "#282c34" }
-          MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => { if (mouse.modifiers & Qt.ShiftModifier) dropdownRoot.sortDesc = !dropdownRoot.sortDesc; else dropdownRoot.cycleSort(); } }
+          MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => { dropdownRoot.releaseSearch(); if (mouse.modifiers & Qt.ShiftModifier) dropdownRoot.sortDesc = !dropdownRoot.sortDesc; else dropdownRoot.cycleSort(); } }
         }
 
         Column {
@@ -1025,7 +1048,24 @@ Item {
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
                 selectByMouse: true
-                onTextEdited: dropdownRoot.query = text
+                onTextEdited: { dropdownRoot.query = text; procList.positionViewAtBeginning(); }
+                Keys.onPressed: (event) => {
+                  switch (event.key) {
+                    case Qt.Key_Escape:
+                      dropdownRoot.cancelSearch();
+                      break;
+                    case Qt.Key_Return:
+                    case Qt.Key_Enter:
+                    case Qt.Key_Tab:
+                    case Qt.Key_Down:
+                    case Qt.Key_Up:
+                      dropdownRoot.commitSearch();
+                      break;
+                    default:
+                      return;
+                  }
+                  event.accepted = true;
+                }
               }
               Text {
                 visible: dropdownRoot.query.length === 0 && !searchInput.activeFocus
@@ -1046,7 +1086,7 @@ Item {
               radius: Globals.eyeCandyOff ? 0 : 2
               color: clearMouse.containsMouse ? dropdownRoot.hoverColor : "transparent"
               Text { id: clearLabel; anchors.centerIn: parent; text: "[clear]"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12 }
-              MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.query = "" }
+              MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.cancelSearch() }
             }
           }
 
@@ -1055,16 +1095,16 @@ Item {
             width: parent.width
             height: 16
             Text { x: 22; text: "pid" + (dropdownRoot.sortKey === "pid" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "pid" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("pid") }
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.releaseSearch(); dropdownRoot.setSort("pid"); } }
             }
             Text { x: 76; text: "name" + (dropdownRoot.sortKey === "name" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "name" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("name") }
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.releaseSearch(); dropdownRoot.setSort("name"); } }
             }
             Text { anchors.right: parent.right; anchors.rightMargin: 8; text: "cpu" + (dropdownRoot.sortKey === "cpu" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "cpu" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("cpu") }
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.releaseSearch(); dropdownRoot.setSort("cpu"); } }
             }
             Text { anchors.right: parent.right; anchors.rightMargin: 58; text: "mem" + (dropdownRoot.sortKey === "mem" ? (dropdownRoot.sortDesc ? " ▼" : " ▲") : ""); anchors.verticalCenter: parent.verticalCenter; color: dropdownRoot.sortKey === "mem" ? dropdownRoot.fgColor : dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 12
-              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: dropdownRoot.setSort("mem") }
+              MouseArea { anchors.fill: parent; anchors.margins: -3; cursorShape: Qt.PointingHandCursor; onClicked: { dropdownRoot.releaseSearch(); dropdownRoot.setSort("mem"); } }
             }
           }
 
@@ -1085,13 +1125,14 @@ Item {
             clip: true
             spacing: 1
             model: dropdownRoot.filteredProcesses
+            onMovementStarted: dropdownRoot.releaseSearch()
             delegate: ProcessRow {
               width: ListView.view.width
               row: modelData
               fgColor: dropdownRoot.fgColor
               mutedColor: dropdownRoot.mutedColor
               accentColor: dropdownRoot.colors[0]
-              onSelect: dropdownRoot.selPid = modelData.pid
+              onSelect: { dropdownRoot.releaseSearch(); dropdownRoot.selPid = modelData.pid; }
               onKill: { dropdownRoot.selPid = modelData.pid; dropdownRoot.askKill(); }
             }
           }
@@ -1135,8 +1176,11 @@ Item {
     Flow {
       width: parent.width
       spacing: 14
-      readonly property var hints: [
-        { k: "j/k", l: "move" }, { k: "s", l: "sort" }, { k: "S", l: "asc/desc" }, { k: "/", l: "filter" }, { k: "x", l: "kill" }, { k: "esc", l: "close" },
+      readonly property var hints: searchInput.activeFocus ? [
+        { k: "enter/tab", l: "to results" }, { k: "esc", l: "clear filter" },
+      ] : [
+        { k: "j/k", l: "move" }, { k: "s", l: "sort" }, { k: "S", l: "asc/desc" }, { k: "/", l: "filter" }, { k: "x", l: "kill" },
+        { k: "esc", l: dropdownRoot.query.length > 0 ? "clear filter" : "close" },
       ]
       Repeater {
         model: parent.hints

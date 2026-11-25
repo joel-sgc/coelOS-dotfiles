@@ -83,7 +83,20 @@ PanelWindow {
   // name as one it inherits is a collision, not an override.
   default property alias content: contentContainer.data
 
-  visible: open
+  // 0 = tucked away above the bar, 1 = fully out. The window starts at the bar's
+  // bottom edge and clips the frame, so it slides out from behind the bar at its
+  // full size; it stays mapped until the slide back up has finished.
+  property real slide: open ? 1 : 0
+  Behavior on slide {
+    enabled: !Globals.eyeCandyOff
+    NumberAnimation { duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+  }
+  // Space between the bar and the open popup.
+  readonly property int gap: 8
+
+  visible: open || slide > 0
+  // Only the frame takes clicks, never the transparent strip above it.
+  mask: Region { item: frame }
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
@@ -92,21 +105,17 @@ PanelWindow {
     right: !centerHorizontally
   }
   margins {
-    top: barHeight + 8
+    top: barHeight
     right: rightMargin
   }
 
   implicitWidth: frame.implicitWidth
-  implicitHeight: frame.implicitHeight
+  implicitHeight: frame.implicitHeight + gap
 
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-  // Named so home/hyprland.nix's "noanim" layerrule can target just this
-  // surface -- without it, Hyprland's default layer fade-in/out animates
-  // every open/close, including the instant close HyprlandFocusGrab fires
-  // when something else (e.g. the screenshot tool's wayfreeze/slurp
-  // overlay) steals focus. A screenshot taken in that window can land
-  // mid-fade, capturing the popup translucent instead of fully opaque.
+  // Named so home/hyprland/hyprland.lua's no_anim layer rule can target just
+  // this surface: Hyprland's own layer fade must not stack on the slide below.
   WlrLayershell.namespace: "coel-sys-popup"
 
   HyprlandFocusGrab {
@@ -127,6 +136,7 @@ PanelWindow {
     implicitHeight: contentContainer.childrenRect.height + 20
     width: implicitWidth
     height: implicitHeight
+    y: popupRoot.gap - (1 - popupRoot.slide) * (height + popupRoot.gap)
 
     color: "#282c34"
     radius: Globals.eyeCandyOff ? 0 : 12

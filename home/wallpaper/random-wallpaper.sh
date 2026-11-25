@@ -10,14 +10,4 @@ if [ "${#candidates[@]}" -eq 0 ]; then
 fi
 pick="${candidates[RANDOM % ${#candidates[@]}]}"
 
-# Runs from Hyprland's exec-once (home/hyprland.nix), which can race the
-# awww daemon's own systemd-user startup -- retry for a few seconds rather
-# than silently doing nothing on a fast login.
-for _ in $(seq 1 10); do
-  if coel-set-wallpaper "$pick"; then
-    exit 0
-  fi
-  sleep 0.5
-done
-echo "coel-random-wallpaper: awww daemon never became ready" >&2
-exit 1
+coel-set-wallpaper "$pick"

@@ -26,7 +26,7 @@ Column {
   // binding has settled. A real default shape (rather than leaving this
   // undefined) avoids a transient "Cannot read property of undefined"
   // during that first pass; the real value replaces it immediately after.
-  property var row: ({ pwNode: null, mute: false, vol: 0, index: 0, av: true, name: "", isDefault: false, isSel: false, filled: 0, sub: "" })
+  property var row: ({ pwNode: null, mute: false, vol: 0, index: 0, av: true, name: "", isDefault: false, isSel: false, filled: 0, sub: "", locked: false })
   property string dir: "out" // "out" | "in"
   property color fgColor: "#abb2bf"
   property color mutedColor: "#5c6370"
@@ -36,6 +36,7 @@ Column {
   signal makeDefault()
   signal dragVolume(real fraction)
   signal toggleMute()
+  signal toggleLock()
 
   spacing: 0
 
@@ -98,9 +99,30 @@ Column {
         onClicked: rowRoot.toggleMute()
       }
     }
+    // Input rows only (see VolumeLocks.qml); the space is kept on output rows
+    // too so both sections' columns line up.
+    Text {
+      id: lockIcon
+      anchors.right: muteIcon.left
+      anchors.rightMargin: 10
+      anchors.verticalCenter: parent.verticalCenter
+      width: 13
+      opacity: rowRoot.dir === "in" ? 1 : 0
+      text: Phosphor.icon(rowRoot.row.locked ? "lock-simple" : "lock-simple-open")
+      color: rowRoot.row.locked ? rowRoot.colors[2] : rowRoot.mutedColor
+      font.family: "Phosphor"
+      font.pixelSize: 13
+      MouseArea {
+        anchors.fill: parent
+        anchors.margins: -4
+        enabled: rowRoot.dir === "in"
+        cursorShape: Qt.PointingHandCursor
+        onClicked: rowRoot.toggleLock()
+      }
+    }
     Text {
       id: pct
-      anchors.right: muteIcon.left
+      anchors.right: lockIcon.left
       anchors.rightMargin: 10
       anchors.verticalCenter: parent.verticalCenter
       width: 32
@@ -157,7 +179,7 @@ Column {
     x: 46
     width: parent.width - 54
     elide: Text.ElideRight
-    text: rowRoot.row.sub
+    text: (rowRoot.row.locked ? "level locked · " : "") + rowRoot.row.sub
     color: rowRoot.mutedColor
     font.family: "JetBrains Mono"
     font.pixelSize: 11

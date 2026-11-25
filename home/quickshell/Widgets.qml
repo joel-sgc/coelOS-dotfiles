@@ -22,6 +22,9 @@ Scope {
 
   property int barHeight: 36
   property bool shown: true
+  // Border.qml's readyScreens: creating the widget windows only after the
+  // border shadow's keeps them stacked above it (same layer).
+  property var readyScreens: []
   readonly property var screen: MainScreen.screen
   // Outer gaps: the same general:gaps_out Hyprland puts around windows
   // (settings.toml [config.general]), re-read whenever the config reloads, so
@@ -72,7 +75,7 @@ Scope {
   }
 
   Variants {
-    model: Quickshell.screens
+    model: root.readyScreens
 
     delegate: Scope {
       id: set

@@ -1,5 +1,6 @@
 singleton Globals 1.0 Globals.qml
 singleton MainScreen 1.0 MainScreen.qml
+singleton VolumeLocks 1.0 VolumeLocks.qml
 Border 1.0 Border.qml
 Launcher 1.0 Launcher.qml
 Overview 1.0 Overview.qml
@@ -7,3 +8,4 @@ Notifications 1.0 Notifications.qml
 Osd 1.0 Osd.qml
 Polkit 1.0 Polkit.qml
 Widgets 1.0 Widgets.qml
+Wallpaper 1.0 Wallpaper.qml

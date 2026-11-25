@@ -311,6 +311,12 @@
     alsa.support32Bit = true;
     pulse.enable = true;
     # jack.enable = true; # Uncomment for JACK applications
+    # Never drop Bluetooth audio into handsfree just because an app opens the
+    # mic (the laptop mic is used instead). The profile can still be picked by
+    # hand in the audio popup's cards tab.
+    wireplumber.extraConfig."51-no-bt-handsfree" = {
+      "wireplumber.settings"."bluetooth.autoswitch-to-headset-profile" = false;
+    };
   };
 
   services.libinput.enable = true;

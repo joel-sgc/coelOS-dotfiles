@@ -32,7 +32,7 @@ WidgetCard {
 
   cardWidth: 300
   widgetId: "server"
-  title: "server"
+  title: "jsgc-server"
   icon: "desktop-tower"
   subtitle: sshHost
   summary: loaded ? "cpu " + rows[0].pctVal + "% · ram " + rows[1].pctVal + "% · disk " + rows[2].pctVal + "%" : (failed ? "unreachable" : "checking…")

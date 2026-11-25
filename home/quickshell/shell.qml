@@ -110,9 +110,16 @@ ShellRoot {
     onLauncherToggleRequested: (screen) => root.toggleLauncher(screen)
   }
 
+  // Singletons load on first use; the mic level locks must apply from the start.
+  readonly property var volumeLocks: VolumeLocks.locks
+
+  // The wallpaper itself, with its swap animation -- see Wallpaper.qml
+  Wallpaper {}
+
   // Desktop widgets (weather, calendar, kanban) -- see Widgets.qml
   Widgets {
     barHeight: root.barHeight
+    readyScreens: border.readyScreens
   }
 
   // Polkit authentication agent -- see Polkit.qml

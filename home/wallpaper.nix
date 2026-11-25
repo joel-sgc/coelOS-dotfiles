@@ -3,14 +3,19 @@
 let
   setWallpaper = pkgs.writeShellApplication {
     name = "coel-set-wallpaper";
-    runtimeInputs = [ pkgs.awww ];
+    runtimeInputs = [ pkgs.coreutils ];
+    # Quickshell draws the wallpaper (home/quickshell/Wallpaper.qml). If it
+    # isn't up yet, it reads the state file when it starts.
     text = ''
-      if [ $# -lt 1 ]; then
+      if [ $# -lt 1 ] || [ ! -f "$1" ]; then
         echo "Usage: coel-set-wallpaper <path-to-image>" >&2
         exit 1
       fi
 
-      awww img "$1"
+      state="$XDG_RUNTIME_DIR/coel-wallpaper"
+      realpath -- "$1" > "$state.tmp"
+      mv "$state.tmp" "$state"
+      quickshell ipc -p "$HOME/.nixos/home/quickshell" call wallpaper reload >/dev/null 2>&1 || true
     '';
   };
 
@@ -32,18 +37,14 @@ let
   };
 in
 {
-  # Wallpaper daemon. `swww` was renamed upstream to `awww`.
-  #
   # `coel-random-wallpaper` picks a random image from the vendored set
-  # (assets/wallpapers) and applies it via awww on Hyprland or
-  # -- wired to run once per session from home/hyprland.nix's exec-once.
-  # Theming stays static (home/theme.nix), not derived from the wallpaper.
-  services.awww.enable = true;
-
+  # (assets/wallpapers); hyprland.lua runs it once per session. Theming stays
+  # static (home/theme.nix), not derived from the wallpaper.
   home.file.${wallpaperDir}.source = ../assets/wallpapers;
 
   home.packages = [
     setWallpaper
     randomWallpaper
+    pkgs.qt6.qtimageformats # webp decoding for Quickshell
   ];
 }

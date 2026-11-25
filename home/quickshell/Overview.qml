@@ -133,7 +133,7 @@ Scope {
       Process {
         running: true
         command: ["sh", "-c",
-          'hyprctl -j clients; printf "\\n@@\\n"; cat "$XDG_RUNTIME_DIR/coel-grid-rows" 2>/dev/null; printf "\\n@@\\n"; awww query 2>/dev/null; printf "\\n@@\\n"; hyprctl -j activeworkspace; printf "\\n@@\\n"; hyprctl -j monitors']
+          'hyprctl -j clients; printf "\\n@@\\n"; cat "$XDG_RUNTIME_DIR/coel-grid-rows" 2>/dev/null; printf "\\n@@\\n"; cat "$XDG_RUNTIME_DIR/coel-wallpaper" 2>/dev/null; printf "\\n@@\\n"; hyprctl -j activeworkspace; printf "\\n@@\\n"; hyprctl -j monitors']
         stdout: StdioCollector {
           onStreamFinished: {
             const parts = text.split("\n@@\n");
@@ -151,11 +151,8 @@ Scope {
               remembered: L.rememberedFor(parts[1] || "", mon.name || ""),
             };
             win.rows = L.rowsOf(clients, win.layoutOpts);
-            // "eDP-1: 2256x1504, scale: 1, currently displaying: image: /path/to.jpg"
-            const lines = (parts[2] || "").split("\n");
-            const own = lines.find(l => mon.name && l.indexOf(mon.name + ":") >= 0) || lines[0] || "";
-            const img = /image:\s*(\S.*?)\s*$/.exec(own);
-            if (img) win.wallpaper = "file://" + img[1];
+            const img = (parts[2] || "").trim();
+            if (img) win.wallpaper = "file://" + img;
             win.dataReady = true;
           }
         }

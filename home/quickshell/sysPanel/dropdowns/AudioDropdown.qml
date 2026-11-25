@@ -104,7 +104,9 @@ Item {
 
   function setVol(dir, node, vol) {
     if (!node || !node.audio) return;
-    node.audio.volume = Math.max(0, Math.min(100, vol)) / 100;
+    const v = Math.max(0, Math.min(100, vol)) / 100;
+    VolumeLocks.set(node.name, v); // first, or the lock would undo this change
+    node.audio.volume = v;
   }
   function toggleMute(dir, node) {
     if (!node || !node.audio) return;
@@ -129,6 +131,7 @@ Item {
       vol: n.audio ? Math.round(n.audio.volume * 100) : 0,
       isDefault: n === def,
       isSel: isFocus && i === sel,
+      locked: dir === "in" && VolumeLocks.locks[n.name] !== undefined,
       filled: n.audio ? Math.round(n.audio.volume * 20) : 0,
       sub: n.name + " · #" + n.id,
     }));
@@ -141,6 +144,31 @@ Item {
     id: peakMonitor
     node: Pipewire.defaultAudioSource
     enabled: dropdownRoot.popupOpen && dropdownRoot.view === "devices" && Pipewire.defaultAudioSource !== null
+  }
+  readonly property bool micMuted: Pipewire.defaultAudioSource !== null && Pipewire.defaultAudioSource.audio !== null && Pipewire.defaultAudioSource.audio.muted
+  // Quickshell's `peak` is the cube root of the sample peak (a display curve),
+  // so dBFS is 60*log10(peak), not 20*.
+  function micDbNow() {
+    return micMuted || peakMonitor.peak <= 0 ? -60 : Math.max(-60, Math.min(0, 60 * Math.log10(peakMonitor.peak)));
+  }
+  property real meterDb: -60   // bar: jumps up, falls 30 dB/s
+  property real readoutDb: -60 // number: loudest of each 300 ms
+  property real windowDb: -60
+  property int meterTick: 0
+  Timer {
+    interval: 50
+    repeat: true
+    running: peakMonitor.enabled
+    onRunningChanged: if (!running) { dropdownRoot.meterDb = -60; dropdownRoot.readoutDb = -60; }
+    onTriggered: {
+      const db = dropdownRoot.micDbNow();
+      dropdownRoot.meterDb = Math.max(db, dropdownRoot.meterDb - 1.5);
+      dropdownRoot.windowDb = Math.max(dropdownRoot.windowDb, db);
+      if (++dropdownRoot.meterTick % 6 === 0) {
+        dropdownRoot.readoutDb = dropdownRoot.windowDb;
+        dropdownRoot.windowDb = -60;
+      }
+    }
   }
 
   // ----- cards: profile + ports real via pw-dump (read) + wpctl
@@ -203,7 +231,14 @@ Item {
     triggeredOnStart: true
     onTriggered: cardsProc.running = true
   }
-  onCardsChanged: cardSel = Math.max(0, Math.min(cardSel, cards.length - 1))
+  onCardsChanged: {
+    cardSel = Math.max(0, Math.min(cardSel, cards.length - 1));
+    const want = pendingProfile;
+    if (want && !applyTimer.running && cards.some(c => c.id === want.cardId && c.profileIndex === want.index)) {
+      pendingProfile = null;
+      giveUpTimer.stop();
+    }
+  }
 
   Process { id: profileProc; onExited: cardsProc.running = true }
   function setCardProfile(cardId, profileIndex) {
@@ -217,13 +252,41 @@ Item {
   }
 
   readonly property var selectedCard: cards.length > 0 ? cards[Math.min(cardSel, cards.length - 1)] : null
+  // A profile switch is asynchronous (several seconds on Bluetooth): wpctl
+  // returns long before it applies. So cycling moves a pending choice, sends it
+  // once the presses stop, then polls until the card reports it.
+  property var pendingProfile: null // { cardId, index, name }
   function cycleProfile() {
     const c = selectedCard;
-    if (!c || c.profiles.length === 0) return;
-    const idx = c.profiles.findIndex(p => p.index === c.profileIndex);
-    const next = c.profiles[(idx + 1 + c.profiles.length) % c.profiles.length];
-    setCardProfile(c.id, next.index);
+    if (!c) return;
+    // "Off" is left out: Bluetooth cards flip straight back out of it.
+    const list = c.profiles.filter(p => p.name !== "Off");
+    if (list.length === 0) return;
+    const from = pendingProfile && pendingProfile.cardId === c.id ? pendingProfile.index : c.profileIndex;
+    const next = list[(list.findIndex(p => p.index === from) + 1) % list.length];
+    pendingProfile = { cardId: c.id, index: next.index, name: next.name };
+    giveUpTimer.stop();
+    applyTimer.restart();
   }
+  Timer {
+    id: applyTimer
+    interval: 600
+    onTriggered: {
+      const want = dropdownRoot.pendingProfile;
+      if (!want) return;
+      if (profileProc.running) { restart(); return; }
+      dropdownRoot.setCardProfile(want.cardId, want.index);
+      giveUpTimer.restart();
+    }
+  }
+  Timer {
+    interval: 500
+    repeat: true
+    running: giveUpTimer.running && dropdownRoot.popupOpen
+    onTriggered: cardsProc.running = true
+  }
+  // Never applied (refused, or the device went away): show what is really active.
+  Timer { id: giveUpTimer; interval: 10000; onTriggered: dropdownRoot.pendingProfile = null }
 
   focus: true
   Keys.onPressed: (event) => {
@@ -279,6 +342,9 @@ Item {
         break;
       case Qt.Key_M:
         if (row) toggleMute(devFocus, row.pwNode);
+        break;
+      case Qt.Key_P:
+        if (row && devFocus === "in") VolumeLocks.toggle(row.pwNode);
         break;
       case Qt.Key_Return:
       case Qt.Key_Enter:
@@ -453,6 +519,7 @@ Item {
             onMakeDefault: { dropdownRoot.devFocus = "in"; dropdownRoot.inSel = modelData.index; dropdownRoot.makeDefault("in", modelData.pwNode); }
             onDragVolume: (frac) => dropdownRoot.setVol("in", modelData.pwNode, Math.round(frac * 20) * 5)
             onToggleMute: dropdownRoot.toggleMute("in", modelData.pwNode)
+            onToggleLock: VolumeLocks.toggle(modelData.pwNode)
           }
         }
         Text {
@@ -477,10 +544,11 @@ Item {
             spacing: 10
             Text { text: "level"; color: dropdownRoot.mutedColor; font.family: "JetBrains Mono"; font.pixelSize: 13 }
             Row {
+              id: meterBar
               spacing: 2
-              readonly property bool live: Pipewire.defaultAudioSource !== null && !(Pipewire.defaultAudioSource.audio && Pipewire.defaultAudioSource.audio.muted)
-              readonly property real lv: live ? peakMonitor.peak : 0
-              readonly property int lit: Math.round(Math.min(1, lv) * 28)
+              // 28 segments over -42..0 dBFS, so room noise barely registers: yellow
+              // from -12, red from -4.
+              readonly property int lit: Math.max(0, Math.round((dropdownRoot.meterDb + 42) / 42 * 28))
               Repeater {
                 model: 28
                 delegate: Rectangle {
@@ -488,16 +556,16 @@ Item {
                   width: 7
                   height: 10
                   radius: Globals.eyeCandyOff ? 0 : 1
-                  color: index < parent.parent.lit ? (index < 18 ? dropdownRoot.colors[3] : index < 24 ? dropdownRoot.colors[2] : dropdownRoot.colors[1]) : "#353b45"
+                  color: index < meterBar.lit ? (index < 20 ? dropdownRoot.colors[3] : index < 25 ? dropdownRoot.colors[2] : dropdownRoot.colors[1]) : "#353b45"
                 }
               }
             }
             Text {
               readonly property bool hasSource: Pipewire.defaultAudioSource !== null
-              readonly property bool muted: hasSource && Pipewire.defaultAudioSource.audio && Pipewire.defaultAudioSource.audio.muted
-              readonly property bool live: hasSource && !muted
-              readonly property real lv: live ? peakMonitor.peak : 0
-              text: !hasSource ? "no source" : live ? Math.max(-60, 20 * Math.log10(Math.max(lv, 0.001))).toFixed(0) + " dB" : muted ? "muted" : "no signal"
+              text: !hasSource ? "no source" : dropdownRoot.micMuted ? "muted"
+                : dropdownRoot.readoutDb <= -60 ? "no signal" : dropdownRoot.readoutDb.toFixed(0) + " dB"
+              // Fixed width, so the text changing can't shift the row.
+              Layout.preferredWidth: 70
               color: dropdownRoot.mutedColor
               font.family: "JetBrains Mono"
               font.pixelSize: 13
@@ -649,7 +717,10 @@ Item {
           FormField {
             label: "profile"
             mode: "cycle"
-            value: dropdownRoot.selectedCard ? dropdownRoot.selectedCard.profile : ""
+            value: !dropdownRoot.selectedCard ? ""
+              : dropdownRoot.pendingProfile && dropdownRoot.pendingProfile.cardId === dropdownRoot.selectedCard.id
+                ? "switching… " + dropdownRoot.pendingProfile.name
+                : dropdownRoot.selectedCard.profile
             fgColor: dropdownRoot.fgColor
             labelColor: dropdownRoot.mutedColor
             hoverColor: dropdownRoot.hoverColor
@@ -729,7 +800,7 @@ Item {
       width: parent.width
       spacing: 14
       readonly property var hints: dropdownRoot.view === "devices"
-        ? [{ k: "tab", l: dropdownRoot.devFocus === "out" ? "input" : "output" }, { k: "j/k", l: "move" }, { k: "h/l", l: "volume" }, { k: "m", l: "mute" }, { k: "⏎", l: "set default" }, { k: "2", l: "cards" }, { k: "esc", l: "close" }]
+        ? [{ k: "tab", l: dropdownRoot.devFocus === "out" ? "input" : "output" }, { k: "j/k", l: "move" }, { k: "h/l", l: "volume" }, { k: "m", l: "mute" }, ...(dropdownRoot.devFocus === "in" ? [{ k: "p", l: "lock level" }] : []), { k: "⏎", l: "set default" }, { k: "2", l: "cards" }, { k: "esc", l: "close" }]
         : [{ k: "j/k", l: "card" }, { k: "p", l: "profile" }, { k: "1", l: "devices" }, { k: "esc", l: "close" }]
       Repeater {
         model: parent.hints

@@ -27,7 +27,7 @@ let
   '';
 in
 {
-  # Scope every Wayland user service (hypridle, swayosd, awww, cliphist, ...)
+  # Scope every Wayland user service (hypridle, swayosd, cliphist, ...)
   # to Hyprland's own session target instead of the generic
   # graphical-session.target. See home/hypridle.nix, home/swayosd.nix,
   # home/wallpaper.nix, home/clipboard.nix.

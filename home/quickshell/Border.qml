@@ -21,6 +21,11 @@ Scope {
   property color innerAccentColor: "#22ffffff"
   property real innerAccentWidth: 1.5
   property int radius: Globals.eyeCandyOff ? 0 : 16
+  // Inner shadow cast by the frame onto the screen area (the mockup's
+  // "inset 0 6px 18px rgba(0,0,0,0.35)"). Off along with the other eye candy.
+  property color shadowColor: Qt.rgba(0, 0, 0, 0.35)
+  property int shadowBlur: 18
+  property int shadowOffsetY: 6
   property bool enabled: true
   property int barHeight: 36
 
@@ -40,6 +45,84 @@ Scope {
   // order structurally guaranteed instead of raced, for every screen,
   // present at startup or added afterward.
   property var readyScreens: []
+
+  // The inner shadow is its own window on the Bottom layer, so the desktop
+  // widgets (also Bottom) and real windows sit above it. Within one layer the
+  // later surface wins, so Widgets.qml waits for readyScreens like Panel does.
+  Variants {
+    model: Quickshell.screens
+
+    delegate: Component {
+      PanelWindow {
+        required property var modelData
+        screen: modelData
+        anchors { top: true; left: true; right: true; bottom: true }
+        margins.top: root.barHeight - root.borderWidth
+        visible: root.enabled && !Globals.eyeCandyOff
+        color: "transparent"
+        WlrLayershell.layer: WlrLayer.Bottom
+        WlrLayershell.namespace: "coel-border-shadow"
+        WlrLayershell.exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        mask: Region { item: null }
+
+        // Qt's canvas blur takes seconds at full-screen size and blocks the
+        // whole shell, so paint a small tile once and stretch it (nine-patch).
+        Canvas {
+          id: tile
+          readonly property int edge: root.radius + root.shadowBlur * 2 + root.shadowOffsetY
+          width: edge * 2 + 8
+          height: width
+          opacity: 0
+
+          onPaint: {
+            var ctx = getContext("2d");
+            ctx.reset();
+            var s = width, r = root.radius;
+            var pad = root.shadowBlur * 2 + root.shadowOffsetY;
+            function cutout() {
+              ctx.moveTo(r, 0);
+              ctx.arcTo(s, 0, s, s, r);
+              ctx.arcTo(s, s, 0, s, r);
+              ctx.arcTo(0, s, 0, 0, r);
+              ctx.arcTo(0, 0, s, 0, r);
+              ctx.closePath();
+            }
+
+            // Clip to the cutout, then fill everything *outside* it, so only
+            // the shadow that shape casts inward gets drawn.
+            ctx.beginPath();
+            cutout();
+            ctx.clip();
+            ctx.shadowColor = root.shadowColor;
+            ctx.shadowBlur = root.shadowBlur;
+            ctx.shadowOffsetY = root.shadowOffsetY;
+            ctx.fillStyle = "black";
+            ctx.fillRule = Qt.OddEvenFill;
+            ctx.beginPath();
+            ctx.rect(-pad, -pad, s + pad * 2, s + pad * 2);
+            cutout();
+            ctx.fill();
+          }
+          // toDataURL() itself emits painted(), so grab only once per request.
+          property bool stale: true
+          onPainted: {
+            if (!stale) return;
+            stale = false;
+            shadow.source = toDataURL();
+          }
+          onEdgeChanged: { stale = true; requestPaint(); }
+        }
+
+        BorderImage {
+          id: shadow
+          anchors.fill: parent
+          anchors.margins: root.borderWidth
+          border { left: tile.edge; right: tile.edge; top: tile.edge; bottom: tile.edge }
+        }
+      }
+    }
+  }
 
   Variants {
     model: Quickshell.screens
