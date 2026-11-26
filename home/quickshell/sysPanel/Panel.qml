@@ -7,6 +7,8 @@ import QtQuick.Layouts
 
 import "./buttons"
 import "./dropdowns"
+import "../island"
+import "../island/sources"
 
 // One PanelWindow per screen, same Variants-over-Quickshell.screens pattern
 // as Border.qml (which already did this) -- Panel used to be a single bare
@@ -88,25 +90,42 @@ Scope {
     function stop(): void { panelScope.screenshotting = false; }
   }
 
-  // coel-ask-screen (scripts/coel-ask-screen.sh) status: idle | working |
-  // done | fail. Every bar shows AssistantStatus.qml from these.
-  property string assistantState: "idle"
-  property string assistantPreview: ""
+  // ---- live-activity island (../island/) ----
+  // One engine for every bar; each screen's IslandView below mirrors it.
+  IslandEngine {
+    id: island
+    dnd: panelScope.notifications ? panelScope.notifications.dnd : false
+    sources: [printerSource, assistantSource, demoSource]
+  }
+  PrinterSource { id: printerSource; engine: island }
+  AssistantSource { id: assistantSource; engine: island }
+  DemoSource { id: demoSource; engine: island }
 
+  // coel-ask-screen (scripts/coel-ask-screen.sh) calls these; keep the names.
   IpcHandler {
     target: "assistant"
-    function working(): void { panelScope.assistantState = "working"; panelScope.assistantPreview = ""; }
-    function done(preview: string): void { panelScope.assistantState = "done"; panelScope.assistantPreview = preview; }
-    function fail(message: string): void { panelScope.assistantState = "fail"; panelScope.assistantPreview = message; }
-    function clear(): void { panelScope.assistantState = "idle"; panelScope.assistantPreview = ""; }
+    function working(): void { assistantSource.working(); }
+    function done(preview: string): void { assistantSource.done(preview); }
+    function fail(message: string): void { assistantSource.fail(message); }
+    function clear(): void { assistantSource.clear(); }
   }
 
-  // Result chip auto-hides; "working" is left alone (the script always
-  // follows it with done/fail/clear, and the 5-minute cap covers a killed one).
-  Timer {
-    interval: panelScope.assistantState === "working" ? 300000 : 10000
-    running: panelScope.assistantState !== "idle"
-    onTriggered: panelScope.assistantState = "idle"
+  // Mock states for the hardcoded-UI pass:
+  //   island demo print|pause|fault|fail|done|clear     (printer)
+  //   island demo music|music-change|cal|rec|clear-demo (extra chips)
+  //   island demo ai|ai-done|ai-fail                     (assistant)
+  IpcHandler {
+    target: "island"
+    function demo(what: string): void {
+      if (what === "ai") assistantSource.working();
+      else if (what === "ai-done") assistantSource.done("Clone the key before the loop, then self.items.remove(&k)");
+      else if (what === "ai-fail") assistantSource.fail("claude failed");
+      else if (["music", "music-change", "cal", "rec"].indexOf(what) >= 0) demoSource.demo(what);
+      else if (what === "clear-demo") demoSource.demo("clear");
+      else printerSource.demo(what);
+    }
+    function dismiss(): void { island.cancel(); island.dismissInterrupt(""); }
+    function card(): void { island.openCard("auto", true, null); }
   }
 
   Timer {
@@ -213,27 +232,33 @@ Scope {
           Workspaces {  }
         }
 
-        RowLayout {
+        // The clock sits at the exact centre and never moves; the island docks
+        // against its left edge (IslandView below), the bell hangs off its right.
+        Clock {
+          id: clock
           anchors.centerIn: parent
-          spacing: 4
+          active: root.openPopup === "calendar"
+          onClicked: root.openPopup = root.openPopup === "calendar" ? "" : "calendar"
+        }
 
-          Clock {
-            active: root.openPopup === "calendar"
-            onClicked: root.openPopup = root.openPopup === "calendar" ? "" : "calendar"
-          }
+        Bell {
+          anchors.left: clock.right
+          anchors.leftMargin: 4
+          anchors.verticalCenter: parent.verticalCenter
+          active: root.openPopup === "notifications"
+          unreadCount: root.notifications ? root.notifications.unreadCount : 0
+          dnd: root.notifications ? root.notifications.dnd : false
+          onClicked: root.openPopup = root.openPopup === "notifications" ? "" : "notifications"
+        }
 
-          Bell {
-            active: root.openPopup === "notifications"
-            unreadCount: root.notifications ? root.notifications.unreadCount : 0
-            dnd: root.notifications ? root.notifications.dnd : false
-            onClicked: root.openPopup = root.openPopup === "notifications" ? "" : "notifications"
-          }
-
-          AssistantStatus {
-            status: panelScope.assistantState
-            preview: panelScope.assistantPreview
-            onDismissed: panelScope.assistantState = "idle"
-          }
+        // Declared before the Popups: same Overlay layer, so dropdowns stack above it.
+        IslandView {
+          screen: root.screen
+          barWindow: root
+          engine: island
+          barHeight: root.barHeight
+          dockRight: clock.x - 4
+          fullscreen: !!(root.barMonitor && root.barMonitor.activeWorkspace && root.barMonitor.activeWorkspace.hasFullscreen)
         }
 
         Buttons {

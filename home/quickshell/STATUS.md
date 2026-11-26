@@ -111,6 +111,35 @@ per-app mute and DND persisted; the launcher DND toggle uses the backend directl
 - Untested against a real reply-capable sender (inline reply / actions), and the history
   prune past a handful of rows.
 
+## Live-activity island (`island/`)
+
+Design: `example/Pill Board.dc.html` (rules, tiers, motion) and `Pill Prototype.dc.html`.
+`IslandEngine` (one, in `Panel.qml`) owns chips/glances/interrupts/card; `IslandView` per
+bar is one Overlay surface (namespace `coel-island`, no_anim layer rule) that draws the
+island both docked and floating, so lift/land is one morph. Sources live in
+`island/sources/` and only expose a `chips` list plus `engine.glance/interrupt/withdraw`
+calls; parts are plain objects (`Parts.js`). The clock is anchored at the exact centre on
+purpose (the island docks against its left edge).
+
+- `PrinterSource` runs `scripts/coel-bambu.py` (stdlib-only MQTT + camera client, JSON lines
+  over stdio). P1S in LAN-only + Developer Mode (needed for pause/resume/stop); credentials
+  from `coel-bambu-setup` (keyring, `scripts/coel-bambu-setup.sh`). Camera is the P1 JPEG
+  stream on :6000, not RTSP. The printer is **only reachable over Tailscale**: idle = one
+  check-in every 5 min, then hang up; printing = stay connected; lost mid-print = greyed
+  chip with "seen hh:mm", retries with backoff, dropped once it would have finished.
+  A dropped Tailscale route goes silent (no FIN), hence the no-traffic timeout.
+- The first daemon report after a (re)start only syncs (`primed`): reloads must not replay
+  "Print finished" / "Print failed". FAILED with print_error 0x0300400C is a user cancel.
+- UI testing without the printer: `quickshell ipc ... call island demo print|pause|fault|fail|done|live`,
+  plus `card`, `dismiss`. A fake P1S (TLS MQTT broker + camera) was used to test the daemon;
+  it isn't kept in the repo.
+- `IslandView`'s surface stays 720 px tall while mapped: resizing a mapped layer surface
+  flashed a tall frame.
+- `DemoSource` (music/cal/rec chips) is mock-only; delete when real sources exist.
+- `AssistantSource` keeps the `assistant` IPC that `coel-ask-screen.sh` calls. The board's
+  card / follow-up / history / discreet mode are not built.
+- Not built yet: interrupt sounds (step 6 sound pack), glances filing into the bell.
+
 ## Lock screen and greeter
 
 **Lock** (`lock/`, entry `lock-real-shell.qml`): `WlSessionLock`; auth via `PamContext` (not

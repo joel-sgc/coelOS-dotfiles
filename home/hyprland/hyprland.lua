@@ -486,3 +486,9 @@ hl.layer_rule({
     match   = { namespace = "coel-sys-popup" },
     no_anim = true,
 })
+-- The live-activity island (home/quickshell/island/) morphs itself too.
+hl.layer_rule({
+    name    = "quickshell-island-no-anim",
+    match   = { namespace = "coel-island" },
+    no_anim = true,
+})

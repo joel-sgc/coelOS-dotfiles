@@ -209,6 +209,13 @@ const codepoints = {
   television: 0xe754,
   "apple-logo": 0xe516,
   "stop-circle": 0xe46e,
+
+  // island/ -- live-activity island sources and cards
+  printer: 0xe3dc,
+  stop: 0xe46c,
+  pulse: 0xe000,
+  timer: 0xe492,
+  "arrow-square-out": 0xe5de,
 };
 
 function icon(name) {

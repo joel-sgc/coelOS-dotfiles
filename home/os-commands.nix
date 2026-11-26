@@ -170,6 +170,17 @@ let
   # Super+A: silent full-screen capture -> headless claude -> clipboard +
   # bar status chip. `claude` itself comes from the user profile (not
   # pinned here) so it tracks however it's installed.
+  # Stores the Bambu printer's host/serial/access code in the keyring; `get` is
+  # what home/quickshell/scripts/coel-bambu.py (the island printer daemon) reads.
+  bambuSetup = pkgs.writeShellApplication {
+    name = "coel-bambu-setup";
+    runtimeInputs = with pkgs; [
+      libsecret
+      jq
+    ];
+    text = builtins.readFile ../scripts/coel-bambu-setup.sh;
+  };
+
   askScreen = pkgs.writeShellApplication {
     name = "coel-ask-screen";
     runtimeInputs = with pkgs; [
@@ -296,6 +307,7 @@ in
     update
     screenshot
     askScreen
+    bambuSetup
     pkgs.hyprpicker
     screenrecord
     showDone
