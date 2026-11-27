@@ -7,6 +7,10 @@
 local mainMod  = "SUPER"
 local terminal = "ghostty"
 local qs       = "@quickshell@/bin/quickshell ipc -p ~/.nixos/home/quickshell call"
+-- UI sounds for keys whose action lives outside Quickshell (services/Sounds.qml
+-- decides whether they play: mode, eye candy). Volume, brightness, media, Fn
+-- lock and the launcher key play theirs inside Quickshell.
+local sound    = qs .. " sounds play "
 
 ------------------------------------------------------------------ monitors
 
@@ -445,12 +449,16 @@ hl.bind("XF86AudioMute",           hl.dsp.exec_cmd(qs .. " osd volumeMuteToggle"
 hl.bind("XF86MonBrightnessUp",     hl.dsp.exec_cmd(qs .. " osd brightnessUp"))
 hl.bind("XF86MonBrightnessDown",   hl.dsp.exec_cmd(qs .. " osd brightnessDown"))
 
-hl.bind("Print",           hl.dsp.exec_cmd("coel-screenshot"))
+hl.bind("Print",           hl.dsp.exec_cmd(sound .. "launcher & coel-screenshot"))
 hl.bind("XF86PowerOff",    hl.dsp.exec_cmd("coel-power-menu"))
 -- Screenshot the whole screen silently, have claude solve it, copy the answer.
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("coel-ask-screen"))
 -- The laptop's F9 display key sends Super+P, not an XF86 keysym.
-hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("coel-displays"))
+hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(sound .. "launcher & coel-displays"))
+-- F10, airplane mode: the kernel flips the radios itself (rfkill input
+-- handler), this only plays the sound once it has: on when Wi-Fi is back.
+hl.bind("XF86RFKill", hl.dsp.exec_cmd("sleep 0.4; if [ \"$(rfkill -n -o SOFT list wlan | head -1)\" = blocked ]; then "
+    .. sound .. "toggle-off; else " .. sound .. "toggle-on; fi"))
 
 -- Media keys work while locked. Real MPRIS control via Osd.qml.
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd(qs .. " osd mediaPrevious"),  { locked = true })

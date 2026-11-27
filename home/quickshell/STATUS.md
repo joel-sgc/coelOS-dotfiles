@@ -238,7 +238,9 @@ One picture ties it together: the COELOS wordmark (730x160, same artwork as
   configuration.nix; without it (e.g. before a switch) it falls back to `pw-play`.
   `ipc call sounds status` says which, and why it's silent (mode `sounds = false`, eye candy).
 - The lock screen is its own process: it asks the main shell to play lock/unlock over IPC.
-- Volume is on a 5% grid everywhere (OSD keys and sliders round DOWN onto it).
+  Keys whose action is outside Quickshell (Print, Super+P/F9, F10 airplane) play theirs from
+  their hyprland.lua bind (`sound .. "<name>"`); the rest play inside Osd.qml/Launcher.qml.
+- Volume and brightness are on a 5% grid (keys and sliders round DOWN onto it).
 
 ## Lock screen and greeter
 

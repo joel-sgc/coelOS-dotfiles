@@ -127,7 +127,7 @@ Scope {
     }
   }
   Component.onCompleted: fnRead.running = true
-  function fnLockSet(on) { fnLock = on; flash("fn"); }
+  function fnLockSet(on) { fnLock = on; Sounds.toggle(on); flash("fn"); }
 
   // ----- real actions, called from the IpcHandler below -----
   // Volume moves on a 5% grid. A level off the grid (set by an app, or from
@@ -161,12 +161,25 @@ Scope {
     }
     flash("vol");
   }
-  readonly property int briStep: 5
-  function brightnessUp() { setBrightnessPct(brightnessPct + briStep); flash("bri"); }
-  function brightnessDown() { setBrightnessPct(brightnessPct - briStep); flash("bri"); }
-  function mediaPlayPause() { if (player) player.togglePlaying(); flash("media"); }
-  function mediaNext() { if (player && player.canGoNext) player.next(); flash("media"); }
-  function mediaPrevious() { if (player && player.canGoPrevious) player.previous(); flash("media"); }
+  // Brightness keys use the same 5% grid as volume (rounding down onto it), and
+  // never go below 1% (0 turns the panel off).
+  function brightnessUp() { setBriSteps(Math.floor(brightnessPct / 5 + 1e-3) + 1); flash("bri"); }
+  function brightnessDown() {
+    const n = Math.floor(brightnessPct / 5 + 1e-3);
+    setBriSteps(brightnessPct === n * 5 ? n - 1 : n);
+    flash("bri");
+  }
+  function setBriSteps(n) {
+    const pct = Math.max(1, Math.min(100, n * 5));
+    setBrightnessPct(pct);
+    Sounds.levelTick(pct / 100);
+  }
+  function mediaPlayPause() {
+    if (player) { Sounds.toggle(!player.isPlaying); player.togglePlaying(); }
+    flash("media");
+  }
+  function mediaNext() { if (player && player.canGoNext) { Sounds.play("launcher"); player.next(); } flash("media"); }
+  function mediaPrevious() { if (player && player.canGoPrevious) { Sounds.play("launcher"); player.previous(); } flash("media"); }
 
   // `quickshell ipc -p ~/.nixos/home/quickshell call osd <fn>` -- what
   // home/hyprland.nix's XF86* media/volume/brightness keys call now,

@@ -100,9 +100,11 @@ Singleton {
     Quickshell.execDetached(["pw-play", "--volume", String(volume), files[name]]);
   }
 
-  // Volume feedback: the tick for the 5% step `v` (0..1) lands on.
+  // Level feedback (volume, brightness): the tick for the 5% step `v` (0..1)
+  // lands on, pitched by the level (the volume-N sounds).
   property real lastTick: 0
-  function volumeTick(v) {
+  function volumeTick(v) { levelTick(v); }
+  function levelTick(v) {
     const now = Date.now();
     if (now - lastTick < 35) return;    // a drag can fire faster than that
     lastTick = now;
