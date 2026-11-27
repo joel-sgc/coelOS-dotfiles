@@ -19,7 +19,7 @@ PanelWindow {
   id: win
   property bool shown: true
   // Where windows sit: {top, left, right, bottom, gap} (Desktop.qml, from gaps_out).
-  property var edges: ({ top: 44, left: 12, right: 12, bottom: 12, gap: 20 })
+  property var edges: ({ top: 44, left: 12, right: 12, bottom: 12, gap: 12 })
 
   anchors { top: true; bottom: true; left: true; right: true }
   exclusionMode: ExclusionMode.Ignore
@@ -96,17 +96,19 @@ PanelWindow {
 
     ModeChip {
       id: chip
-      z: 10   // over the cards: the menu drops onto the hero
+      z: 10   // over the cards: the menu may drop over the shelf
       opacity: DeskState.greetPhase === 1 || DeskState.greetPhase === 2 ? 0 : 1
       Behavior on opacity { enabled: !Globals.eyeCandyOff; NumberAnimation { duration: 160 } }
-      x: win.edges.left; y: win.edges.top
+      // Under the hero (Layout.js chipY), gliding with it as the hero changes.
+      x: win.edges.left; y: L.chipY(win.lay, win.heights, win.edges)
+      Behavior on y { enabled: !Globals.eyeCandyOff; NumberAnimation { duration: 260; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] } }
       open: Modes.menuOpen
       onClicked: Modes.menuOpen = !Modes.menuOpen
     }
     Loader {
       id: menuLoader
       z: 10
-      x: win.edges.left; y: win.edges.top + chip.height + 12
+      x: win.edges.left; y: chip.y + chip.height + win.edges.gap
       active: Modes.menuOpen
       focus: active
       sourceComponent: FocusScope {

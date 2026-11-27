@@ -106,19 +106,23 @@ function layout(ctx) {
 }
 
 // Geometry. `g` = { top, left, right, bottom, gap }: the edges windows sit at
-// (bar + Hyprland's gaps_out, see Desktop.qml) and the gap between cards. The
-// mode chip takes the top-left corner; hero and rail start one gap below it;
-// the shelf sits on the bottom edge and wraps upward into more rows.
-var CHIP_H = 26;
+// (bar + Hyprland's gaps_out, see Desktop.qml) and the gap between cards. Hero
+// and rail both start at the top edge; the mode chip sits one gap below the hero
+// (chipY; at the top edge when there's no hero); the shelf sits on the bottom
+// edge and wraps upward into more rows.
 function widthOf(spec) { return spec.size === "L" || spec.size === "F" ? 760 : 360; }
+
+// Where the mode chip goes: just under the hero.
+function chipY(lay, heights, g) {
+  return lay.hero ? g.top + (heights[lay.hero.id] || 140) + g.gap : g.top;
+}
 
 // heights: {id: px} measured from the cards; returns {id: {x, y, w, slot, spec}}
 function place(lay, screenW, screenH, heights, g) {
   const out = {};
   const h = id => heights[id] || 140;
-  const top = g.top + CHIP_H + g.gap;
-  if (lay.hero) out[lay.hero.id] = { x: g.left, y: top, w: widthOf(lay.hero), slot: "hero", spec: lay.hero };
-  let y = top;
+  if (lay.hero) out[lay.hero.id] = { x: g.left, y: g.top, w: widthOf(lay.hero), slot: "hero", spec: lay.hero };
+  let y = g.top;
   for (const s of lay.rail) {
     const w = widthOf(s);
     out[s.id] = { x: screenW - g.right - w, y: y, w: w, slot: "rail", spec: s };

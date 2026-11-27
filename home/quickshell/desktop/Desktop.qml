@@ -18,9 +18,10 @@ Scope {
   property int barHeight: 36
 
   // Cards line up with tiled windows: the bar plus Hyprland's general:gaps_out
-  // (settings.toml [config.general]), re-read whenever the config reloads.
+  // (settings.toml [config.general]), re-read whenever the config reloads. Cards
+  // sit as far apart as they sit from the screen's sides (gaps_out's right).
   property var gaps: [8, 12, 12, 12]
-  readonly property var edges: ({ top: barHeight + gaps[0], right: gaps[1], bottom: gaps[2], left: gaps[3], gap: 20 })
+  readonly property var edges: ({ top: barHeight + gaps[0], right: gaps[1], bottom: gaps[2], left: gaps[3], gap: gaps[1] })
   Process {
     id: gapsProc
     command: ["hyprctl", "getoption", "general:gaps_out", "-j"]

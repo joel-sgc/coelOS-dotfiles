@@ -6,7 +6,7 @@
 const fs = require("fs");
 const path = require("path");
 const src = fs.readFileSync(path.join(__dirname, "..", "..", "home", "quickshell", "desktop", "Layout.js"), "utf8").replace(/^\.pragma library\s*$/m, "");
-const L = new Function(src + "\nreturn { layout, recipeCards };")();
+const L = new Function(src + "\nreturn { layout, recipeCards, place, chipY };")();
 
 let passed = 0, failed = 0;
 const failures = [];
@@ -99,6 +99,28 @@ test("default pins don't move anything: the layout equals the recipe's", () => {
     const b = lay(m, { musicActive: true, printerActive: true, modePinned: L.recipeCards(m) });
     eq([b.hero && b.hero.id, ids(b.rail), ids(b.shelf)], [a.hero && a.hero.id, ids(a.rail), ids(a.shelf)], m);
   }
+});
+
+// ---------------------------------------------------------------- geometry
+const G = { top: 44, left: 12, right: 12, bottom: 12, gap: 12 };
+test("hero and rail start at the top edge; the mode chip sits one gap under the hero", () => {
+  const p = L.place(lay("morning"), 2256, 1504, { next: 300 }, G);
+  eq(p.weather.y, G.top, "first rail card");
+  eq(p.next.y, G.top, "hero");
+  eq(L.chipY(lay("morning"), { next: 300 }, G), G.top + 300 + G.gap, "chip");
+});
+test("with no hero (gaming) the mode chip stays at the top edge", () => {
+  eq(L.chipY(lay("gaming"), {}, G), G.top);
+});
+test("cards are one gap apart, the same as from the screen edges", () => {
+  const h = { weather: 100, kanban: 200, pomo: 80, server: 30, phone: 30 };
+  const p = L.place(lay("morning"), 2256, 1504, h, G);
+  eq(p.kanban.y - (p.weather.y + h.weather), G.gap, "rail spacing");
+  eq(p.pomo.y - (p.kanban.y + h.kanban), G.gap, "rail spacing");
+  eq(2256 - (p.weather.x + p.weather.w), G.right, "rail to the right edge");
+  const shelf = lay("morning").shelf.map(s => p[s.id]).filter(Boolean).sort((a, b) => a.x - b.x);
+  eq(shelf[1].x - (shelf[0].x + shelf[0].w), G.gap, "shelf spacing");
+  eq(shelf[0].x, G.left, "shelf to the left edge");
 });
 
 if (require.main === module) {
