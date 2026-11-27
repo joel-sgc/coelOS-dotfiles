@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import "../services"
 import "Parts.js" as P
 
 // The live-activity island's brain: one instance (Panel.qml's panelScope),
@@ -89,7 +90,7 @@ Scope {
   function interrupt(i) {
     const at = interrupts.findIndex(x => x.id === i.id);
     if (at >= 0) { const n = interrupts.slice(); n[at] = i; interrupts = n; }
-    else { interrupts = interrupts.concat([i]); closeCard(); }
+    else { interrupts = interrupts.concat([i]); closeCard(); Sounds.play("alert"); }   // new ones only
     armGlance();
   }
   function dismissInterrupt(id) {

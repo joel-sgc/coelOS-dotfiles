@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import "../.."
+import "../../services"
 
 // ----- real toggle backends (do not disturb, keep awake, mic mute,
 // monochrome, eye candy) -----
@@ -32,7 +33,11 @@ Item {
   // straight off it, same as every other real-time value this launcher
   // reads directly (micMuted, etc).
   readonly property bool dndOn: notifications ? notifications.dnd : false
-  function toggleDnd() { if (notifications) notifications.toggleDnd(); }
+  function toggleDnd() {
+    if (!notifications) return;
+    Sounds.toggle(!dndOn);
+    notifications.toggleDnd();
+  }
 
   // ----- keep awake -----
   // Held open the whole time awakeOn is true; `running: false` sends it
@@ -45,6 +50,7 @@ Item {
   }
   function toggleAwake() {
     awakeOn = !awakeOn;
+    Sounds.toggle(awakeOn);
     awakeProc.running = awakeOn;
   }
 
@@ -58,7 +64,10 @@ Item {
   readonly property bool micMuted: micSource && micSource.audio ? micSource.audio.muted : false
   PwObjectTracker { objects: root.micSource ? [root.micSource] : [] }
   function toggleMicMute() {
-    if (micSource && micSource.audio) micSource.audio.muted = !micSource.audio.muted;
+    if (!micSource || !micSource.audio) return;
+    const muted = !micSource.audio.muted;
+    micSource.audio.muted = muted;
+    Sounds.toggle(!muted);   // on = the mic is live again
   }
 
   // ----- monochrome (Hyprland screen shader) -----
@@ -83,6 +92,7 @@ Item {
     }
   }
   function toggleMonochrome() {
+    Sounds.toggle(!monochromeOn);
     // Hyprland's config is Lua: runtime changes go through `hyprctl eval`.
     monochromeSetProc.command = ["hyprctl", "eval", "hl.config({ decoration = { screen_shader = '" + (monochromeOn ? "" : monochromeShaderPath) + "' } })"];
     monochromeSetProc.running = true;
@@ -113,6 +123,7 @@ Item {
     eyeCandyProc.command = ["hyprctl", "eval", "hl.config({ " + cfg + " })"];
     eyeCandyProc.running = true;
   }
-  function toggleEyeCandy() { setEyeCandy(!eyeCandyOff); }
+  // The sound plays before the switch: with eye candy off, sounds are off too.
+  function toggleEyeCandy() { Sounds.toggle(eyeCandyOff); setEyeCandy(!eyeCandyOff); }
   Process { id: eyeCandyProc }
 }

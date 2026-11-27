@@ -50,6 +50,7 @@ Scope {
       });
     }
     function onFinished() {
+      Sounds.play("chime");   // the one tonal sound, kept for this
       src.engine.glance({
         id: "print-done", cardId: "printer", source: Printer, ms: 4000,
         parts: [P.thumb(26, 18, Printer.snapshot), P.text("Print finished"),

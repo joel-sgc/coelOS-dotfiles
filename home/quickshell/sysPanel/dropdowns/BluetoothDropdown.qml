@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import "../Phosphor.js" as Phosphor
 import "../components"
+import "../../services"
 
 // ===== BLUETOOTH DROPDOWN =====
 // Real data/actions via Quickshell.Bluetooth (bluez), phase 3b. Phase 3a
@@ -47,7 +48,12 @@ Item {
   readonly property bool scanning: adapter !== null && adapter.discovering
   readonly property string adapterId: adapter !== null ? adapter.adapterId : "—"
 
-  function togglePower() { if (adapter) adapter.enabled = !adapter.enabled; }
+  function togglePower() {
+    if (!adapter) return;
+    const on = !adapter.enabled;
+    adapter.enabled = on;
+    Sounds.toggle(on);
+  }
   function toggleDiscoverable() { if (adapter) adapter.discoverable = !adapter.discoverable; }
   function toggleScanning() { if (adapter) adapter.discovering = !adapter.discovering; }
 

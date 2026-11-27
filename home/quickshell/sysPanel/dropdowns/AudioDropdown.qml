@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import "../Phosphor.js" as Phosphor
 import "../components"
+import "../../services"
 
 // ===== AUDIO DROPDOWN =====
 // Phase 5b: real data/actions, replacing phase 5a's hardcoded layout.
@@ -102,11 +103,14 @@ Item {
     objects: dropdownRoot.allSinks.concat(dropdownRoot.allSources)
   }
 
+  // `vol` in percent, snapped DOWN to the 5% grid (the OSD keys use the same).
   function setVol(dir, node, vol) {
     if (!node || !node.audio) return;
-    const v = Math.max(0, Math.min(100, vol)) / 100;
+    const v = Math.floor(Math.max(0, Math.min(100, vol)) / 5 + 1e-3) * 5 / 100;
+    const changed = Math.abs(node.audio.volume - v) > 1e-3;
     VolumeLocks.set(node.name, v); // first, or the lock would undo this change
     node.audio.volume = v;
+    if (changed && dir === "out") Sounds.volumeTick(v);
   }
   function toggleMute(dir, node) {
     if (!node || !node.audio) return;
@@ -475,7 +479,7 @@ Item {
             colors: dropdownRoot.colors
             onSelect: { dropdownRoot.devFocus = "out"; dropdownRoot.outSel = modelData.index; }
             onMakeDefault: { dropdownRoot.devFocus = "out"; dropdownRoot.outSel = modelData.index; dropdownRoot.makeDefault("out", modelData.pwNode); }
-            onDragVolume: (frac) => dropdownRoot.setVol("out", modelData.pwNode, Math.round(frac * 20) * 5)
+            onDragVolume: (frac) => dropdownRoot.setVol("out", modelData.pwNode, Math.floor(frac * 20 + 1e-3) * 5)
             onToggleMute: dropdownRoot.toggleMute("out", modelData.pwNode)
           }
         }
@@ -517,7 +521,7 @@ Item {
             colors: dropdownRoot.colors
             onSelect: { dropdownRoot.devFocus = "in"; dropdownRoot.inSel = modelData.index; }
             onMakeDefault: { dropdownRoot.devFocus = "in"; dropdownRoot.inSel = modelData.index; dropdownRoot.makeDefault("in", modelData.pwNode); }
-            onDragVolume: (frac) => dropdownRoot.setVol("in", modelData.pwNode, Math.round(frac * 20) * 5)
+            onDragVolume: (frac) => dropdownRoot.setVol("in", modelData.pwNode, Math.floor(frac * 20 + 1e-3) * 5)
             onToggleMute: dropdownRoot.toggleMute("in", modelData.pwNode)
             onToggleLock: VolumeLocks.toggle(modelData.pwNode)
           }

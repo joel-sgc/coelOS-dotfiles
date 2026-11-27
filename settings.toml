@@ -62,17 +62,31 @@ MOZ_ENABLE_WAYLAND = "1"
 # GDK_SCALE = "2"
 # XCURSOR_SIZE = "24"
 
+# ---------------------------------------------------------------- sounds
+# UI sounds (home/quickshell/services/Sounds.qml), applied live on save: volume
+# ticks, toggles, launcher, lock/unlock, the print-done chime, island alerts.
+# Off with eye candy off and in modes with sounds = false (see below).
+[sounds]
+enabled = true
+volume = 0.5
+# A folder of WAVs named like home/quickshell/assets/sounds/synth/ (e.g. a CC0
+# pack converted to WAV); anything it lacks falls back to those. One volume.wav
+# may stand in for every volume-N step. Empty: the synthesized pack.
+pack = ""
+
 # ---------------------------------------------------------------- modes
 # Automatic modes (home/quickshell/modes/Modes.qml), applied live on save. First
 # match wins: gaming, class, deep_work, printing, music, evening; otherwise
 # morning/default. Each mode picks the desktop layout. Override from the desktop's
 # mode chip (M) or the launcher (actions > mode).
-# Every mode takes `enabled` and `dnd` (silence notification toasts; critical
-# ones and island interrupts still show). printing, music and evening default
-# to dnd = false and can be listed here too, e.g. [modes.evening] from = 20.
+# Every mode takes `enabled`, `dnd` (silence notification toasts; critical
+# ones and island interrupts still show) and `sounds` (UI sounds; off in class
+# by default, on elsewhere). printing, music and evening default to dnd = false
+# and can be listed here too, e.g. [modes.evening] from = 20.
 [modes.class]
 enabled = true
 dnd = true
+sounds = false
 # Labels of feeds in ~/.config/coel/gcal-url whose events are classes
 # (a line like `class https://...`). Deadline feeds stay unlabelled.
 calendars = ["class"]

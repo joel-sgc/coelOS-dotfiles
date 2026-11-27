@@ -7,9 +7,13 @@ import QtQuick.Layouts
 
 import "./sysPanel"
 import "./desktop"
+import "./services"
 
 ShellRoot {
   id: root
+  // UI sounds: created now (not on first use) so `ipc call sounds ...` works
+  // from the start and the samples are preloaded.
+  readonly property bool soundsActive: Sounds.active
   property var bgColor: "#282c34"
   property var fgColor: "#abb2bf"
   // Dimmed/secondary text -- tray icons at rest, separators between button

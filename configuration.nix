@@ -369,6 +369,28 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  # Quickshell with QtMultimedia on its QML/plugin path, for the UI sounds
+  # (home/quickshell/services/SoundBank.qml: SoundEffect, preloaded, no
+  # latency). A wrapper only, no rebuild. Without it the sounds fall back to
+  # pw-play. home-manager shares these pkgs (useGlobalPkgs).
+  nixpkgs.overlays = [
+    (final: prev: {
+      quickshell = prev.symlinkJoin {
+        name = "quickshell-${prev.quickshell.version}";
+        inherit (prev.quickshell) version meta;
+        paths = [ prev.quickshell ];
+        nativeBuildInputs = [ prev.makeWrapper ];
+        postBuild = ''
+          for b in $out/bin/*; do
+            wrapProgram "$b" \
+              --prefix NIXPKGS_QT6_QML_IMPORT_PATH : ${prev.qt6.qtmultimedia}/lib/qt-6/qml \
+              --prefix QT_PLUGIN_PATH : ${prev.qt6.qtmultimedia}/lib/qt-6/plugins
+          done
+        '';
+      };
+    })
+  ];
+
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"

@@ -32,7 +32,7 @@ Singleton {
   readonly property var order: ["gaming", "class", "deep_work", "printing", "music", "evening", "morning"]
   readonly property var defaults: ({
     "gaming": { enabled: true, classes: ["^steam_app_\\d+$", "^gamescope$"], dnd: true },
-    "class": { enabled: true, calendars: ["class"], lead_minutes: 0, dnd: true },
+    "class": { enabled: true, calendars: ["class"], lead_minutes: 0, dnd: true, sounds: false },
     "deep_work": { enabled: true, blocks: ["focus", "deep work"], dnd: true },
     "printing": { enabled: true, dnd: false },
     "music": { enabled: true, dnd: false },

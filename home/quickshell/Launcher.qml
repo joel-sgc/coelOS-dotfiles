@@ -5,6 +5,7 @@ import Quickshell.Io
 import QtQuick
 
 import "./launcher"
+import "./services"
 
 // ===== LAUNCHER =====
 // Full-screen "Spotlight" overlay -- the rofi replacement for coel-main-menu.
@@ -22,6 +23,7 @@ Scope {
   id: launcherScope
 
   property bool open: false
+  onOpenChanged: if (open) Sounds.play("launcher")
   property var activeScreen: null
   property color fgColor: "#abb2bf"
   property color mutedColor: "#5c6370"

@@ -341,11 +341,17 @@ Scope {
     // unlock of the day, or one after 4+ hours locked, gets the greeting
     // (desktop/Greeting.qml).
     readonly property bool greetLocked: secure && lockRoot.real
-    onGreetLockedChanged: if (greetLocked)
-      Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "greeting", "locked"])
+    // The lock/unlock sounds play in the main shell too (services/Sounds.qml),
+    // so its mode and eye-candy rules apply.
+    onGreetLockedChanged: if (greetLocked) {
+      Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "sounds", "play", "lock"]);
+      Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "greeting", "locked"]);
+    }
     onLockedChanged: {
-      if (!locked && lockRoot.real)
+      if (!locked && lockRoot.real) {
+        Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "sounds", "play", "unlock"]);
         Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "greeting", "unlocked"]);
+      }
     }
 
     surface: Component {

@@ -7,6 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 
 import "./sysPanel/Phosphor.js" as Phosphor
+import "./services"
 
 // ===== OSD =====
 // Replaces swayosd: a volume/brightness/media on-screen-display, ported
@@ -129,20 +130,35 @@ Scope {
   function fnLockSet(on) { fnLock = on; flash("fn"); }
 
   // ----- real actions, called from the IpcHandler below -----
-  readonly property real volStep: 0.05
+  // Volume moves on a 5% grid. A level off the grid (set by an app, or from
+  // before) is first rounded DOWN to it: up then lands on the next step,
+  // down on the step just below.
+  function volSteps(v) { return Math.floor(v * 20 + 1e-3); }   // 0..20
+  function setVolSteps(n) {
+    const v = Math.max(0, Math.min(20, n)) / 20;
+    sink.audio.volume = v;
+    Sounds.volumeTick(v);
+  }
   function volumeUp() {
     if (sink && sink.audio) {
       sink.audio.muted = false;
-      sink.audio.volume = Math.max(0, Math.min(1, sink.audio.volume + volStep));
+      setVolSteps(volSteps(sink.audio.volume) + 1);
     }
     flash("vol");
   }
   function volumeDown() {
-    if (sink && sink.audio) sink.audio.volume = Math.max(0, Math.min(1, sink.audio.volume - volStep));
+    if (sink && sink.audio) {
+      const n = volSteps(sink.audio.volume);
+      setVolSteps(Math.abs(sink.audio.volume - n / 20) < 1e-3 ? n - 1 : n);
+    }
     flash("vol");
   }
   function volumeMuteToggle() {
-    if (sink && sink.audio) sink.audio.muted = !sink.audio.muted;
+    if (sink && sink.audio) {
+      const muted = !sink.audio.muted;
+      sink.audio.muted = muted;
+      Sounds.toggle(!muted);
+    }
     flash("vol");
   }
   readonly property int briStep: 5

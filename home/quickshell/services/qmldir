@@ -1,3 +1,4 @@
 singleton Printer 1.0 Printer.qml
 singleton Music 1.0 Music.qml
 singleton Phone 1.0 Phone.qml
+singleton Sounds 1.0 Sounds.qml
