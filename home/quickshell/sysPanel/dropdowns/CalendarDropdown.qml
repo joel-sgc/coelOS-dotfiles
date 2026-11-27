@@ -95,6 +95,10 @@ Item {
   // Deliberately separate from `todos`: these are shown above the local
   // todos and never written back, so a sync can't touch the SQLite data.
   property var gcalEvents: []
+  // Per-feed colors (`cal`, the gcal-url label), the same as the desktop
+  // calendar widget's calColors (widgets/Calendar.qml): keep the two in sync.
+  readonly property var calColors: ({ google: colors[2], "class": colors[1] })
+  function calColor(cal) { return calColors[cal] || colors[0]; }
   readonly property var gcalByDay: {
     const m = {};
     for (const e of gcalEvents) (m[e.date] = m[e.date] || []).push(e);
@@ -272,7 +276,11 @@ Item {
         color: isToday ? "#282c34" : !inMonth ? "#4b5263" : wknd ? mutedColor : fgColor,
         bg: isToday ? colors[0] : isSel ? "#2f343e" : "transparent",
         border: isSel ? (!todoFocused ? colors[2] : mutedColor) : "transparent",
-        gdot: (gcalByDay[k] || []).length > 0,
+        gdots: (gcalByDay[k] || []).reduce((acc, e) => {
+          const c = String(calColor(e.cal));
+          if (acc.indexOf(c) < 0) acc.push(c);
+          return acc;
+        }, []),
         dot: list.length === 0 ? "transparent" : openCount > 0 ? (isToday ? "#282c34" : colors[2]) : (isToday ? "#282c34" : mutedColor),
       });
     }
@@ -317,6 +325,7 @@ Item {
     .map(e => ({
       time: e.start ? e.start : "all day",
       text: e.title + (e.where ? " · " + e.where : ""),
+      color: calColor(e.cal),
     }))
   readonly property int tdDoneCount: tdList().filter(x => x.done).length
   readonly property string tdSummary: tdList().length > 0 ? (tdDoneCount + "/" + tdList().length + " done") : ""
@@ -574,7 +583,8 @@ Item {
                 }
                 // Todo dot and calendar-event dot, centred as a pair (a
                 // hidden one takes no space, so a lone dot sits dead centre).
-                // Event dots are yellow, same as the desktop widget's.
+                // One event dot per feed present that day, colored like the
+                // desktop widget's (calColors).
                 Row {
                   anchors.horizontalCenter: parent.horizontalCenter
                   y: Math.round((parent.height - 20) / 2) + 16
@@ -586,12 +596,15 @@ Item {
                     radius: Globals.eyeCandyOff ? 0 : 2
                     color: dayCell.modelData.dot
                   }
-                  Rectangle {
-                    visible: dayCell.modelData.gdot
-                    width: 4
-                    height: 4
-                    radius: Globals.eyeCandyOff ? 0 : 2
-                    color: dropdownRoot.colors[2]
+                  Repeater {
+                    model: dayCell.modelData.gdots
+                    Rectangle {
+                      required property var modelData
+                      width: 4
+                      height: 4
+                      radius: Globals.eyeCandyOff ? 0 : 2
+                      color: modelData
+                    }
                   }
                 }
                 MouseArea {
@@ -636,13 +649,13 @@ Item {
             required property var modelData
             width: parent.width
             height: Math.max(20, gcalText.implicitHeight + 4)
-            Text { x: 6; y: 2; width: 14; text: "│"; color: dropdownRoot.colors[0]; font.family: "JetBrains Mono"; font.pixelSize: 13 }
+            Text { x: 6; y: 2; width: 14; text: "│"; color: gcalRow.modelData.color; font.family: "JetBrains Mono"; font.pixelSize: 13 }
             Text {
               x: 20
               y: 2
               width: 70
               text: gcalRow.modelData.time
-              color: dropdownRoot.colors[0]
+              color: gcalRow.modelData.color
               font.family: "JetBrains Mono"
               font.pixelSize: 13
             }

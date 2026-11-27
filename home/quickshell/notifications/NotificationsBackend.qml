@@ -3,6 +3,7 @@ import QtQuick.LocalStorage
 import Quickshell
 import Quickshell.Services.Notifications
 import Quickshell.Services.UPower
+import "../modes"
 
 // ===== NOTIFICATIONS BACKEND =====
 // Phase 2: the real thing. Owns the actual org.freedesktop.Notifications
@@ -38,6 +39,9 @@ Item {
   id: backend
 
   property bool dnd: false
+  // What actually silences toasts: your own DND, or the current mode's
+  // (modes/Modes.qml). Kept separate so a mode never overwrites your toggle.
+  readonly property bool quiet: dnd || Modes.dnd
   property var mutedApps: []
   // Newest first. Rebuilt (not mutated in place) on every change so every
   // binding that reads it -- dropdown, bell badge, toast stack -- updates
@@ -117,7 +121,7 @@ Item {
     n.closed.connect((reason) => backend.handleClosed(n.id, reason));
 
     const muted = mutedApps.indexOf(n.appName) >= 0;
-    const show = !dnd || urgencyStr === "critical";
+    const show = !quiet || urgencyStr === "critical";
     if (show && !muted) pushToast(row, n);
   }
 

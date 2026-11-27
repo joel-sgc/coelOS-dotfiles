@@ -9,6 +9,7 @@ import "../sysPanel/Calc.js" as Calc
 import "../sysPanel/Convert.js" as Convert
 import "Match.js" as Match
 import "backends"
+import "../modes"
 
 // ===== LAUNCHER PANEL =====
 // Content for Launcher.qml's Spotlight overlay -- ported from the "Spotlight"
@@ -109,6 +110,23 @@ Item {
   // whenever that changes. Calling it from a property binding (below)
   // still gives normal reactive tracking: QML follows property reads
   // that happen *inside* a called function just as it would inline.
+  // Mode picker (modes/Modes.qml): automatic, or one mode by hand until the
+  // inferred mode next changes.
+  function modeItems() {
+    const subs = { normal: "notifications on", "class": "quiet · from the class calendar",
+                   gaming: "quiet · fullscreen games", deep_work: "quiet · pomodoro focus" };
+    const items = [{ modeSet: "auto", label: "Mode: automatic", icon: "sparkle", groupLabel: "mode",
+                     sub: "now " + Modes.info[Modes.inferred].label.toLowerCase() + (Modes.detail && !Modes.manual ? " · " + Modes.detail : ""),
+                     right: Modes.manual ? "" : "[on]", rightColor: colors[3] }];
+    for (const m of ["normal", "class", "deep_work", "gaming"]) {
+      const cur = Modes.mode === m;
+      items.push({ modeSet: m, label: "Mode: " + Modes.info[m].label, icon: Modes.info[m].icon, groupLabel: "mode",
+                   sub: subs[m], right: cur ? (Modes.manual ? "[manual]" : "[auto]") : "",
+                   rightColor: cur ? colors[3] : mutedColor });
+    }
+    return items;
+  }
+
   function buildCategories() {
     return [
       { id: "launch", label: "launch", icon: "rocket-launch", items: [
@@ -134,10 +152,11 @@ Item {
         { id: "micmute", label: "Mute microphone", sub: "global input mute", icon: toggles.micMuted ? "microphone-slash" : "microphone", right: toggles.micMuted ? "[on]" : "[off]", rightColor: toggles.micMuted ? colors[3] : mutedColor, groupLabel: "toggles" },
         { id: "monochrome", label: "Monochrome", sub: "grayscale screen shader", icon: "circle-half", right: toggles.monochromeOn ? "[on]" : "[off]", rightColor: toggles.monochromeOn ? colors[3] : mutedColor, groupLabel: "toggles" },
         { id: "eyecandy", label: "Eye candy", sub: "animations, blur, rounding, fancy borders", icon: "sparkle", right: toggles.eyeCandyOff ? "[off]" : "[on]", rightColor: toggles.eyeCandyOff ? mutedColor : colors[3], groupLabel: "toggles" },
+      ].concat(modeItems()).concat([
         { label: "Screenshot", sub: "region → clipboard", icon: "selection", right: "print", command: ["coel-screenshot"], groupLabel: "capture" },
         { label: "Screen record", sub: "region → file", icon: "record", right: "", command: ["coel-screenrecord"], groupLabel: "capture" },
         { label: "Color picker", sub: "hex → clipboard", icon: "eyedropper", right: "", command: ["hyprpicker", "-a"], groupLabel: "capture" },
-      ] },
+      ]) },
       { id: "convert", label: "convert", icon: "arrows-left-right", items: [
         ["5 km to mi", "length"], ["72 f to c", "temperature"], ["$120 to eur", "currency"],
         ["2.5 gib in mb", "data"], ["90 min to h", "time"], ["100 kmh to mph", "speed"],
@@ -637,6 +656,11 @@ Item {
     if (it.bangPending) {
       msg = "type a search term, then press enter";
       searchInput.forceActiveFocus();
+      return;
+    }
+    if (it.modeSet) {
+      Modes.set(it.modeSet);
+      msg = it.modeSet === "auto" ? "mode: automatic (" + Modes.label.toLowerCase() + ")" : "mode: " + Modes.label.toLowerCase() + " until things change";
       return;
     }
     if (it.id === "dnd") { toggles.toggleDnd(); msg = "toggling do not disturb…"; return; }

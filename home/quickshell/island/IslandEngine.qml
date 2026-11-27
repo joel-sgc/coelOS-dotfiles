@@ -18,7 +18,7 @@ import "Parts.js" as P
 // printer 50, pomodoro 60, music 70, casting 80, vpn 90, phone battery 100.
 // A glance/interrupt is
 //   { id, parts: [part...] (one per group), accent, ms, drop: Component|null,
-//     source, activate: function|null }
+//     source, activate: function|null, force: bool (show even during DND) }
 Scope {
   id: engine
 
@@ -48,7 +48,10 @@ Scope {
 
   // ---- glances ----
   function glance(g) {
-    if (dnd) { held = held.filter(q => q.id !== g.id).concat([g]); return; }
+    held = held.filter(q => q.id !== g.id);
+    // `force`: a glance that must show even during DND (e.g. the mode change
+    // that just turned DND on).
+    if (dnd && !g.force) { held = held.concat([g]); return; }
     if (current && current.id === g.id) { current = g; armGlance(); return; }
     if (current) { queue = queue.filter(q => q.id !== g.id).concat([g]); return; }
     current = g;

@@ -216,6 +216,11 @@ const codepoints = {
   pulse: 0xe000,
   timer: 0xe492,
   "arrow-square-out": 0xe5de,
+
+  // modes/ -- automatic modes (island chip, launcher)
+  "graduation-cap": 0xe62c,
+  "game-controller": 0xe26e,
+  brain: 0xe74e,
 };
 
 function icon(name) {

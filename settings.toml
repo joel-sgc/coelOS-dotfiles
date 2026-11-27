@@ -62,6 +62,33 @@ MOZ_ENABLE_WAYLAND = "1"
 # GDK_SCALE = "2"
 # XCURSOR_SIZE = "24"
 
+# ---------------------------------------------------------------- modes
+# Automatic modes (home/quickshell/modes/Modes.qml), applied live on save. First
+# match wins: class, then gaming, then deep_work; otherwise normal. Pick one by
+# hand from the launcher (actions > mode); that holds until the situation changes.
+# Every mode takes `enabled` and `dnd` (silence notification toasts; critical
+# ones and island interrupts still show).
+[modes.class]
+enabled = true
+dnd = true
+# Labels of feeds in ~/.config/coel/gcal-url whose events are classes
+# (a line like `class https://...`). Deadline feeds stay unlabelled.
+calendars = ["class"]
+# Switch on this many minutes before a class starts.
+lead_minutes = 5
+
+[modes.gaming]
+enabled = true
+dnd = true
+# A focused fullscreen window counts as a game if it says so (Hyprland's
+# contentType "game") or its class matches one of these regexes.
+classes = ['^steam_app_\d+$', '^gamescope$']
+
+[modes.deep_work]
+# On while the Pomodoro widget's focus timer runs.
+enabled = true
+dnd = true
+
 # ---------------------------------------------------------------- hyprland options
 # Anything under [config.*] is passed straight to hl.config(), so every
 # Hyprland option is available here (https://wiki.hypr.land). Arrays of four

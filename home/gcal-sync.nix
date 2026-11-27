@@ -11,6 +11,10 @@ let
   # The feed URL is a bearer secret (anyone holding it can read the calendar),
   # so it lives outside this repo in ~/.config/coel/gcal-url, one URL per line
   # (blank lines and #comments ignored). Missing file = silent no-op.
+  # A line may start with a label: `class https://...`. Its events get that
+  # label as `cal` (unlabelled feeds are "google"); a `class` feed is what
+  # drives Class mode (home/quickshell/modes/Modes.qml), so deadlines from the
+  # school's LMS feed never count as being in class.
   gcalSync = pkgs.writers.writePython3Bin "coel-gcal-sync"
     {
       libraries = with pkgs.python3Packages; [ icalendar recurring-ical-events ];
@@ -36,8 +40,15 @@ let
       if not os.path.exists(URLS):
           sys.exit(0)
 
-      urls = [l.strip() for l in open(URLS)
-              if l.strip() and not l.lstrip().startswith("#")]
+      feeds = []  # (label, url)
+      for line in open(URLS):
+          parts = line.split()
+          if not parts or parts[0].startswith("#"):
+              continue
+          if len(parts) >= 2 and "://" not in parts[0]:
+              feeds.append((parts[0], parts[1]))
+          else:
+              feeds.append(("google", parts[0]))
 
       today = dt.date.today()
       start = today - dt.timedelta(days=60)
@@ -51,11 +62,28 @@ let
           return v.replace(tzinfo=None)
 
 
-      events = []
-      for url in urls:
+      def fetch(url):
           req = urllib.request.Request(url, headers={"User-Agent": "coel-gcal-sync"})
           with urllib.request.urlopen(req, timeout=30) as r:
-              cal = icalendar.Calendar.from_ical(r.read())
+              return icalendar.Calendar.from_ical(r.read())
+
+
+      # Feeds fail independently. A label with any failed feed keeps its events
+      # from the last good sync, so a network hiccup on the class feed can't
+      # silently drop Class mode (or wipe the deadlines). Errors name the label
+      # only: the URL itself is a secret.
+      try:
+          previous = json.load(open(OUT))
+      except (OSError, ValueError):
+          previous = []
+      events, failed = [], set()
+      for label, url in feeds:
+          try:
+              cal = fetch(url)
+          except Exception as err:
+              print(f"coel-gcal-sync: feed '{label}' failed: {err}", file=sys.stderr)
+              failed.add(label)
+              continue
           for e in recurring_ical_events.of(cal).between(start, end):
               if str(e.get("STATUS", "")).upper() == "CANCELLED":
                   continue
@@ -68,21 +96,24 @@ let
                   d = s
                   while d < max(f, s + dt.timedelta(days=1)):
                       events.append(dict(date=d.isoformat(), start="", end="",
-                                         title=title, where=where, cal="google"))
+                                         title=title, where=where, cal=label))
                       d += dt.timedelta(days=1)
               else:
                   s, f = local(s), local(f)
                   events.append(dict(date=s.date().isoformat(),
                                      start=s.strftime("%H:%M"),
                                      end=f.strftime("%H:%M"),
-                                     title=title, where=where, cal="google"))
+                                     title=title, where=where, cal=label))
 
+      events = [e for e in events if e["cal"] not in failed]
+      events += [e for e in previous if e.get("cal") in failed]
       events.sort(key=lambda x: (x["date"], x["start"]))
       os.makedirs(os.path.dirname(OUT), exist_ok=True)
       tmp = OUT + ".tmp"
       with open(tmp, "w") as fh:
           json.dump(events, fh, indent=1)
       os.replace(tmp, OUT)  # atomic, so the FileView watchers never see a torn file
+      sys.exit(1 if failed else 0)
     '';
 in
 {

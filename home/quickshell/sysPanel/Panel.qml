@@ -94,11 +94,12 @@ Scope {
   // One engine for every bar; each screen's IslandView below mirrors it.
   IslandEngine {
     id: island
-    dnd: panelScope.notifications ? panelScope.notifications.dnd : false
-    sources: [printerSource, assistantSource, demoSource]
+    dnd: panelScope.notifications ? panelScope.notifications.quiet : false
+    sources: [printerSource, assistantSource, modeSource, demoSource]
   }
   PrinterSource { id: printerSource; engine: island }
   AssistantSource { id: assistantSource; engine: island }
+  ModeSource { id: modeSource; engine: island }
   DemoSource { id: demoSource; engine: island }
 
   // coel-ask-screen (scripts/coel-ask-screen.sh) calls these; keep the names.
@@ -247,7 +248,7 @@ Scope {
           anchors.verticalCenter: parent.verticalCenter
           active: root.openPopup === "notifications"
           unreadCount: root.notifications ? root.notifications.unreadCount : 0
-          dnd: root.notifications ? root.notifications.dnd : false
+          dnd: root.notifications ? root.notifications.quiet : false
           onClicked: root.openPopup = root.openPopup === "notifications" ? "" : "notifications"
         }
 

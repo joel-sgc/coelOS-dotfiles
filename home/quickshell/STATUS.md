@@ -140,6 +140,19 @@ purpose (the island docks against its left edge).
   card / follow-up / history / discreet mode are not built.
 - Not built yet: interrupt sounds (step 6 sound pack), glances filing into the bell.
 
+## Modes (`modes/Modes.qml`)
+
+Singleton; inference lives in Quickshell on purpose (every input is already here), not in
+a daemon. Class = timed event from a gcal-url feed labelled `class` (the unlabelled feed
+is LMS deadlines, which look identical: 30 min, course-code titles); Gaming = focused
+fullscreen window with Hyprland `contentType` "game" or a class regex, debounced (2 s in,
+30 s out) so alt-tab doesn't flap; Deep work = Pomodoro focus running. Config is
+`settings.toml [modes.*]` read via `scripts/settings-table.py` (both TOML parsers must
+accept it: `python3 tests/run.py hyprland-settings`). A mode's `dnd` feeds
+`NotificationsBackend.quiet`, never the user's own `dnd`. Manual pick (launcher, `ipc call
+modes set <m>|auto`) holds until the inferred mode changes. Mode glances use `force` so the
+DND they cause doesn't hold them. Sound level and widget sets: steps 3 and 6.
+
 ## Lock screen and greeter
 
 **Lock** (`lock/`, entry `lock-real-shell.qml`): `WlSessionLock`; auth via `PamContext` (not

@@ -44,7 +44,8 @@ WidgetCard {
   property var sel: new Date(today.getFullYear(), today.getMonth(), today.getDate())
   property var view: new Date(today.getFullYear(), today.getMonth(), 1)
 
-  readonly property var calColors: ({ work: Pal.blue, personal: Pal.purple, health: Pal.green, google: Pal.yellow })
+  // Keep in sync with CalendarDropdown.qml calColors (google yellow, class red).
+  readonly property var calColors: ({ work: Pal.blue, personal: Pal.purple, health: Pal.green, google: Pal.yellow, "class": Pal.red })
 
   // ----- events -----
   property var events: []
@@ -328,7 +329,7 @@ WidgetCard {
       Layout.topMargin: 6
       spacing: 12
       Repeater {
-        model: [["work", Pal.blue], ["personal", Pal.purple], ["health", Pal.green], ["google", Pal.yellow]]
+        model: [["work", Pal.blue], ["personal", Pal.purple], ["health", Pal.green], ["google", Pal.yellow], ["class", Pal.red]]
         delegate: Row {
           required property var modelData
           spacing: 7
