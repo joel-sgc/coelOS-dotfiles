@@ -47,6 +47,12 @@ Item {
   property bool busy: false
   property var msg: null           // {icon, text, color}, same shape Lock.qml uses
   signal finished()   // a login attempt is over (success): the UI resets
+  // A new session is authenticated and about to start: the screen switches to
+  // it right after, and whatever this greeter shows then stays (frozen) until
+  // the compositor draws. The UI settles into its "starting" picture, then
+  // calls proceed(). (coel-hub waits up to 0.8 s for that.)
+  signal authenticated()
+  function proceed() { if (authProc.running) authProc.write("go\n"); else if (mock) mockFinish.restart(); }
 
   readonly property var demoUsers: [
     { name: "joelsgc", init: "J" },
@@ -274,6 +280,8 @@ Item {
       root._authEnded = true;
       root.busy = false;
       root.msg = { icon: "x", text: e.text || "authentication failed", color: "#ef596f" };
+    } else if (e.event === "authenticated") {
+      root.authenticated();
     } else if (e.event === "ok") {
       root._authEnded = true;
       if (root._resumeId !== "") {
@@ -359,7 +367,7 @@ Item {
     onTriggered: {
       if (root._pendingPw === "test") {
         root._pendingPw = "";
-        root.finish();
+        root.authenticated();   // mock: the outro, then proceed() -> mockFinish
       } else {
         root._pendingPw = "";
         root.busy = false;
@@ -367,4 +375,5 @@ Item {
       }
     }
   }
+  Timer { id: mockFinish; interval: 100; onTriggered: root.finish() }
 }

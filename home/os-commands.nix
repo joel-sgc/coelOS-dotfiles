@@ -181,6 +181,15 @@ let
     text = builtins.readFile ../scripts/coel-bambu-setup.sh;
   };
 
+  # The portal's file chooser from the command line (the desktop's phone card
+  # uses it for "send file"); prints the chosen paths.
+  pickFile = pkgs.writers.writePython3Bin "coel-pick-file"
+    {
+      libraries = [ pkgs.python3Packages.dbus-next ];
+      flakeIgnore = [ "E501" ];
+    }
+    (builtins.readFile ../scripts/coel-pick-file.py);
+
   askScreen = pkgs.writeShellApplication {
     name = "coel-ask-screen";
     runtimeInputs = with pkgs; [
@@ -308,6 +317,7 @@ in
     screenshot
     askScreen
     bambuSetup
+    pickFile
     pkgs.hyprpicker
     screenrecord
     showDone

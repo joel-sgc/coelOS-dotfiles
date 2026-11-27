@@ -70,6 +70,20 @@ let
     echo 'singleton Globals 1.0 Globals.qml' > $out/qmldir
   '';
 
+  # One Dark backdrop instead of black, shown from cage's very first frame, so
+  # the boot splash goes straight to that colour (modules/boot-splash.nix), with
+  # the splash's wordmark on it until the greeter maps; and no default pointer
+  # (the greeter sets its own once the mouse moves).
+  # The boot splash's wordmark as raw pixels for that cage (premultiplied
+  # ARGB8888, i.e. BGRA bytes; flattened onto the backdrop so alpha is 255).
+  # Same file Plymouth draws, centred the same way, so the handoff is invisible.
+  cageSplash = pkgs.runCommand "coel-cage-splash.bgra" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+    magick ${../assets/plymouth-theme/logo.png} -background '#282c34' -flatten -depth 8 BGRA:$out
+  '';
+  cage = pkgs.cage.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ../patches/cage-coel-backdrop.patch ];
+  });
+
   greeterLauncher = pkgs.writeShellScript "qs-greeter" ''
     export XKB_DEFAULT_LAYOUT=${config.services.xserver.xkb.layout}
     export QT_QPA_PLATFORM=wayland
@@ -90,12 +104,13 @@ let
     # disable fails), and the session's compositor never clears it, so a ghost
     # pointer stays on screen.
     export WLR_NO_HARDWARE_CURSORS=1
-    # Brief delay before the client connects: cage execs its child right
-    # after starting its own backend, but wlroots' DRM connector
-    # enumeration (the real eDP-1 discovery) may not finish until a later
-    # event-loop iteration, and quickshell's own Wayland roundtrip is fast
-    # enough to lose that race, logging "There are no outputs" every time.
-    # Giving cage's backend a moment to finish first avoids it.
+    # The splash wordmark cage shows until the greeter's first frame.
+    export COEL_CAGE_SPLASH=${cageSplash} COEL_CAGE_SPLASH_W=730 COEL_CAGE_SPLASH_H=160
+    # Quickshell must not connect before cage advertises an output (it logs
+    # "There are no outputs" and shows nothing). This used to be a fixed
+    # `sleep 1`, which was most of the black gap between the boot splash and
+    # the login screen; now poll for a wl_output (normally there at once) and
+    # start as soon as one exists, giving up after 2 s.
     #
     # Plain extend (cage's default -- no -m flag needed): confirmed live
     # that "-m last" is NOT "use eDP-1", it's "use whichever output was
@@ -111,8 +126,8 @@ let
     # eDP-1's own sub-rectangle inside it (see its own comment) -- rather
     # than fighting cage's output selection, which this cage version
     # simply doesn't expose.
-    exec ${pkgs.cage}/bin/cage -s -d -- \
-      ${pkgs.bash}/bin/bash -c "sleep 1; exec ${pkgs.quickshell}/bin/quickshell -p ${greeterConfig}"
+    exec ${cage}/bin/cage -s -d -- \
+      ${pkgs.bash}/bin/bash -c "for i in \$(${pkgs.coreutils}/bin/seq 40); do ${pkgs.wayland-utils}/bin/wayland-info -i wl_output 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q \"interface: .wl_output\" && break; ${pkgs.coreutils}/bin/sleep 0.05; done; exec ${pkgs.quickshell}/bin/quickshell -p ${greeterConfig}"
   '';
 in
 {
@@ -127,6 +142,12 @@ in
   config = lib.mkIf cfg.enable {
     services.greetd = {
       enable = true;
+      # Leaves VT1's mode alone instead of forcing text mode, which would
+      # repaint the console over the boot splash (modules/boot-splash.nix).
+      # The session hosts' greetd (modules/session-hub.nix) builds on this one.
+      package = pkgs.greetd.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ../patches/greetd-keep-vt-mode.patch ];
+      });
       settings.default_session = {
         command = "${greeterLauncher}";
         user = "greeter";

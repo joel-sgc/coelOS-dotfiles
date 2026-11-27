@@ -110,6 +110,19 @@ hl.config({
     },
 })
 
+-- What shows before Quickshell's wallpaper draws (the first second or two after
+-- login): plain One Dark background, the greeter's base color, instead of
+-- Hyprland's own logo and wallpaper on near-black. Part of the seamless
+-- login (home/quickshell/desktop/SessionIntro.qml takes over from here).
+-- Separate pcall: a bad value here must not take the rest of the config down.
+local okMisc, errMisc = pcall(hl.config, { misc = {
+    disable_hyprland_logo    = true,
+    disable_splash_rendering = true,
+    force_default_wallpaper  = 0,
+    background_color         = "rgb(282c34)",
+} })
+if not okMisc then print("misc (startup look): " .. tostring(errMisc)) end
+
 -- settings.toml [config.*]: any Hyprland option, layered over the defaults above.
 -- Arrays of four for gaps mean top, right, bottom, left.
 if type(S.config) == "table" then

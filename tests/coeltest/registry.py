@@ -103,6 +103,12 @@ SUITES = [
                    'let f = builtins.getFlake "path:{repo}"; pkgs = import f.inputs.nixpkgs { system = "x86_64-linux"; }; '
                    'in pkgs.testers.runNixOSTest {tests}/nixos/session-hub-test.nix')),
 
+    Suite("boot-seam", "Boot splash -> login screen with no black frame (NixOS VM test, minutes)", "nixos", "nixos", "nixos/boot-seam-test.nix",
+          ("slow",), cmds=("nix",), timeout=1800,
+          command=("nix", "build", "--impure", "--no-link", "--print-out-paths", "-L", "--expr",
+                   'let f = builtins.getFlake "path:{repo}"; pkgs = import f.inputs.nixpkgs { system = "x86_64-linux"; }; '
+                   'in pkgs.testers.runNixOSTest {tests}/nixos/boot-seam-test.nix')),
+
     Suite("meta", "Test runner: every test file is registered, every registered path exists", "meta", "python",
           "coeltest/test_registry.py"),
 

@@ -71,6 +71,7 @@ import argparse
 import json
 import os
 import pwd
+import select
 import shlex
 import socket
 import struct
@@ -254,6 +255,22 @@ def converse(sock, user):
                 send(sock, {"type": "post_auth_message_response", "response": read_reply()})
 
 
+def activate_new_session(user, vt, timeout=5.0):
+    """Put the session that just started on `vt` on screen.
+
+    greetd registers it with logind a moment after start_session (once the
+    host's placeholder greeter has gone), so wait for it to show up."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        for sid, tty in live_sessions_of(user):
+            if tty == f"tty{vt}":
+                run("loginctl", "activate", sid)
+                return True
+        time.sleep(0.05)
+    print(f"coel-hub: no session of {user} appeared on tty{vt}", file=sys.stderr)
+    return False
+
+
 def cmd_auth(args):
     starting = args.host is not None
     if starting:
@@ -288,7 +305,20 @@ def cmd_auth(args):
             finished = True
             emit(event="ok")
             return 0
-        # greetd switches to the host's VT the moment the session starts.
+        # Authenticated: give the greeter a moment to settle into its "starting"
+        # picture before the switch, since that picture stays on screen (frozen)
+        # until the compositor draws. It answers with any line; without an
+        # answer (an older greeter, a script, the VM test) we go on after 0.8 s.
+        emit(event="authenticated")
+        try:
+            ready, _, _ = select.select([sys.stdin], [], [], 0.8)
+            if ready:
+                sys.stdin.readline()
+        except (OSError, ValueError):
+            pass
+        # Hosts don't switch the screen themselves (switch = false, see
+        # modules/session-hub.nix): once the session exists, we activate it,
+        # like resume does. The guard lets this switch through.
         authorise_switch(vt)
         send(sock, {"type": "start_session", "cmd": args.cmd, "env": args.env})
         reply = receive(sock)
@@ -296,6 +326,7 @@ def cmd_auth(args):
             emit(event="fail", text=reply.get("description", "could not start the session"))
             return 1
         release_host_greeter(vt)
+        activate_new_session(args.user, vt)
         finished = True
         emit(event="ok", vt=int(vt))
         return 0

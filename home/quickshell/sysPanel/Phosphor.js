@@ -221,6 +221,17 @@ const codepoints = {
   "graduation-cap": 0xe62c,
   "game-controller": 0xe26e,
   brain: 0xe74e,
+
+  // desktop/ -- context-aware desktop (mode chip, cards)
+  "sun-horizon": 0xe5b6,
+  "chalkboard-teacher": 0xe600,
+  target: 0xe47c,
+  "push-pin": 0xe3e2,
+  kanban: 0xeb54,
+  broom: 0xec54,
+  "paper-plane-tilt": 0xe398,
+  "battery-low": 0xe0c4,
+  thermometer: 0xe5c6,
 };
 
 function icon(name) {

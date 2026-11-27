@@ -64,18 +64,20 @@ MOZ_ENABLE_WAYLAND = "1"
 
 # ---------------------------------------------------------------- modes
 # Automatic modes (home/quickshell/modes/Modes.qml), applied live on save. First
-# match wins: class, then gaming, then deep_work; otherwise normal. Pick one by
-# hand from the launcher (actions > mode); that holds until the situation changes.
+# match wins: gaming, class, deep_work, printing, music, evening; otherwise
+# morning/default. Each mode picks the desktop layout. Override from the desktop's
+# mode chip (M) or the launcher (actions > mode).
 # Every mode takes `enabled` and `dnd` (silence notification toasts; critical
-# ones and island interrupts still show).
+# ones and island interrupts still show). printing, music and evening default
+# to dnd = false and can be listed here too, e.g. [modes.evening] from = 20.
 [modes.class]
 enabled = true
 dnd = true
 # Labels of feeds in ~/.config/coel/gcal-url whose events are classes
 # (a line like `class https://...`). Deadline feeds stay unlabelled.
 calendars = ["class"]
-# Switch on this many minutes before a class starts.
-lead_minutes = 5
+# Switch on this many minutes before a class starts (0: the island counts down).
+lead_minutes = 0
 
 [modes.gaming]
 enabled = true
@@ -85,9 +87,11 @@ dnd = true
 classes = ['^steam_app_\d+$', '^gamescope$']
 
 [modes.deep_work]
-# On while the Pomodoro widget's focus timer runs.
+# On while a Pomodoro runs (and during its breaks), or during a calendar event
+# whose title starts with one of these.
 enabled = true
 dnd = true
+blocks = ["focus", "deep work"]
 
 # ---------------------------------------------------------------- hyprland options
 # Anything under [config.*] is passed straight to hl.config(), so every

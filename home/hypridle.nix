@@ -52,8 +52,17 @@ in
   systemd.user.services.hypridle =
     let
       dpms = state: "hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
+      # hypridle 0.1.7 searches the default config locations *before* honouring
+      # -c and aborts when there's none there ("Could not find config in HOME,
+      # XDG_CONFIG_HOME, XDG_CONFIG_DIRS or /etc/hypr"); with the config only in
+      # $XDG_RUNTIME_DIR it crash-looped for weeks and idle lock never ran. So the
+      # rendered file goes in a private <dir>/hypr/hypridle.conf, and <dir> is
+      # put first on XDG_CONFIG_DIRS (keeping -c too).
       run = pkgs.writeShellScript "hypridle-run" ''
-        conf="''${XDG_RUNTIME_DIR:-/tmp}/hypridle.conf"
+        dir="''${XDG_RUNTIME_DIR:-/tmp}/coel-hypridle"
+        mkdir -p "$dir/hypr"
+        conf="$dir/hypr/hypridle.conf"
+        export XDG_CONFIG_DIRS="$dir''${XDG_CONFIG_DIRS:+:$XDG_CONFIG_DIRS}"
         ${pkgs.python3}/bin/python3 ${./settings/coel_settings.py} render-hypridle \
           --out "$conf" \
           --lock-cmd ${lib.escapeShellArg lockCmd} \

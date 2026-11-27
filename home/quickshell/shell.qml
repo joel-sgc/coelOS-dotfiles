@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Layouts
 
 import "./sysPanel"
+import "./desktop"
 
 ShellRoot {
   id: root
@@ -116,10 +117,10 @@ ShellRoot {
   // The wallpaper itself, with its swap animation -- see Wallpaper.qml
   Wallpaper {}
 
-  // Desktop widgets (weather, calendar, kanban) -- see Widgets.qml
-  Widgets {
-    barHeight: root.barHeight
+  // The context-aware desktop (mode chip, hero / rail / shelf cards) -- see desktop/Desktop.qml
+  Desktop {
     readyScreens: border.readyScreens
+    barHeight: root.barHeight
   }
 
   // Polkit authentication agent -- see Polkit.qml

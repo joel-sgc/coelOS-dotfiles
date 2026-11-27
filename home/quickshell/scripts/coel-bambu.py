@@ -253,7 +253,9 @@ def _f(v):
 def normalize(p, name):
     g = p.get("gcode_state", "IDLE")
     err = _i(p.get("print_error"))
-    if g in ("RUNNING", "PREPARE", "SLICING"):
+    if g in ("PREPARE", "SLICING"):
+        status = "heating"
+    elif g == "RUNNING":
         status = "printing"
     elif g == "PAUSE":
         status = "paused"
@@ -288,6 +290,9 @@ def normalize(p, name):
         "speed": SPEEDS.get(_i(p.get("spd_lvl")) or 2, "standard"),
         "fan": fan,
         "start_time": _i(p.get("gcode_start_time")),
+        # AMS: trays with filament loaded / trays present (0/0 without an AMS)
+        "ams_loaded": sum(1 for u in (p.get("ams") or {}).get("ams", []) for t in u.get("tray", []) if t.get("tray_type")),
+        "ams_total": sum(len(u.get("tray", [])) for u in (p.get("ams") or {}).get("ams", [])),
         "seen": now_ms(),
     }
 

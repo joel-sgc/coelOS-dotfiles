@@ -5,10 +5,11 @@
 #   VT1        the login screen ("hub"), always running -- the main greetd
 #              (services.greetd, configured elsewhere) with the greeter UI.
 #              It never starts a session itself.
-#   VT7, VT8   session hosts: idle greetd instances. The hub authenticates the
-#              user against a host and starts the session there; greetd
-#              switches the screen to the host's VT. When the session ends the
-#              host goes idle again.
+#   VT7, VT8   session hosts: idle greetd instances that never switch the
+#              screen themselves. The hub authenticates the user against a
+#              host, starts the session there and activates the host's VT.
+#              When the session ends the host goes idle again (and coel-vt-guard
+#              bounces the screen back to the login screen).
 #
 # Leaving a session = switching to VT1 (the session stays alive, locked).
 # Coming back = authenticate at the hub, then the hub lets the session's lock
@@ -56,9 +57,19 @@ let
 
   hostUnit = vt: "greetd-host-${toString vt}";
 
+  # Hosts never touch the screen. Stock greetd switches to its VT at startup
+  # and waits there, which flashed VT7/VT8 (black consoles) right after the
+  # boot splash. With `switch = false` plus a one-line patch removing the
+  # startup wait (patches/greetd-host-no-vt-wait.patch), an idle host just sits
+  # on its VT unseen; `coel-hub auth` activates the session's VT itself once a
+  # session starts there. Only the hosts use this greetd; VT1's is stock.
+  hostGreetd = config.services.greetd.package.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ../patches/greetd-host-no-vt-wait.patch ];
+  });
   hostConfig = vt: pkgs.writeText "greetd-host-${toString vt}.toml" ''
     [terminal]
     vt = ${toString vt}
+    switch = false
 
     # Idle until the hub starts a session here. greetd needs *some* greeter to
     # keep running; this one does nothing, so an idle host costs no compositor
@@ -118,27 +129,28 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ hubClientWrapped ];
 
-    # One unit per host, started strictly one after the other, the hub last.
+    # One unit per host, started one after the other, the hub last; each host's
+    # start completes (ExecStartPost: coel-hub wait-host) once its idle greeter
+    # is registered and the screen isn't on its VT.
     #
-    # Why not one template started three times at once: greetd switches to its
-    # VT and then BLOCKS until that VT is on screen (VT_SETACTIVATE +
-    # VT_WAITACTIVE). Started together, their switches race; the one whose
-    # switch is overtaken waits for a VT that never comes, and that host can
-    # never hold a session. (The VM test hung at boot in 2 runs of 5.) So each
-    # host's start only completes (ExecStartPost) once its idle greeter is up
-    # and the screen has moved on -- coel-vt-guard does that move -- and the
-    # next host, then the hub, starts after it.
+    # History: stock greetd switched to its VT at startup and BLOCKED until it
+    # was on screen (VT_SETACTIVATE + VT_WAITACTIVE); started together, those
+    # switches raced and a host could hang forever (the VM test hung at boot in
+    # 2 runs of 5), and even serialised they flashed VT7/VT8 black after the
+    # boot splash. Hosts now run with `switch = false` and a patched greetd that
+    # doesn't wait (hostGreetd above), so they never touch the screen; the
+    # serial chain is kept because it costs nothing.
     systemd.services = lib.mkMerge [
       (lib.listToAttrs (lib.imap0
         (i: vt: lib.nameValuePair (hostUnit vt) {
           description = "Session host on VT ${toString vt}";
           unitConfig = {
             Wants = [ "systemd-user-sessions.service" "coel-vt-guard.service" ];
-            After = [ "systemd-user-sessions.service" "plymouth-quit-wait.service" "coel-vt-guard.service" ]
+            After = [ "systemd-user-sessions.service" "plymouth-start.service" "coel-vt-guard.service" ]
               ++ lib.optional (i > 0) "${hostUnit (builtins.elemAt cfg.hostVts (i - 1))}.service";
           };
           serviceConfig = {
-            ExecStart = "${lib.getExe config.services.greetd.package} --config ${hostConfig vt}";
+            ExecStart = "${lib.getExe hostGreetd} --config ${hostConfig vt}";
             ExecStartPost = "-${hubClientWrapped}/bin/coel-hub wait-host ${toString vt}";
             Type = "simple";
             Restart = "on-failure";

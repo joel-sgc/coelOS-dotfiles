@@ -111,7 +111,12 @@ Item {
     mutedColor: root.mutedColor
   }
 
+  // For the greeter's boot intro: the card's logo, and hiding it meanwhile.
+  property bool hideWordmark: false
+  readonly property Item authWordmark: authCard.wordmarkItem
   AuthCard {
+    id: authCard
+    hideWordmark: root.hideWordmark
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     anchors.rightMargin: 56

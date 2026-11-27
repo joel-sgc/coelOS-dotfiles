@@ -113,15 +113,13 @@ Item {
   // Mode picker (modes/Modes.qml): automatic, or one mode by hand until the
   // inferred mode next changes.
   function modeItems() {
-    const subs = { normal: "notifications on", "class": "quiet · from the class calendar",
-                   gaming: "quiet · fullscreen games", deep_work: "quiet · pomodoro focus" };
     const items = [{ modeSet: "auto", label: "Mode: automatic", icon: "sparkle", groupLabel: "mode",
-                     sub: "now " + Modes.info[Modes.inferred].label.toLowerCase() + (Modes.detail && !Modes.manual ? " · " + Modes.detail : ""),
+                     sub: "now " + Modes.info[Modes.inferred].label + (Modes.why && !Modes.manual ? " · " + Modes.why : ""),
                      right: Modes.manual ? "" : "[on]", rightColor: colors[3] }];
-    for (const m of ["normal", "class", "deep_work", "gaming"]) {
+    for (const m of Modes.order) {
       const cur = Modes.mode === m;
       items.push({ modeSet: m, label: "Mode: " + Modes.info[m].label, icon: Modes.info[m].icon, groupLabel: "mode",
-                   sub: subs[m], right: cur ? (Modes.manual ? "[manual]" : "[auto]") : "",
+                   sub: "until things change", right: cur ? (Modes.manual ? "[manual]" : "[auto]") : "",
                    rightColor: cur ? colors[3] : mutedColor });
     }
     return items;
@@ -659,6 +657,7 @@ Item {
       return;
     }
     if (it.modeSet) {
+      Modes.keep = "event";
       Modes.set(it.modeSet);
       msg = it.modeSet === "auto" ? "mode: automatic (" + Modes.label.toLowerCase() + ")" : "mode: " + Modes.label.toLowerCase() + " until things change";
       return;

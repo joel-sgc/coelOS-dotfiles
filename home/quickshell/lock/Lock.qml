@@ -337,6 +337,16 @@ Scope {
       if (secure && lockRoot.real && lockRoot.hubSession !== "")
         Quickshell.execDetached(["sh", "-c", ': > "$XDG_RUNTIME_DIR/coel-lock-ready-$XDG_SESSION_ID"']);
     }
+    // Tell the main shell (same config dir) when we lock and unlock: the first
+    // unlock of the day, or one after 4+ hours locked, gets the greeting
+    // (desktop/Greeting.qml).
+    readonly property bool greetLocked: secure && lockRoot.real
+    onGreetLockedChanged: if (greetLocked)
+      Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "greeting", "locked"])
+    onLockedChanged: {
+      if (!locked && lockRoot.real)
+        Quickshell.execDetached(["quickshell", "ipc", "-p", Quickshell.shellDir, "call", "greeting", "unlocked"]);
+    }
 
     surface: Component {
       WlSessionLockSurface {

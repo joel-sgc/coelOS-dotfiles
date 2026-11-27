@@ -8,7 +8,7 @@ for non-obvious facts only; for what code does, read the code. History is in `gi
 ## Design source and workflow
 
 - Visual/behavioral source of truth is the mockups in `~/.nixos/example/*.dc.html`
-  (`Quickshell Bar`, `Desktop Widgets v2`, `Display Modes`, `Workspace Overview`). Read the
+  (`Quickshell Bar`, `Desktop Board`, `Pill Board`, `Display Modes`, `Workspace Overview`). Read the
   relevant one before guessing. The user edits these themselves: don't overwrite them.
   (`support.js` there is mock-page plumbing, not logic to port; the converter logic was
   in the `.dc.html`'s inline script.)
@@ -51,6 +51,9 @@ sendTriggered()` and `WlSessionLock.unlock()` threw or hung. Use `entry.triggere
 - A child property named like the parent's `id` self-shadows (use `nRoot`, not `dropdownRoot`).
 - `Item` owns `left/right/top/bottom/horizontalCenter/...`: don't name your own properties
   those ("Cannot override FINAL property").
+- A property named `on` + Capital (`onToday`, `onColor`) reads back as undefined from
+  outside: QML takes it for a signal handler. Also FINAL: `x`, `y` on any Item delegate, and
+  property names can't start with an uppercase letter.
 - Two `Component.onCompleted` on one object = "Property value set multiple times".
 - `Component.onCompleted: forceActiveFocus()` on a static child fires for every instance at
   creation, silently eating keystrokes. Use an `on<State>Changed` handler.
@@ -140,18 +143,86 @@ purpose (the island docks against its left edge).
   card / follow-up / history / discreet mode are not built.
 - Not built yet: interrupt sounds (step 6 sound pack), glances filing into the bell.
 
-## Modes (`modes/Modes.qml`)
+## Modes and the desktop (`modes/Modes.qml`, `desktop/`)
 
-Singleton; inference lives in Quickshell on purpose (every input is already here), not in
-a daemon. Class = timed event from a gcal-url feed labelled `class` (the unlabelled feed
-is LMS deadlines, which look identical: 30 min, course-code titles); Gaming = focused
-fullscreen window with Hyprland `contentType` "game" or a class regex, debounced (2 s in,
-30 s out) so alt-tab doesn't flap; Deep work = Pomodoro focus running. Config is
-`settings.toml [modes.*]` read via `scripts/settings-table.py` (both TOML parsers must
-accept it: `python3 tests/run.py hyprland-settings`). A mode's `dnd` feeds
-`NotificationsBackend.quiet`, never the user's own `dnd`. Manual pick (launcher, `ipc call
-modes set <m>|auto`) holds until the inferred mode changes. Mode glances use `force` so the
-DND they cause doesn't hold them. Sound level and widget sets: steps 3 and 6.
+Design: `example/Desktop Board.dc.html` (+ Prototype). Modes is a singleton; inference lives
+in Quickshell on purpose (every input is already here). Priority gaming > class > deep_work >
+printing > music > evening > morning ("default" after 12:00).
+
+- Class = timed event from a gcal-url feed labelled `class`, 0 min lead (the unlabelled
+  feed is LMS deadlines, which look identical: 30 min, course-code titles). Gaming = focused
+  fullscreen window, Hyprland `contentType` "game" or a class regex, debounced 2 s in / 30 s
+  out. Deep work = Pomodoro running (its waiting break counts 20 min) or a "focus"/"deep work"
+  calendar block. Printing comes from `PrinterSource` bindings; a finished/failed print counts
+  30 min only if we saw it end (`printerEndedAt`): the P1S reports an old FAILED forever.
+- Config: `settings.toml [modes.*]` via `scripts/settings-table.py` (both TOML parsers must
+  accept it: `python3 tests/run.py hyprland-settings`). A mode's `dnd` feeds
+  `NotificationsBackend.quiet`, never the user's own `dnd`.
+- Override (desktop chip `M` menu, launcher, `ipc call modes set <m>|auto|menu`) holds until
+  the next change, 1 hour, or forever; the last two persist in `modes.json`.
+- The mode is shown on the desktop and in the launcher, **not in the pill** (board rule).
+- Desktop: one Bottom-layer, full-screen `DesktopScreen` per screen (cards glide between
+  hero / rail / shelf inside one surface; the input mask is per card). `Layout.js` is the
+  board's RECIPE + pins/minimize, pure. Card data lives in `desktop/data/` singletons, so
+  every size and monitor share one copy (Pomodoro no longer needs a "primary" instance).
+  Pins/minimizes persist in `widgets.json`. Cards: `desktop/cards/`, each handles every
+  size it has (L/F/R/C/S/M) plus its keys; the slot adds m (minimize), p (pin), M (menu).
+- Cards align to window edges: bar + `gaps_out` (re-read on config reload), 20 px between
+  cards; the shelf takes every card the recipe leaves out (not just the board's list) and wraps
+  upward. Gaming keeps the board's empty shelf.
+- Shared services (`services/`, singletons): `Printer` (owns coel-bambu.py; the pill's
+  PrinterSource only maps it to chips), `Music` (Mpris, skips the playerctld proxy), `Phone`
+  (KDE Connect polled via `scripts/phone-state.py` + busctl; "send file" uses `coel-pick-file`,
+  a dbus-next portal FileChooser client: a one-shot `gdbus call` can't wait for the portal's
+  Response). `desktop/data/NextData` treats the unlabelled gcal feed as LMS **deadlines** (due
+  rows only, never a countdown) and is evening-aware before 04:00.
+- A FINISHED/FAILED the P1S still reports from an old print reads as idle (`Printer.oldEnd`).
+- Quickshell keeps layer surfaces across reloads, so changing `WlrLayershell.layer` needs a
+  restart; to screenshot the desktop, switch to an empty workspace
+  (`hyprctl dispatch "hl.dsp.focus({ workspace = 4, on_current_monitor = true })"`) and back.
+- Pill hand-off: each DesktopScreen publishes its open (hero/rail) card rects to
+  `DeskState.open[screen]`; on an empty workspace the screen's IslandView drops chips whose
+  `deskCard` is open (`engine.specWithout`) and flies ghost chips between dock and card
+  (280 ms, 40 ms stagger, card flashes on landing). Glances with a `cardId` whose card is on
+  the focused empty desktop are skipped (`engine.handedCards`) and flash the card instead.
+  The island surface is full screen height so ghosts can reach any card.
+- Selected day (`CalendarData.selOffset`) is shared by the calendar and next-up cards (h/l,
+  [ ], t, click a day; `ipc call widgets day <n>|today`); it snaps back to today after 5 min.
+- Greeting (`desktop/Greeting.qml`): first unlock of the day (day starts 04:00) or after 4+ h
+  away (`greeting.json` lastDay/lastSeen; lastSeen is set on lock and by a 5-min heartbeat, so
+  suspend counts as away). `lock/Lock.qml` calls `ipc call greeting locked|unlocked`; a real
+  shell start (login) counts too, a hot reload doesn't (`PersistentProperties`).
+  Empty workspace: full-screen overlay timeline driving `DeskState.greetPhase` (cards hidden,
+  staggered in, shelf + chip last; ~3 s hold, `holdMs`); windows open: `DeskState.greetGlance` -> one pill glance,
+  full version on the next empty desktop before 12:00. `ipc call greeting test <variant>|glance`.
+- Not built yet: second monitor rail (phase 4, deferred by the user), kanban drag-and-drop, the phone's island chips
+  (calls, notifications), "print again".
+
+## Seamless boot and login
+
+One picture ties it together: the COELOS wordmark (730x160, same artwork as
+`assets/coelos-wordmark.png`) centred on flat #282c34, which is Plymouth's last frame.
+- Greeter intro (greeter/Greeter.qml): first frame is that picture, then the wordmark glides
+  into the auth card. Outro: on `coel-hub auth`'s `authenticated` event the greeter settles
+  back into it and answers "go"; the hub waits up to 0.8 s, then starts the session. That frame
+  stays up (frozen) on the session VT until Hyprland draws, so it reads as a splash. The
+  greeter resets to normal 2 s later (it stays on VT1 for lock/logout).
+- Hyprland's pre-wallpaper frames are plain #282c34 (hyprland.lua `misc`, no logo/splash).
+- Session side (`desktop/SessionIntro.qml`; real login only: not a reload, Hyprland < 20 s old)
+  opens on the picture and dissolves into the desktop; `DeskState.introActive` holds the
+  greeting. `ipc call sessionintro test` replays it.
+- Splash -> greeter handoff with no black: modules/boot-splash.nix (header explains the
+  steps; Plymouth is deactivated, not quit, until the greeter touches
+  /run/coel-hub/greeter-drawn). VM test: `tests/run.py boot-seam` grabs frames from power-on
+  and fails on any black one after the splash. Plain `--retain-splash` on the stock
+  plymouth-quit once caused a black, hung boot; don't go back to that.
+- Session hosts never touch the screen: `switch = false` plus patches/greetd-host-no-vt-wait.patch
+  (stock greetd switches to its VT at startup and waits there, which flashed VT7/VT8 black after
+  the splash). `coel-hub auth` activates the new session itself (`activate_new_session`), and
+  waits up to 0.8 s after `authenticated` for the greeter's "go". VM test: `tests/run.py
+  session-hub`. The black flash on first lock (session -> VT1 switch) is still there.
+- hypridle 0.1.7 ignores `-c` until a config exists in a default location; home/hypridle.nix
+  renders into a private dir on XDG_CONFIG_DIRS (it crash-looped from Nov 18 until this).
 
 ## Lock screen and greeter
 
@@ -241,10 +312,9 @@ countdown. Log out is `hyprctl dispatch exit`.
 
 ## Widgets, polkit, share picker
 
-- **Widgets** (`Widgets.qml`, `widgets/`): weather (Open-Meteo, IP location), calendar, kanban as
-  Bottom-layer cards. Data in `~/.local/share/coel/` (`COEL_DATA_DIR` overrides). Needs the
-  Phosphor-Fill font (`home/quickshell-phosphor-font.nix`). Keyboard needs a click first.
-  IPC: `... call widgets toggle|newcard`. Test headlessly with sway + a virtual-pointer client.
+- **Desktop cards**: see "Modes and the desktop". Data in `~/.local/share/coel/`
+  (`COEL_DATA_DIR` overrides). `widgets/` now only holds shared primitives (Pal, Mono, Box,
+  ...) and `KanbanEditor`. Needs the Phosphor-Fill font. IPC: `... call widgets toggle|newcard`.
 - **Polkit** (`Polkit.qml`, `polkit/`): `Quickshell.Services.Polkit`. Only one agent per session
   (the KDE one was retired). API gives no caller app/pid. fprintd arrives as PAM text; PAM asks
   for the password only after the ~30s sensor timeout. Test with `pkcheck -a

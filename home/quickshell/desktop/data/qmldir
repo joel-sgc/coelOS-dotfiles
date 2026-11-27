@@ -1,0 +1,7 @@
+singleton DeskState 1.0 DeskState.qml
+singleton WeatherData 1.0 WeatherData.qml
+singleton ServerData 1.0 ServerData.qml
+singleton KanbanData 1.0 KanbanData.qml
+singleton PomodoroData 1.0 PomodoroData.qml
+singleton CalendarData 1.0 CalendarData.qml
+singleton NextData 1.0 NextData.qml

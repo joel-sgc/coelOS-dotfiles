@@ -14,6 +14,7 @@
     ./modules/nix-ld.nix
     ./modules/filesystems.nix
     ./modules/greeter.nix
+    ./modules/boot-splash.nix
     ./modules/session-hub.nix
     ./modules/guest.nix
     ./modules/tty.nix
@@ -57,26 +58,7 @@
   ];
   boot.initrd.kernelModules = [ "amdgpu" ];
 
-  boot.plymouth = {
-    enable = true;
-    theme = "coelos";
-    themePackages = [
-      (pkgs.stdenv.mkDerivation {
-        pname = "coelos-plymouth-theme";
-        version = "1.0";
-        # Points to the folder containing the CoelOS theme files
-        src = ./assets/plymouth-theme;
-
-        installPhase = ''
-          mkdir -p $out/share/plymouth/themes/coelos
-          cp * $out/share/plymouth/themes/coelos/
-
-          sed -i "s@^ImageDir=.*@ImageDir=$out/share/plymouth/themes/coelos@" $out/share/plymouth/themes/coelos/coelos.plymouth
-          sed -i "s@^ScriptFile=.*@ScriptFile=$out/share/plymouth/themes/coelos/coelos.script@" $out/share/plymouth/themes/coelos/coelos.plymouth
-        '';
-      })
-    ];
-  };
+  # Plymouth and its handoff to the login screen: modules/boot-splash.nix.
 
   ##############################################################################
   # Networking

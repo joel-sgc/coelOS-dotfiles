@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
+import "../desktop/data"
 import "Parts.js" as P
 
 // One screen's island (IslandEngine.qml holds the state; every bar mirrors it).
@@ -25,8 +26,61 @@ PanelWindow {
   // A fullscreen window on this monitor hides everything but interrupts.
   property bool fullscreen: false
 
+  // ---- hand-off with the desktop (Desktop Board "the travel") ----
+  // While this monitor's workspace is empty, an activity whose card the desktop
+  // has open (DeskState.open) leaves the pill: its chip flies into the card. When
+  // a window opens it flies back. Interrupts always stay on the pill.
+  property bool emptyWs: false
+  property bool monitorFocused: false
+  readonly property var deskOpen: (screen && DeskState.open[screen.name]) || ({})
+  readonly property var handedCards: emptyWs ? Object.keys(deskOpen) : []
+  Binding { when: view.monitorFocused && !!view.engine; target: view.engine; property: "handedCards"; value: view.handedCards }
+  property var flyingBack: []   // chip ids on their way back (kept off the pill until they land)
+  readonly property var hiddenChips: !engine ? [] : engine.chips
+    .filter(c => c.deskCard && handedCards.indexOf(c.deskCard) >= 0).map(c => c.id).concat(flyingBack)
+
   readonly property var collapsedSpec: ({ tier: "collapsed", groups: [], rowKey: "rest", dropKey: "none" })
-  readonly property var target: (!engine || (fullscreen && engine.spec.tier !== "interrupt")) ? collapsedSpec : engine.spec
+  readonly property var target: (!engine || (fullscreen && engine.spec.tier !== "interrupt")) ? collapsedSpec : engine.specWithout(hiddenChips)
+
+  property var prevHanded: []
+  onHandedCardsChanged: {
+    const now = handedCards, before = prevHanded;
+    prevHanded = now;
+    if (!engine) return;
+    const chips = engine.chips.filter(c => c.deskCard);
+    const toDesk = chips.filter(c => now.indexOf(c.deskCard) >= 0 && before.indexOf(c.deskCard) < 0);
+    const toPill = chips.filter(c => before.indexOf(c.deskCard) >= 0 && now.indexOf(c.deskCard) < 0);
+    if (!candy || (toDesk.length === 0 && toPill.length === 0)) { flyingBack = []; return; }
+    // Where the chips sit on the dock right now (the shape hasn't moved yet):
+    // spread across the island, left to right, as the pill draws them.
+    const onPill = engine.chips.filter(c => !c.deskCard || before.indexOf(c.deskCard) < 0).slice(0, 2);
+    const dockAt = (c, i, n) => ({ x: shape.x + 11 + (shape.width - 22) * (i + 0.5) / n - 20, y: 5 });
+    const ghosts = [];
+    toDesk.forEach((c, k) => {
+      const i = Math.max(0, onPill.findIndex(x => x.id === c.id)), r = deskOpen[c.deskCard];
+      if (!r) return;
+      const from = dockAt(c, i, Math.max(1, onPill.length));
+      ghosts.push({ key: c.id + "-in", chipId: c.id, cardId: c.deskCard, groups: c.parts, toDesk: true,
+                    x0: from.x, y0: from.y, x1: r.x + 22, y1: r.y + 12, s0: 1, s1: 1.6, delay: k * 40 });
+    });
+    toPill.forEach((c, k) => {
+      const r = deskOpen[c.deskCard];
+      if (!r) return;
+      ghosts.push({ key: c.id + "-out", chipId: c.id, cardId: c.deskCard, groups: c.parts, toDesk: false,
+                    x0: r.x + 22, y0: r.y + 12, x1: dockRight - 70 * (toPill.length - k), y1: 5, s0: 1.6, s1: 1, delay: k * 40 });
+    });
+    flyingBack = toPill.map(c => c.id);
+    flights = ghosts;
+    landedCount = 0;
+  }
+  property var flights: []
+  property int landedCount: 0
+  function landed(g) {
+    if (g.toDesk) DeskState.flash(g.cardId);
+    else flyingBack = flyingBack.filter(id => id !== g.chipId);
+    landedCount += 1;
+    if (landedCount >= flights.length) { flights = []; flyingBack = []; }
+  }
   // What is drawn right now; trails `target` by the content fade.
   property var shown: collapsedSpec
 
@@ -37,8 +91,9 @@ PanelWindow {
   exclusionMode: ExclusionMode.Ignore
   anchors { top: true; left: true; right: true }
   // Fixed while mapped: resizing a mapped layer surface flashed a tall frame.
-  implicitHeight: 720
-  visible: target.tier !== "collapsed" || shape.opacity > 0.001
+  // Full height so chips can fly to cards anywhere on the desktop.
+  implicitHeight: screen ? screen.height : 720
+  visible: target.tier !== "collapsed" || shape.opacity > 0.001 || flights.length > 0
   mask: Region { item: shape; Region { item: dockBridge } }
 
   // While a hover-opened card floats, the spot it lifted off from still counts
@@ -231,5 +286,37 @@ PanelWindow {
   Component {
     id: activitiesCard
     ActivitiesCard {}
+  }
+
+  // ---- the flying chips (one short flight each, 280 ms on the morph curve) ----
+  Repeater {
+    model: view.flights
+    delegate: Item {
+      id: gh
+      required property var modelData
+      property real t: 0
+      x: modelData.x0 + (modelData.x1 - modelData.x0) * t
+      y: modelData.y0 + (modelData.y1 - modelData.y0) * t
+      scale: modelData.s0 + (modelData.s1 - modelData.s0) * t
+      transformOrigin: Item.TopLeft
+      // Into a card: fades as it lands. Back to the pill: fades in as it leaves.
+      opacity: modelData.toDesk ? (t < 0.75 ? 1 : (1 - t) / 0.25) : Math.min(1, t / 0.2)
+      width: ghostRow.implicitWidth + 22
+      height: 26
+      Rectangle {
+        anchors.fill: parent
+        radius: Globals.eyeCandyOff ? 0 : 13
+        color: P.C.bg
+        border.width: 1
+        border.color: P.C.sf
+      }
+      IslandRow { id: ghostRow; anchors.centerIn: parent; groups: gh.modelData.groups }
+      SequentialAnimation {
+        running: true
+        PauseAnimation { duration: gh.modelData.delay }
+        NumberAnimation { target: gh; property: "t"; from: 0; to: 1; duration: 280; easing.type: Easing.BezierSpline; easing.bezierCurve: P.morph }
+        ScriptAction { script: view.landed(gh.modelData) }
+      }
+    }
   }
 }

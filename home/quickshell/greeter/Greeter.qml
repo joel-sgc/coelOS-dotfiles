@@ -1,8 +1,10 @@
 import Quickshell
 import QtQuick
+import Quickshell.Io
 
 import "./backends"
 import "../lock"
+import ".."
 
 // ===== GREETER =====
 // Login screen sharing the lock screen's own visual chrome -- reuses
@@ -177,6 +179,7 @@ Scope {
     }
 
     LockScreen {
+      id: lockScreen
       x: win.targetScreen ? win.targetScreen.x : 0
       y: win.targetScreen ? win.targetScreen.y : 0
       width: win.targetScreen ? win.targetScreen.width : 2256
@@ -202,6 +205,106 @@ Scope {
       onPickUserRequested: (index) => backend.pickUser(index)
       onSessionStepRequested: (delta) => backend.sessionStep(delta)
       onPowerRequested: (action) => root.armOrFirePower(action)
+      hideWordmark: intro.running
+    }
+
+    // ---- boot intro: continue from Plymouth's last frame ----
+    // Plymouth (assets/plymouth-theme, quit with --retain-splash) leaves the COELOS
+    // wordmark centred on flat #282c34 on screen until we draw. Our first frame is
+    // that exact picture; then the flat background dissolves into the greeter and
+    // the wordmark glides into its place on the auth card. Same 730x160 artwork.
+    Item {
+      id: intro
+      property bool running: true
+      readonly property bool candy: !Globals.eyeCandyOff
+      x: win.targetScreen ? win.targetScreen.x : 0
+      y: win.targetScreen ? win.targetScreen.y : 0
+      width: win.targetScreen ? win.targetScreen.width : 2256
+      height: win.targetScreen ? win.targetScreen.height : 1504
+      visible: running
+
+      Rectangle { id: flat; anchors.fill: parent; color: "#282c34" }
+      // No pointer on the splash: after a login this frame stays frozen on
+      // screen while the session starts, cursor and all.
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+        cursorShape: Qt.BlankCursor
+      }
+      Image {
+        id: mark
+        source: Qt.resolvedUrl("../assets/coelos-wordmark.png")
+        // Plymouth: x = W/2 - w/2, y = H/2 - h/2
+        width: 730; height: 160
+        x: Math.floor(intro.width / 2 - 365)
+        y: Math.floor(intro.height / 2 - 80)
+        smooth: true
+      }
+      // ---- outro: back to the boot picture before the session starts ----
+      // The screen switches to the new session right after, and this frame stays
+      // up (frozen) until the compositor draws, so it should look like a splash,
+      // not a stuck login form. desktop/SessionIntro.qml opens on the same picture.
+      function outro() {
+        const t = lockScreen.authWordmark;
+        if (!candy || !t) { flat.opacity = 1; mark.opacity = 1; placeCentred(); running = true; backend.proceed(); return; }
+        const p = t.mapToItem(intro, 0, 0);
+        glide.stop();
+        mark.x = p.x; mark.y = p.y; mark.width = t.width; mark.height = t.height; mark.opacity = 0.85;
+        flat.opacity = 0;
+        running = true;
+        back.start();
+      }
+      function placeCentred() { mark.width = 730; mark.height = 160; mark.x = Math.floor(width / 2 - 365); mark.y = Math.floor(height / 2 - 80); }
+      ParallelAnimation {
+        id: back
+        NumberAnimation { target: flat; property: "opacity"; to: 1; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "x"; to: Math.floor(intro.width / 2 - 365); duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "y"; to: Math.floor(intro.height / 2 - 80); duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "width"; to: 730; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "height"; to: 160; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "opacity"; to: 1; duration: 450 }
+        onFinished: backend.proceed()
+      }
+      // This screen stays on VT1 for next time (lock, log out): once we've left
+      // it, quietly go back to the normal login screen.
+      Timer { id: resetLater; interval: 2000; onTriggered: { intro.running = false; mark.opacity = 1; flat.opacity = 1; intro.placeCentred(); } }
+      Connections {
+        target: backend
+        function onAuthenticated() { intro.outro(); }
+        function onFinished() { resetLater.restart(); }
+      }
+
+      function land() {
+        const t = lockScreen.authWordmark;
+        if (!t || !candy) { running = false; return; }
+        const p = t.mapToItem(intro, 0, 0);
+        glide.toX = p.x; glide.toY = p.y; glide.toW = t.width; glide.toH = t.height;
+        glide.start();
+      }
+      // Wait for the greeter to lay out (and Plymouth's frame to be gone), then go.
+      Timer { running: true; interval: 350; onTriggered: intro.land() }
+      // Tell boot that the login screen is on screen, so Plymouth (which has
+      // already handed the display over) can exit (modules/boot-splash.nix).
+      // Outside greetd the directory doesn't exist and this does nothing.
+      Process {
+        running: true
+        command: ["sh", "-c", "[ -d /run/coel-hub ] && touch /run/coel-hub/greeter-drawn || true"]
+      }
+      ParallelAnimation {
+        id: glide
+        property real toX: 0
+        property real toY: 0
+        property real toW: 128
+        property real toH: 28
+        NumberAnimation { target: flat; property: "opacity"; to: 0; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.4, 0, 1, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "x"; to: glide.toX; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "y"; to: glide.toY; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "width"; to: glide.toW; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "height"; to: glide.toH; duration: 700; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+        NumberAnimation { target: mark; property: "opacity"; to: 0.85; duration: 700 }
+        onFinished: intro.running = false
+      }
     }
   }
 }

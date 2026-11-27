@@ -3,38 +3,50 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import Quickshell.Services.Mpris
 
 // Automatic modes: what you're doing right now, inferred, with a manual override.
+// Design: example/Desktop Board.dc.html ("Seven modes", "who wins").
 //
-//   class      a timed event from a class feed (gcal-url line labelled `class`,
-//              see home/gcal-sync.nix), from lead_minutes before it until it ends
-//   gaming     the focused window is fullscreen and is a game (Hyprland's
-//              contentType "game", or a window class in [modes.gaming] classes)
-//   deep_work  the Pomodoro widget's focus timer is running
-//   normal     none of the above
+//   gaming     focused fullscreen game (Hyprland contentType "game", or a class regex)
+//   class      a timed event from a gcal-url feed labelled `class` is on (0 min lead;
+//              the pill does the warm-up countdown)
+//   deep_work  a Pomodoro is running (its breaks keep the mode), or a calendar block
+//              titled "focus" / "deep work" is on
+//   printing   the printer isn't idle; a finished print counts until the plate is
+//              cleared or 30 min have passed (fed by island/sources/PrinterSource.qml)
+//   music      an Mpris player is playing (5 min of grace after it pauses)
+//   evening    19:00 to 04:00
+//   morning    the default ("default" after 12:00)
 //
-// Exclusive, first match in `order` wins. Each mode's behaviour comes from
-// settings.toml [modes.<name>] over `defaults` below (live: saved edits apply).
-// A manual pick (launcher, `set()`) holds until the inferred mode changes, then
-// automatic resumes; "auto" clears it at once.
+// First match in `order` wins. Per-mode options in settings.toml [modes.<name>].
+// A manual pick holds `until` the inferred mode next changes ("event"), for an
+// hour ("hour"), or until changed again ("forever"); the last two survive reloads
+// (modes.json in the data dir).
 //
-// Read by: NotificationsBackend (dnd -> quiet), the island's ModeSource (chip +
-// glance), the launcher's mode actions. Widgets (step 3) will key off `mode`.
+// Read by: NotificationsBackend (dnd -> quiet), desktop/ (layout recipe + mode chip),
+// the launcher's mode actions.
 Singleton {
   id: modes
 
-  readonly property var order: ["class", "gaming", "deep_work"]
+  readonly property var order: ["gaming", "class", "deep_work", "printing", "music", "evening", "morning"]
   readonly property var defaults: ({
-    "class": { enabled: true, calendars: ["class"], lead_minutes: 5, dnd: true },
     "gaming": { enabled: true, classes: ["^steam_app_\\d+$", "^gamescope$"], dnd: true },
-    "deep_work": { enabled: true, dnd: true },
-    "normal": { dnd: false },
+    "class": { enabled: true, calendars: ["class"], lead_minutes: 0, dnd: true },
+    "deep_work": { enabled: true, blocks: ["focus", "deep work"], dnd: true },
+    "printing": { enabled: true, dnd: false },
+    "music": { enabled: true, dnd: false },
+    "evening": { enabled: true, from: 19, until: 4, dnd: false },
+    "morning": { dnd: false },
   })
   readonly property var info: ({
-    "normal": { label: "Normal", icon: "sparkle", color: "#abb2bf" },
-    "class": { label: "Class", icon: "graduation-cap", color: "#e5c07b" },
-    "gaming": { label: "Gaming", icon: "game-controller", color: "#89ca78" },
-    "deep_work": { label: "Deep work", icon: "brain", color: "#d55fde" },
+    "gaming": { label: "gaming", icon: "game-controller", color: "#d19a66" },
+    "class": { label: "class", icon: "chalkboard-teacher", color: "#61afef" },
+    "deep_work": { label: "deep work", icon: "target", color: "#ef596f" },
+    "printing": { label: "printing", icon: "printer", color: "#2bbac5" },
+    "music": { label: "music", icon: "music-notes", color: "#89ca78" },
+    "evening": { label: "evening", icon: "moon-stars", color: "#d55fde" },
+    "morning": { label: "morning", icon: "sun-horizon", color: "#e5c07b" },
   })
 
   // ---- config ----
@@ -64,57 +76,98 @@ Singleton {
     }
   }
 
+  // The clock. 30 s is plenty: every boundary that matters is minute-grained.
   property real now: Date.now()
   Timer { interval: 30000; repeat: true; running: true; onTriggered: modes.now = Date.now() }
+  function hhmm(ms) { return Qt.formatDateTime(new Date(ms), "hh:mm"); }
 
-  // ---- class: the calendar file gcal-sync writes ----
+  // ---- calendar (gcal-sync's file): classes and focus blocks ----
   readonly property string dataDir: Quickshell.env("COEL_DATA_DIR") || (Quickshell.env("HOME") + "/.local/share/coel")
   property var events: []
   FileView {
     path: modes.dataDir + "/gcal-events.json"
     watchChanges: true
+    printErrors: false
     onFileChanged: reload()
     onLoaded: { try { modes.events = JSON.parse(text()) || []; } catch (e) { modes.events = []; } }
     onLoadFailed: modes.events = []
   }
-  function at(date, hhmm) {
-    const d = date.split("-").map(Number), t = hhmm.split(":").map(Number);
+  function at(date, hm) {
+    const d = date.split("-").map(Number), t = hm.split(":").map(Number);
     return new Date(d[0], d[1] - 1, d[2], t[0], t[1]).getTime();
   }
-  // The class happening now (or starting within lead_minutes): {title, where, start, end} or null.
-  readonly property var classNow: {
-    const c = config["class"], cals = c.calendars || [];
-    const lead = (Number(c.lead_minutes) || 0) * 60000, t = now;
+  function eventNow(match, leadMs) {
     for (const e of events) {
-      if (!e.start || !e.end || cals.indexOf(e.cal) < 0) continue;
+      if (!e.start || !e.end || !match(e)) continue;
       const s = at(e.date, e.start), f = at(e.date, e.end);
-      if (t >= s - lead && t < f) return { title: e.title, where: e.where, start: s, end: f };
+      if (now >= s - leadMs && now < f) return { title: e.title, where: e.where, start: s, end: f };
     }
     return null;
   }
+  readonly property var classNow: {
+    const c = config["class"], cals = c.calendars || [];
+    return eventNow(e => cals.indexOf(e.cal) >= 0, (Number(c.lead_minutes) || 0) * 60000);
+  }
+  readonly property var focusBlockNow: {
+    const words = (config["deep_work"].blocks || []).map(w => String(w).toLowerCase());
+    return eventNow(e => words.some(w => String(e.title).toLowerCase().startsWith(w)), 0);
+  }
 
-  // ---- deep work: the Pomodoro widget's state file ----
-  property bool focusRunning: false
-  property real focusEndAt: 0
+  // ---- Pomodoro (its state file) ----
+  property bool pomoRunning: false
+  property string pomoMode: "focus"
+  property real pomoChangedAt: 0
   FileView {
     path: modes.dataDir + "/pomodoro.json"
     watchChanges: true
+    printErrors: false
     onFileChanged: reload()
     onLoaded: {
       try {
         const p = JSON.parse(text());
-        modes.focusRunning = !!p.running && p.mode === "focus";
-        modes.focusEndAt = p.endAt || 0;
-      } catch (e) { modes.focusRunning = false; }
+        const run = !!p.running, m = p.mode || "focus";
+        if (run !== modes.pomoRunning || m !== modes.pomoMode) modes.pomoChangedAt = Date.now();
+        modes.pomoRunning = run;
+        modes.pomoMode = m;
+      } catch (e) { modes.pomoRunning = false; }
     }
   }
-  readonly property bool focusNow: focusRunning && focusEndAt > now - 60000
+  // A break waiting to be started still counts for 20 min; a reset back to an
+  // idle focus timer ends the mode.
+  readonly property bool pomoNow: pomoRunning || (pomoMode !== "focus" && now - pomoChangedAt < 20 * 60000)
+
+  // ---- printer (set by PrinterSource) ----
+  property string printerStatus: "idle"
+  property string printerWhy: ""
+  // When a print we watched end finished or failed (0: it ended before we were
+  // looking, e.g. the P1S still reports a failure from yesterday).
+  property real printerEndedAt: 0
+  property bool plateCleared: false
+  onPrinterStatusChanged: if (printerStatus !== "idle" && printerStatus !== "finished" && printerStatus !== "failed") plateCleared = false
+  onPrinterEndedAtChanged: plateCleared = false
+  function clearPlate() { plateCleared = true; }
+  readonly property bool printingNow: ["heating", "printing", "paused"].indexOf(printerStatus) >= 0
+    || ((printerStatus === "finished" || printerStatus === "failed") && printerEndedAt > 0
+        && !plateCleared && now - printerEndedAt < 30 * 60000)
+
+  // ---- music (Mpris) ----
+  // (services/Music.qml picks the same way; playerctld is a proxy that mirrors
+  // the real player, so it's skipped.)
+  readonly property var player: {
+    const ps = Mpris.players.values.filter(p => !/playerctld/i.test(p.dbusName || "") && !/playerctld/i.test(p.identity || ""));
+    for (const p of ps) if (p.playbackState === MprisPlaybackState.Playing) return p;
+    return ps.length ? ps[0] : null;
+  }
+  readonly property bool musicPlaying: !!player && player.playbackState === MprisPlaybackState.Playing
+  property real musicStoppedAt: 0
+  onMusicPlayingChanged: if (!musicPlaying) musicStoppedAt = Date.now()
+  readonly property bool musicNow: musicPlaying || (musicStoppedAt > 0 && now - musicStoppedAt < 5 * 60000 && !!player)
 
   // ---- gaming: focused window, re-read on Hyprland focus/fullscreen events ----
   property bool gameRaw: false
   property string gameClass: ""
-  // Debounced both ways: entering needs 2 s of a focused fullscreen game; leaving
-  // needs 30 s without one, so alt-tabbing to Discord doesn't flap the mode.
+  // Debounced: entering needs 2 s of a focused fullscreen game, leaving 30 s
+  // without one, so alt-tabbing doesn't flap the mode.
   property bool gameNow: false
   Timer { id: gameOn; interval: 2000; onTriggered: modes.gameNow = true }
   Timer { id: gameOff; interval: 30000; onTriggered: modes.gameNow = false }
@@ -153,41 +206,88 @@ Singleton {
   }
   Component.onCompleted: activeProc.running = true
 
-  // ---- the mode ----
-  readonly property string inferred: {
-    for (const m of order) {
-      if (!on(m)) continue;
-      if (m === "class" && classNow) return m;
-      if (m === "gaming" && gameNow) return m;
-      if (m === "deep_work" && focusNow) return m;
-    }
-    return "normal";
-  }
-  property string override: ""
-  property string overrideFrom: ""
-  onInferredChanged: if (override !== "" && inferred !== overrideFrom) override = ""
-  // "auto" | "normal" | "class" | "gaming" | "deep_work"
-  function set(m) {
-    if (m === "auto" || !info[m]) { override = ""; return; }
-    overrideFrom = inferred;
-    override = m;
+  readonly property bool eveningNow: {
+    const h = new Date(now).getHours(), c = config["evening"];
+    return h >= Number(c.from) || h < Number(c.until);
   }
 
-  readonly property string mode: override !== "" ? override : inferred
-  readonly property bool manual: override !== ""
-  readonly property bool dnd: !!(config[mode] && config[mode].dnd)
-  readonly property string label: info[mode].label
-  // One short line about why: "COMP348 until 15:45", "steam_app_1091500", "focus session".
-  readonly property string detail: {
-    if (mode === "class" && classNow) return classNow.title + " until " + Qt.formatDateTime(new Date(classNow.end), "hh:mm");
-    if (mode === "gaming" && gameNow) return gameClass;
-    if (mode === "deep_work" && focusNow) return "focus until " + Qt.formatDateTime(new Date(focusEndAt), "hh:mm");
-    return manual ? "set by hand" : "";
+  // ---- the mode ----
+  function active(m) {
+    if (m === "gaming") return gameNow;
+    if (m === "class") return !!classNow;
+    if (m === "deep_work") return pomoNow || !!focusBlockNow;
+    if (m === "printing") return printingNow;
+    if (m === "music") return musicNow;
+    if (m === "evening") return eveningNow;
+    return m === "morning";
   }
+  readonly property string inferred: {
+    for (const m of order) if ((m === "morning" || on(m)) && active(m)) return m;
+    return "morning";
+  }
+
+  // override: {mode, keep: "event"|"hour"|"forever", from (inferred when set), until (ms)}
+  property var override: null
+  property string keep: "event"   // the menu's current choice for the next pick
+  onInferredChanged: if (override && override.keep === "event" && inferred !== override.from) setOverride(null)
+  Timer {
+    interval: 15000; repeat: true
+    running: !!modes.override && modes.override.keep === "hour"
+    onTriggered: if (Date.now() >= modes.override.until) modes.setOverride(null)
+  }
+  function setOverride(o) {
+    override = o;
+    ofile.setText(JSON.stringify(o && o.keep !== "event" ? o : {}));
+  }
+  // "auto" | a mode name. Uses `keep` for how long it holds.
+  function set(m) {
+    if (m === "auto" || !info[m]) { setOverride(null); return; }
+    setOverride({ mode: m, keep: keep, from: inferred, until: keep === "hour" ? Date.now() + 3600000 : 0 });
+  }
+  FileView {
+    id: ofile
+    path: modes.dataDir + "/modes.json"
+    printErrors: false
+    onLoaded: {
+      try {
+        const o = JSON.parse(text());
+        if (o && o.mode && modes.info[o.mode] && (o.keep === "forever" || (o.keep === "hour" && o.until > Date.now())))
+          modes.override = o;
+      } catch (e) {}
+    }
+  }
+
+  readonly property string mode: override ? override.mode : inferred
+  readonly property bool manual: !!override
+  readonly property bool dnd: !!(config[mode] && config[mode].dnd)
+  readonly property string label: mode === "morning" && new Date(now).getHours() >= 12 ? "default" : info[mode].label
+  // Why this mode: "COMP348 Lecture 14:00–15:15", "pomodoro running", ...
+  readonly property string why: whyOf(mode)
+  function whyOf(m) {
+    if (m === "gaming") return gameNow ? "fullscreen · " + gameClass : "";
+    if (m === "class") return classNow ? classNow.title + " " + hhmm(classNow.start) + "–" + hhmm(classNow.end) : "";
+    if (m === "deep_work") return pomoRunning ? "pomodoro running" : pomoNow ? "pomodoro break" : focusBlockNow ? "calendar: " + focusBlockNow.title : "";
+    if (m === "printing") return printerWhy;
+    if (m === "music") return musicNow && player ? (player.trackTitle || "playing") + (player.trackArtist ? " — " + player.trackArtist : "") : "";
+    if (m === "evening") return "after " + String(config["evening"].from).padStart(2, "0") + ":00";
+    return new Date(now).getHours() < 12 ? "before 12:00" : "nothing else on";
+  }
+  function labelOf(m) { return m === "morning" && new Date(now).getHours() >= 12 ? "default" : info[m].label; }
+  // The chip's tail: "auto", or how long the pick holds.
+  readonly property string holdText: !override ? "auto"
+    : override.keep === "hour" ? "until " + hhmm(override.until)
+    : override.keep === "forever" ? "until you change it" : "until things change"
+
+  // Kept for the launcher / step-2 callers.
+  readonly property string detail: why
+
+  // Mode menu (desktop chip, `M`): open on one screen at a time.
+  property bool menuOpen: false
 
   IpcHandler {
     target: "modes"
     function set(m: string): void { modes.set(m); }
-    function get(): string { return modes.mode + (modes.manual ? " (manual)" : "") + (modes.detail ? " · " + modes.detail : ""); }
+    function get(): string { return modes.mode + (modes.manual ? " (" + modes.holdText + ")" : "") + (modes.why ? " · " + modes.why : ""); }
+    function menu(): void { modes.menuOpen = !modes.menuOpen; }
   }
 }

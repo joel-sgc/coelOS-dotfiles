@@ -1,0 +1,16 @@
+--- a/greetd/src/server.rs	2026-11-27 01:31:02.248263393 -0600
++++ b/greetd/src/server.rs	2026-11-27 01:31:02.264795987 -0600
+@@ -233,9 +233,10 @@
+ 
+     let term_mode = get_tty(&config)?;
+ 
+-    if !config.file.terminal.switch {
+-        wait_vt(&term_mode).map_err(|e| format!("unable to wait VT: {}", e))?;
+-    }
++    // CoelOS session hosts (modules/session-hub.nix): with `switch = false` an
++    // idle host must neither switch to its VT nor wait for it to be shown; the
++    // hub activates the session's VT itself once a session starts there.
++    let _ = wait_vt;
+ 
+     let ctx = Rc::new(Context::new(
+         config.file.default_session.command,

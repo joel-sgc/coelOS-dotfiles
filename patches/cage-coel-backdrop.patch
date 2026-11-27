@@ -1,0 +1,236 @@
+--- a/cage.c	2026-11-27 12:10:31.887219055 -0600
++++ b/cage.c	2026-11-27 12:41:05.210743346 -0600
+@@ -377,6 +377,12 @@
+ 
+ 	server.scene_output_layout = wlr_scene_attach_output_layout(server.scene, server.output_layout);
+ 
++	/* CoelOS: a #282c34 backdrop (the boot splash's colour) under everything,
++	 * instead of black, for the moment before the greeter's first frame. */
++	const float coel_bg[4] = {0x28 / 255.0f, 0x2c / 255.0f, 0x34 / 255.0f, 1.0f};
++	wlr_scene_rect_create(&server.scene->tree, 16384, 16384, coel_bg);
++	coel_splash_init(&server);
++
+ 	struct wlr_compositor *compositor = wlr_compositor_create(server.wl_display, 6, server.renderer);
+ 	if (!compositor) {
+ 		wlr_log(WLR_ERROR, "Unable to create the wlroots compositor");
+--- a/output.c	2026-11-27 12:10:31.887219055 -0600
++++ b/output.c	2026-11-27 12:41:36.471613447 -0600
+@@ -35,6 +35,9 @@
+ #include <wlr/util/region.h>
+ 
+ #include "output.h"
++
++#include <stdio.h>
++#include <wlr/interfaces/wlr_buffer.h>
+ #include "seat.h"
+ #include "server.h"
+ #include "view.h"
+@@ -205,6 +208,10 @@
+ 
+ 	output->wlr_output->data = NULL;
+ 
++	if (output->coel_splash) {
++		wlr_scene_node_destroy(&output->coel_splash->node);
++	}
++
+ 	wl_list_remove(&output->destroy.link);
+ 	wl_list_remove(&output->commit.link);
+ 	wl_list_remove(&output->request_state.link);
+@@ -231,6 +238,104 @@
+ 	output_destroy(output);
+ }
+ 
++/* CoelOS: the boot splash's last picture (the COELOS wordmark centred on the
++ * backdrop), so the first frame after Plymouth is identical to it. The image is
++ * raw premultiplied ARGB8888 at COEL_CAGE_SPLASH, COEL_CAGE_SPLASH_W x _H. */
++struct coel_raw_buffer {
++	struct wlr_buffer base;
++	void *data;
++	size_t stride;
++};
++
++static void
++coel_raw_destroy(struct wlr_buffer *wlr_buffer)
++{
++	struct coel_raw_buffer *buf = wl_container_of(wlr_buffer, buf, base);
++	free(buf->data);
++	free(buf);
++}
++
++static bool
++coel_raw_begin(struct wlr_buffer *wlr_buffer, uint32_t flags, void **data, uint32_t *format, size_t *stride)
++{
++	struct coel_raw_buffer *buf = wl_container_of(wlr_buffer, buf, base);
++	if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE) {
++		return false;
++	}
++	*data = buf->data;
++	*format = 0x34325241; /* DRM_FORMAT_ARGB8888 ('AR24'); cage doesn't link libdrm */
++	*stride = buf->stride;
++	return true;
++}
++
++static void
++coel_raw_end(struct wlr_buffer *wlr_buffer)
++{
++}
++
++static const struct wlr_buffer_impl coel_raw_impl = {
++	.destroy = coel_raw_destroy,
++	.begin_data_ptr_access = coel_raw_begin,
++	.end_data_ptr_access = coel_raw_end,
++};
++
++void
++coel_splash_init(struct cg_server *server)
++{
++	server->coel_splash = wlr_scene_tree_create(&server->scene->tree);
++	server->coel_splash_buf = NULL;
++	const char *path = getenv("COEL_CAGE_SPLASH");
++	const char *ws = getenv("COEL_CAGE_SPLASH_W");
++	const char *hs = getenv("COEL_CAGE_SPLASH_H");
++	if (!path || !ws || !hs) {
++		return;
++	}
++	int width = atoi(ws), height = atoi(hs);
++	if (width <= 0 || height <= 0) {
++		return;
++	}
++	size_t size = (size_t)width * height * 4;
++	void *data = malloc(size);
++	FILE *f = fopen(path, "rb");
++	if (!data || !f || fread(data, 1, size, f) != size) {
++		wlr_log(WLR_ERROR, "Cannot read the splash image %s", path);
++		free(data);
++		if (f) {
++			fclose(f);
++		}
++		return;
++	}
++	fclose(f);
++	struct coel_raw_buffer *buf = calloc(1, sizeof(*buf));
++	if (!buf) {
++		free(data);
++		return;
++	}
++	wlr_buffer_init(&buf->base, &coel_raw_impl, width, height);
++	buf->data = data;
++	buf->stride = (size_t)width * 4;
++	server->coel_splash_buf = &buf->base;
++}
++
++/* Centre a copy of the wordmark on the output whose layout box is given.
++ * Integer-rounded like Plymouth's script and the greeter: W/2 - w/2. */
++void
++coel_splash_place(struct cg_output *output, int x, int y, int width, int height)
++{
++	struct cg_server *server = output->server;
++	if (!server->coel_splash_buf) {
++		return;
++	}
++	if (!output->coel_splash) {
++		output->coel_splash = wlr_scene_buffer_create(server->coel_splash, server->coel_splash_buf);
++		if (!output->coel_splash) {
++			return;
++		}
++	}
++	int bw = server->coel_splash_buf->width, bh = server->coel_splash_buf->height;
++	wlr_scene_node_set_position(&output->coel_splash->node, x + width / 2 - bw / 2, y + height / 2 - bh / 2);
++}
++
+ void
+ handle_new_output(struct wl_listener *listener, void *data)
+ {
+@@ -311,10 +416,29 @@
+ 			wlr_output->scale);
+ 	}
+ 
++	/* CoelOS: the wordmark goes where this output starts out in scene
++	 * coordinates (0,0 until it joins the layout below), sized by the mode
++	 * about to be set. */
++	if (state.committed & WLR_OUTPUT_STATE_MODE && state.mode) {
++		coel_splash_place(output, 0, 0, state.mode->width, state.mode->height);
++	} else {
++		coel_splash_place(output, 0, 0, wlr_output->width, wlr_output->height);
++	}
++
++	/* CoelOS: show the scene (the backdrop above) in the modeset itself;
++	 * otherwise wlroots fills the first frame with black. */
++	if (!wlr_scene_output_build_state(output->scene_output, &state, NULL)) {
++		wlr_log(WLR_DEBUG, "Could not render the first frame for %s", wlr_output->name);
++	}
++
+ 	wlr_log(WLR_DEBUG, "Enabling new output %s", wlr_output->name);
+ 	if (wlr_output_commit_state(wlr_output, &state)) {
+ 		output_layout_add_auto(output);
++		struct wlr_box box;
++		wlr_output_layout_get_box(output->server->output_layout, wlr_output, &box);
++		coel_splash_place(output, box.x, box.y, box.width, box.height);
+ 	}
++	wlr_output_state_finish(&state);
+ 
+ 	view_position_all(output->server);
+ 	update_output_manager_config(output->server);
+--- a/seat.c	2026-11-27 12:26:26.249403231 -0600
++++ b/seat.c	2026-11-27 12:26:26.267297769 -0600
+@@ -126,11 +126,11 @@
+ 	}
+ 	wlr_seat_set_capabilities(seat->seat, caps);
+ 
+-	/* Hide cursor if the seat doesn't have pointer capability. */
++	/* CoelOS: no pointer of cage's own. It used to appear on the bare backdrop
++	 * right after the boot splash; the client sets its own cursor once the
++	 * pointer enters its surface. */
+ 	if ((caps & WL_SEAT_CAPABILITY_POINTER) == 0) {
+ 		wlr_cursor_unset_image(seat->cursor);
+-	} else {
+-		wlr_cursor_set_xcursor(seat->cursor, seat->xcursor_manager, DEFAULT_XCURSOR);
+ 	}
+ }
+ 
+--- a/server.h	2026-11-27 12:41:05.182812252 -0600
++++ b/server.h	2026-11-27 12:41:05.210314780 -0600
+@@ -42,6 +42,9 @@
+ 	struct wlr_scene_output_layout *scene_output_layout;
+ 
+ 	struct wlr_scene *scene;
++	/* CoelOS: the boot wordmark drawn over the backdrop until a view maps. */
++	struct wlr_scene_tree *coel_splash;
++	struct wlr_buffer *coel_splash_buf;
+ 	/* Includes disabled outputs; depending on the output_mode
+ 	 * some outputs may be disabled. */
+ 	struct wl_list outputs; // cg_output::link
+--- a/output.h	2026-11-27 12:41:05.186809119 -0600
++++ b/output.h	2026-11-27 12:41:05.211712458 -0600
+@@ -11,6 +11,7 @@
+ 	struct cg_server *server;
+ 	struct wlr_output *wlr_output;
+ 	struct wlr_scene_output *scene_output;
++	struct wlr_scene_buffer *coel_splash;
+ 
+ 	struct wl_listener commit;
+ 	struct wl_listener request_state;
+@@ -20,6 +21,9 @@
+ 	struct wl_list link; // cg_server::outputs
+ };
+ 
++void coel_splash_init(struct cg_server *server);
++void coel_splash_place(struct cg_output *output, int x, int y, int width, int height);
++
+ void handle_output_manager_apply(struct wl_listener *listener, void *data);
+ void handle_output_manager_test(struct wl_listener *listener, void *data);
+ void handle_output_layout_change(struct wl_listener *listener, void *data);
+--- a/view.c	2026-11-27 12:41:05.190805985 -0600
++++ b/view.c	2026-11-27 12:41:05.211022969 -0600
+@@ -152,6 +152,11 @@
+ 		goto fail;
+ 	view->scene_tree->node.data = view;
+ 
++	/* CoelOS: the client's first frame takes over from the boot wordmark. */
++	if (view->server->coel_splash) {
++		wlr_scene_node_set_enabled(&view->server->coel_splash->node, false);
++	}
++
+ 	view->wlr_surface = surface;
+ 	surface->data = view;
+ 

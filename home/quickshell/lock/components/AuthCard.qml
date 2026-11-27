@@ -15,6 +15,9 @@ import "../../sysPanel/Phosphor.js" as Phosphor
 // backend wired in yet).
 Item {
   id: root
+  // The greeter's intro (greeter/Greeter.qml) lands the boot logo on this one.
+  property bool hideWordmark: false
+  readonly property Item wordmarkItem: wordmark
 
   property color fgColor: "#abb2bf"
   property color brightColor: "#d7dae0"
@@ -471,12 +474,14 @@ Item {
       // new dependency disproportionate to this pass. Revisit if the
       // plain rendering doesn't read well once screenshot-checked.
       Image {
+        id: wordmark
         source: Qt.resolvedUrl("../../assets/coelos-wordmark.png")
         sourceSize.height: 28
         fillMode: Image.PreserveAspectFit
         Layout.preferredWidth: 128
         Layout.preferredHeight: 28
-        opacity: 0.85
+        // Hidden while the greeter's intro flies the boot logo into this spot.
+        opacity: root.hideWordmark ? 0 : 0.85
       }
     }
   }

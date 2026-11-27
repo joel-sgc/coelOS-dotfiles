@@ -18,7 +18,9 @@ import "Parts.js" as P
 // printer 50, pomodoro 60, music 70, casting 80, vpn 90, phone battery 100.
 // A glance/interrupt is
 //   { id, parts: [part...] (one per group), accent, ms, drop: Component|null,
-//     source, activate: function|null, force: bool (show even during DND) }
+//     source, activate: function|null, force: bool (show even during DND),
+//     cardId: the desktop card it's about (skipped while that card is on screen) }
+// Chips may carry `deskCard` too: the desktop card that takes over from them.
 Scope {
   id: engine
 
@@ -47,7 +49,13 @@ Scope {
   readonly property bool cardOpen: cardId !== "" && spec.tier === "card"
 
   // ---- glances ----
+  // Cards the focused screen's empty desktop is showing (set by that screen's
+  // IslandView). A glance about one of them is skipped; the card flashes instead.
+  property var handedCards: []
+  signal cardFlash(string cardId)
+
   function glance(g) {
+    if (g.cardId && handedCards.indexOf(g.cardId) >= 0) { cardFlash(g.cardId); return; }
     held = held.filter(q => q.id !== g.id);
     // `force`: a glance that must show even during DND (e.g. the mode change
     // that just turned DND on).
@@ -174,7 +182,13 @@ Scope {
 
   // ---- what to show ----
   // groups: row content; rowKey/dropKey change => content cross-fades.
-  readonly property var spec: {
+  readonly property var spec: build(chips)
+  // The same, with some chips left out: a screen whose empty desktop shows those
+  // activities' cards drops them from its pill (Desktop Board "the travel").
+  function specWithout(chipIds) {
+    return chipIds.length ? build(chips.filter(c => chipIds.indexOf(c.id) < 0)) : spec;
+  }
+  function build(chips) {
     const shown = chips.slice(0, 2), more = chips.length - shown.length;
     const ambGroups = [];
     shown.forEach((c, i) => {

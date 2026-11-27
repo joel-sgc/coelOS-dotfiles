@@ -9,6 +9,7 @@ import "./buttons"
 import "./dropdowns"
 import "../island"
 import "../island/sources"
+import "../desktop/data"
 
 // One PanelWindow per screen, same Variants-over-Quickshell.screens pattern
 // as Border.qml (which already did this) -- Panel used to be a single bare
@@ -95,11 +96,22 @@ Scope {
   IslandEngine {
     id: island
     dnd: panelScope.notifications ? panelScope.notifications.quiet : false
-    sources: [printerSource, assistantSource, modeSource, demoSource]
+    sources: [printerSource, assistantSource, calendarSource, musicSource, demoSource]
+  }
+  // A glance the desktop made redundant: flash its card instead.
+  Connections {
+    target: island
+    function onCardFlash(cardId) { DeskState.flash(cardId); }
+  }
+  // The greeting, when it lands on windows: one 5 s glance (desktop/Greeting.qml).
+  Connections {
+    target: DeskState
+    function onGreetGlance(parts) { island.glance({ id: "greeting", ms: 5000, accent: "#e5c07b", force: true, parts: parts }); }
   }
   PrinterSource { id: printerSource; engine: island }
   AssistantSource { id: assistantSource; engine: island }
-  ModeSource { id: modeSource; engine: island }
+  CalendarSource { id: calendarSource; engine: island }
+  MusicSource { id: musicSource; engine: island }
   DemoSource { id: demoSource; engine: island }
 
   // coel-ask-screen (scripts/coel-ask-screen.sh) calls these; keep the names.
@@ -112,8 +124,8 @@ Scope {
   }
 
   // Mock states for the hardcoded-UI pass:
-  //   island demo print|pause|fault|fail|done|clear     (printer)
-  //   island demo music|music-change|cal|rec|clear-demo (extra chips)
+  //   island demo print|heat|pause|fault|fail|done|clear|live (printer; live = back to the real one)
+  //   island demo rec|clear-demo                          (recording chip; no real source yet)
   //   island demo ai|ai-done|ai-fail                     (assistant)
   IpcHandler {
     target: "island"
@@ -121,7 +133,7 @@ Scope {
       if (what === "ai") assistantSource.working();
       else if (what === "ai-done") assistantSource.done("Clone the key before the loop, then self.items.remove(&k)");
       else if (what === "ai-fail") assistantSource.fail("claude failed");
-      else if (["music", "music-change", "cal", "rec"].indexOf(what) >= 0) demoSource.demo(what);
+      else if (what === "rec") demoSource.demo(what);
       else if (what === "clear-demo") demoSource.demo("clear");
       else printerSource.demo(what);
     }
@@ -260,6 +272,8 @@ Scope {
           barHeight: root.barHeight
           dockRight: clock.x - 4
           fullscreen: !!(root.barMonitor && root.barMonitor.activeWorkspace && root.barMonitor.activeWorkspace.hasFullscreen)
+          emptyWs: !!(root.barMonitor && root.barMonitor.activeWorkspace && root.barMonitor.activeWorkspace.toplevels.values.length === 0)
+          monitorFocused: Hyprland.focusedMonitor === root.barMonitor
         }
 
         Buttons {
