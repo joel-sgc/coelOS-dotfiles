@@ -22,6 +22,15 @@ const RECIPE = {
   gaming: { hero: null, rail: [["phone", "S"], ["printer", "S"], ["music", "S"]], shelf: [] },
 };
 
+// The cards a mode's recipe puts on the desktop (hero, then rail): the mode's
+// default pins (modes/Modes.qml pinnedCards), so they come back each time the
+// mode begins even if you minimized them.
+function recipeCards(mode) {
+  const r = RECIPE[mode];
+  if (!r) return [];
+  return (r.hero ? [r.hero[0]] : []).concat(r.rail.map(e => e[0]));
+}
+
 // Live-activity cards that get a small size in the rail; the rest go compact.
 var SMALL = ["printer", "music", "phone"];
 
@@ -31,7 +40,8 @@ var SMALL = ["printer", "music", "phone"];
 const ORDER = ["next", "weather", "kanban", "pomo", "printer", "music", "phone", "server", "calendar"];
 
 // ctx: { mode, available: {id: true} (cards that exist / have something to show),
-//        printerActive, musicActive, user: { min: {id: true}, pin: {id: {where, size}} } }
+//        printerActive, musicActive, modePinned: [id] (settings.toml
+//        [modes.<mode>] pinned), user: { min: {id: true}, pin: {id: {where, size}} } }
 // returns { hero: spec|null, rail: [spec], shelf: [spec] }, spec = { id, size, flavor, pinned, mine }
 function layout(ctx) {
   const r = RECIPE[ctx.mode] || RECIPE.morning;
@@ -48,6 +58,19 @@ function layout(ctx) {
   let rail = r.rail.filter(e => present(e[0])).map(e => ({ id: e[0], size: e[1], flavor: e[2] || "" }));
   let shelf = r.shelf.filter(present).map(id => ({ id: id, size: "M", flavor: "" }));
   const all = () => [hero].concat(rail, shelf).filter(Boolean);
+
+  // the mode's own pins (settings.toml): always on the desktop in this mode.
+  // Where the recipe already shows one it stays put; otherwise it goes to the
+  // top of the rail, ahead of the rail's 4-card limit. Your pins and minimizes
+  // below still apply on top (DeskState un-minimizes these on entering the mode).
+  const modePinned = (ctx.modePinned || []).filter(id => ORDER.indexOf(id) >= 0 && present(id));
+  for (const id of modePinned.slice().reverse()) {
+    if (hero && hero.id === id) { hero.modePinned = true; continue; }
+    const inRail = rail.find(s => s.id === id);
+    if (inRail) { inRail.modePinned = true; rail = [inRail].concat(rail.filter(s => s !== inRail)); continue; }
+    shelf = shelf.filter(s => s.id !== id);
+    rail.unshift({ id: id, size: SMALL.indexOf(id) >= 0 ? "S" : "C", flavor: "", modePinned: true });
+  }
 
   // pins: a pinned card keeps its place and size whatever the mode
   for (const id in (user.pin || {})) {

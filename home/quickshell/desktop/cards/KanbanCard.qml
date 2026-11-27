@@ -6,8 +6,9 @@ import "../../modes"
 import ".."
 import "../data"
 
-// Kanban: F full (760 px, three columns), C compact (the doing column, or in
-// class the cards tagged with the class's course code), M minimized.
+// Kanban: F full (760 px, three columns), C compact (every state stacked, in
+// board order: the first todos, all doing, the latest done; in class only cards
+// tagged with the class's course code), M minimized.
 // Keys: h/j/k/l move, H/L move the card, space advance, e/enter edit, a/n new,
 // x delete, f filter (cycles tags; in class it clears the class filter).
 // Mouse: click a row to select it, click its box to advance, double-click to edit.
@@ -42,19 +43,40 @@ CardFrame {
   }
   onFlavorChanged: { classFilterOff = false; userFilter = ""; }
 
-  // Compact: doing, or (filtered) doing + todo.
-  readonly property var compactRows: {
-    const doing = rowsOf(1).map(c => ({ c: c, col: 1 }));
-    return filter === "" ? doing : doing.concat(rowsOf(0).map(c => ({ c: c, col: 0 })));
+  // Compact: todo (the first few), doing (all), done (the latest few, newest
+  // first), each with its full count and how many didn't fit; all three always
+  // show, empty or not. compactRows is them flattened, which is what j/k and
+  // the selection walk.
+  readonly property int compactTodoMax: 5
+  readonly property int compactDoneMax: 3
+  readonly property var compactSections: {
+    const doing = rowsOf(1), todo = rowsOf(0), done = rowsOf(2);
+    return [
+      { col: 0, label: "todo", rows: todo.slice(0, compactTodoMax), total: todo.length },
+      { col: 1, label: "doing", rows: doing, total: doing.length },
+      { col: 2, label: "done", rows: done.slice(-compactDoneMax).reverse(), total: done.length },
+    ];
   }
+  readonly property var compactRows: {
+    const out = [];
+    for (const sec of compactSections) for (const c of sec.rows) out.push({ c: c, col: sec.col });
+    return out;
+  }
+  function compactIndex(cardId) { return compactRows.findIndex(r => r.c.id === cardId); }
 
   // ----- selection -----
   property int kcol: size === "F" ? 0 : 1
   property int krow: 0
-  function listFor(col) { return size === "F" ? rowsOf(col) : (col === 1 ? compactRows.map(r => r.c) : []); }
   function current() {
     const l = size === "F" ? rowsOf(kcol) : compactRows.map(r => r.c);
     return l.length ? l[Math.min(krow, l.length - 1)] : null;
+  }
+  // Compact: keep the selection on a card that just changed column (it moves to
+  // another section). Full view keeps its column, as before.
+  function follow(cardId) {
+    if (size === "F") return;
+    const i = compactIndex(cardId);
+    if (i >= 0) krow = i;
   }
   function clampRow() {
     const n = size === "F" ? rowsOf(kcol).length : compactRows.length;
@@ -64,15 +86,15 @@ CardFrame {
   function handleKey(e) {
     const t = e.text, cur = current();
     if (t === "H" || t === "L") {
-      if (cur) { const at = kb.find(kb.columns, cur.id); if (at) kb.moveCard(cur.id, Math.max(0, Math.min(2, at.col + (t === "L" ? 1 : -1))), 1e9); }
+      if (cur) { const at = kb.find(kb.columns, cur.id); if (at) kb.moveCard(cur.id, Math.max(0, Math.min(2, at.col + (t === "L" ? 1 : -1))), 1e9); follow(cur.id); }
     }
     else if (size === "F" && (t === "h" || e.key === Qt.Key_Left)) { kcol = Math.max(0, kcol - 1); clampRow(); }
     else if (size === "F" && (t === "l" || e.key === Qt.Key_Right)) { kcol = Math.min(2, kcol + 1); clampRow(); }
     else if (t === "j" || e.key === Qt.Key_Down) { krow += 1; clampRow(); }
     else if (t === "k" || e.key === Qt.Key_Up) krow = Math.max(0, krow - 1);
-    else if (e.key === Qt.Key_Space && cur) kb.advance(cur.id);
+    else if (e.key === Qt.Key_Space && cur) { kb.advance(cur.id); follow(cur.id); }
     else if (t === "x" && cur) { kb.deleteCard(cur.id); clampRow(); }
-    else if (t === "a" || t === "n") kb.openNew(size === "F" ? kcol : 1);
+    else if (t === "a" || t === "n") kb.openNew(size === "F" ? kcol : (cur ? compactRows[Math.min(krow, compactRows.length - 1)].col : 0));
     else if ((t === "e" || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && cur) kb.openEdit(cur);
     else if (t === "f") cycleFilter();
     else return false;
@@ -80,7 +102,7 @@ CardFrame {
   }
 
   title: "kanban"
-  sub: filter !== "" ? "#" + filter : (size === "F" ? "~/dots/shell" : "doing")
+  sub: filter !== "" ? "#" + filter : "~/dots/shell"
   summary: kb.doingCount + " doing · " + kb.doneCount + "/" + kb.total + " done"
   minimized: size === "M"
 
@@ -136,8 +158,8 @@ CardFrame {
       anchors.leftMargin: 30
       onClicked: {
         card.kcol = card.size === "F" ? tr.col : 1;
-        const l = card.size === "F" ? card.rowsOf(tr.col) : card.compactRows.map(r => r.c);
-        card.krow = Math.max(0, l.findIndex(x => x.id === tr.c.id));
+        card.krow = Math.max(0, card.size === "F" ? card.rowsOf(tr.col).findIndex(x => x.id === tr.c.id)
+                                                  : card.compactIndex(tr.c.id));
       }
       onDoubleClicked: card.kb.openEdit(tr.c)
     }
@@ -184,22 +206,44 @@ CardFrame {
   }
 
   // ----- compact -----
-  Box {
+  ColumnLayout {
     visible: card.size !== "F"
     Layout.fillWidth: true
-    padTop: 12; padSide: 4; padBottom: 6
-    legend: card.filter !== "" ? card.filter : "doing"
-    legendColor: Pal.yellow
-    rightLegend: String(card.compactRows.length)
-    Mono { visible: card.compactRows.length === 0; Layout.leftMargin: 6; text: card.filter !== "" ? "nothing tagged #" + card.filter : "nothing in progress"; color: Pal.muted }
+    spacing: 10
     Repeater {
-      model: card.compactRows.length
-      TaskRow {
+      model: 3
+      Box {
+        id: secBox
         required property int index
-        readonly property var r: card.compactRows[index] || ({ c: {}, col: 1 })
-        c: r.c
-        col: r.col
-        selected: card.krow === index
+        readonly property var sec: card.compactSections[index]
+        // Rows before this section in compactRows (for the selection).
+        readonly property int offset: {
+          let n = 0;
+          for (let i = 0; i < index; i++) n += card.compactSections[i].rows.length;
+          return n;
+        }
+        Layout.fillWidth: true
+        padTop: 12; padSide: 4; padBottom: 6
+        legend: sec.label
+        legendColor: sec.col === 1 ? Pal.yellow : sec.col === 2 ? Pal.green : Pal.muted
+        rightLegend: String(sec.total)
+        Mono { visible: secBox.sec.total === 0; Layout.leftMargin: 6; text: "—"; color: Pal.muted }
+        Repeater {
+          model: secBox.sec.rows.length
+          TaskRow {
+            required property int index
+            c: secBox.sec.rows[index] || ({})
+            col: secBox.sec.col
+            selected: card.krow === secBox.offset + index
+          }
+        }
+        Mono {
+          visible: secBox.sec.total > secBox.sec.rows.length
+          Layout.leftMargin: 34
+          text: "+" + (secBox.sec.total - secBox.sec.rows.length) + (secBox.sec.col === 2 ? " earlier" : " more")
+          color: Pal.muted
+          font.pixelSize: 11
+        }
       }
     }
   }

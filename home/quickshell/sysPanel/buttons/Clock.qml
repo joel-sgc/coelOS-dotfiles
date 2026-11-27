@@ -23,6 +23,8 @@ Item {
   id: clockRoot
 
   property bool active: false
+  // The dropdown grows out of this button (Popup.qml reads root.popupOriginX).
+  onActiveChanged: if (active) root.popupOriginX = mapToItem(null, width / 2, 0).x
   signal clicked()
 
   implicitWidth: label.implicitWidth + 24

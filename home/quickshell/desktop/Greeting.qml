@@ -23,7 +23,7 @@ import "data"
 Scope {
   id: g
   property var screen: null
-  readonly property var deskOpen: (screen && DeskState.open[screen.name]) || ({})
+  readonly property var deskOpen: (screen && DeskState.openRects[screen.name]) || ({})
   readonly property var monitor: screen ? Hyprland.monitorFor(screen) : null
   readonly property bool emptyWs: !!(monitor && monitor.activeWorkspace && monitor.activeWorkspace.toplevels.values.length === 0)
   readonly property bool candy: !Globals.eyeCandyOff

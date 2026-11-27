@@ -209,6 +209,19 @@ local grid = setmetatable({}, { __index = function(_, k)
 end })
 hl.animation({ leaf = "workspaces", enabled = true, speed = SLIDE_SPEED, bezier = "default", style = "slide" })
 
+-- Windows: quick and exact, never springy. Things arriving decelerate into place
+-- (coelIn), things leaving accelerate away and are quicker still (coelOut). Speeds
+-- are tenths of a second. Layers aren't set here: Quickshell animates its own
+-- surfaces (and opts them out of Hyprland's with no_anim rules).
+hl.curve("coelIn", { type = "bezier", points = { {0.2, 0}, {0, 1} } })
+hl.curve("coelOut", { type = "bezier", points = { {0.4, 0}, {1, 1} } })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.5, bezier = "coelIn", style = "popin 90%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.6, bezier = "coelOut", style = "popin 95%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 3, bezier = "coelIn" })
+hl.animation({ leaf = "fadeIn", enabled = true, speed = 2.5, bezier = "coelIn" })
+hl.animation({ leaf = "fadeOut", enabled = true, speed = 1.6, bezier = "coelOut" })
+hl.animation({ leaf = "border", enabled = true, speed = 3, bezier = "coelIn" })
+
 -- Every arrival, however it happened (key, swipe, panel click, window carried
 -- along), updates the remembered column, so leaving a row always records where
 -- you were.
@@ -493,7 +506,7 @@ hl.window_rule({
 
 ------------------------------------------------------------------ layer rules
 -- See home/quickshell/sysPanel/Popup.qml's WlrLayershell.namespace comment:
--- the popup slides itself, so Hyprland's default layer fade must stay off.
+-- the popup animates itself (grows from its button), so Hyprland's default layer fade must stay off.
 hl.layer_rule({
     name    = "quickshell-popup-no-anim",
     match   = { namespace = "coel-sys-popup" },

@@ -91,6 +91,18 @@ Scope {
     function stop(): void { panelScope.screenshotting = false; }
   }
 
+  // `ipc call panel open network` (bluetooth, network, audio, system, power,
+  // calendar, notifications) on the focused monitor's bar; `close` shuts it.
+  IpcHandler {
+    target: "panel"
+    function open(name: string): void { panelScope.openPanelRequested(panelScope.focusedScreen(), name); }
+    function close(): void { panelScope.openPanelRequested(panelScope.focusedScreen(), ""); }
+  }
+  function focusedScreen() {
+    const m = Hyprland.focusedMonitor;
+    return Quickshell.screens.find(s => m && s.name === m.name) || Quickshell.screens[0];
+  }
+
   // ---- live-activity island (../island/) ----
   // One engine for every bar; each screen's IslandView below mirrors it.
   IslandEngine {
@@ -178,6 +190,9 @@ Scope {
         // one its own (there can be any number of them, unlike the fixed
         // bluetooth/network/audio/system buttons).
         property var trayMenuItem: null
+        // Centre x (in this bar window) of the button whose popup is opening:
+        // Popup.qml grows the dropdown out of that point. Set by the button.
+        property real popupOriginX: width / 2
 
         Connections {
           target: panelScope

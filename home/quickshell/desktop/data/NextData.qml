@@ -41,7 +41,7 @@ Singleton {
   readonly property var events: CalendarData.all
     .filter(e => e.start && e.end && deadlineCals.indexOf(e.cal) < 0)
     .map(e => ({ title: e.title, where: e.where || "", cal: e.cal, start: at(e.date, e.start), end: at(e.date, e.end),
-                 isClass: e.cal === "class", color: CalendarData.colorOf(e.cal) }))
+                 isClass: e.cal === "class", color: CalendarData.colorOf(e) }))
     .sort((a, b) => a.start - b.start)
   readonly property var today: events.filter(e => daysFrom(e.start) === 0)
   readonly property bool free: today.length === 0

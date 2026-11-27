@@ -83,16 +83,30 @@ PanelWindow {
   // name as one it inherits is a collision, not an override.
   default property alias content: contentContainer.data
 
-  // 0 = tucked away above the bar, 1 = fully out. The window starts at the bar's
-  // bottom edge and clips the frame, so it slides out from behind the bar at its
-  // full size; it stays mapped until the slide back up has finished.
+  // 0 = closed, 1 = fully open. The dropdown grows out of the bar button that
+  // opened it: scaled up from that point on its top edge (85% -> 100%) while
+  // fading in, decelerating; closing shrinks it back into the button, quicker
+  // and accelerating. It stays mapped until the close has finished.
   property real slide: open ? 1 : 0
   Behavior on slide {
     enabled: !Globals.eyeCandyOff
-    NumberAnimation { duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] }
+    NumberAnimation {
+      duration: popupRoot.open ? 220 : 150
+      easing.type: Easing.BezierSpline
+      easing.bezierCurve: popupRoot.open ? [0.2, 0, 0, 1, 1, 1] : [0.4, 0, 1, 1, 1, 1]
+    }
   }
   // Space between the bar and the open popup.
   readonly property int gap: 8
+
+  // Where the button is, in this popup's frame: the bar spans the screen from
+  // x = 0, and this window sits centred or `rightMargin` from the right edge.
+  readonly property real originX: {
+    const bar = barWindow ? barWindow.popupOriginX : 0;
+    const sw = screen ? screen.width : 0;
+    const left = centerHorizontally ? (sw - frame.width) / 2 : sw - rightMargin - frame.width;
+    return Math.max(12, Math.min(frame.width - 12, bar - left));
+  }
 
   visible: open || slide > 0
   // Only the frame takes clicks, never the transparent strip above it.
@@ -136,7 +150,14 @@ PanelWindow {
     implicitHeight: contentContainer.childrenRect.height + 20
     width: implicitWidth
     height: implicitHeight
-    y: popupRoot.gap - (1 - popupRoot.slide) * (height + popupRoot.gap)
+    y: popupRoot.gap - (1 - popupRoot.slide) * 6
+    opacity: Math.min(1, popupRoot.slide * 1.6)
+    transform: Scale {
+      origin.x: popupRoot.originX
+      origin.y: 0
+      xScale: 0.85 + 0.15 * popupRoot.slide
+      yScale: 0.85 + 0.15 * popupRoot.slide
+    }
 
     color: "#282c34"
     radius: Globals.eyeCandyOff ? 0 : 12

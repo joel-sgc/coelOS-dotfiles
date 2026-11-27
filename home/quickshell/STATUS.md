@@ -43,6 +43,11 @@ the config root, not inside their feature folder.
 
 ## QML gotchas (each bit us live)
 
+- A property and a function with the same name: the property silently wins and calls fail
+  with "is not a function" (DeskState had `open` as both; the shelf's [+] broke).
+- `sed -i` (or anything that replaces a file instead of writing it in place) silently stops
+  hot reload of that file: the watcher stays on the old inode. Edit in place; to recover, make a
+  real change to shell.qml (an unchanged rewrite doesn't reload).
 - `.qmltypes` `Method` entries aren't proof of invokability: `SystemTrayItem`/`QsMenuEntry.
 sendTriggered()` and `WlSessionLock.unlock()` threw or hung. Use `entry.triggered()` and
   `sessionLock.locked = false`. Trust a live TypeError over metadata.
@@ -181,7 +186,7 @@ printing > music > evening > morning ("default" after 12:00).
   restart; to screenshot the desktop, switch to an empty workspace
   (`hyprctl dispatch "hl.dsp.focus({ workspace = 4, on_current_monitor = true })"`) and back.
 - Pill hand-off: each DesktopScreen publishes its open (hero/rail) card rects to
-  `DeskState.open[screen]`; on an empty workspace the screen's IslandView drops chips whose
+  `DeskState.openRects[screen]`; on an empty workspace the screen's IslandView drops chips whose
   `deskCard` is open (`engine.specWithout`) and flies ghost chips between dock and card
   (280 ms, 40 ms stagger, card flashes on landing). Glances with a `cardId` whose card is on
   the focused empty desktop are skipped (`engine.handedCards`) and flash the card instead.

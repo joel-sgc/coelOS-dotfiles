@@ -2,6 +2,7 @@ pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../../modes"
 
 // What you've done to the desktop's cards, kept in widgets.json (COEL_DATA_DIR
 // overrides the folder): `min` {id: true} = minimized by you (always shelved),
@@ -14,16 +15,39 @@ Singleton {
   property string focusId: ""
   property var min: ({})
   property var pin: ({})
+  property bool loaded: false
+
+  // The mode's own pins (Modes.pinnedCards) come back each time that mode
+  // begins: if you minimized one while in it, entering the mode again (or a
+  // restart, or adding it in settings.toml) un-minimizes it. Layout.js keeps
+  // them on the desktop otherwise.
+  function restoreModePins() {
+    if (!loaded) return;
+    const ids = Modes.pinnedCards.filter(id => min[id]);
+    if (!ids.length) return;
+    const m = Object.assign({}, min);
+    for (const id of ids) delete m[id];
+    min = m;
+    save();
+  }
+  Connections {
+    target: Modes
+    function onModeChanged() { st.restoreModePins(); }
+    function onPinnedCardsChanged() { st.restoreModePins(); }
+  }
+  onLoadedChanged: restoreModePins()
 
   // The hand-off with the pill (Desktop Board "the travel"): per screen name, the
   // cards open on that desktop (hero/rail, not the shelf) with their rects in
   // screen coordinates. The pill drops those activities' chips while the screen's
   // workspace is empty, and flies them in and out.
-  property var open: ({})
+  // (Not `open`: that name is the open(id, size) function below, and a property
+  // of the same name hides it.)
+  property var openRects: ({})
   function publish(screenName, rects) {
-    const o = Object.assign({}, open);
+    const o = Object.assign({}, openRects);
     o[screenName] = rects;
-    open = o;
+    openRects = o;
   }
   // The morning greeting (desktop/Greeting.qml): 0 none, 1 lines in (cards
   // hidden), 2 cards fade and rise in (hero first, 40 ms apart), 3 shelf and mode
@@ -87,7 +111,7 @@ Singleton {
     onFileChanged: reload()
     onLoaded: {
       const t = text();
-      if (t === st.lastSaved) return;
+      if (t === st.lastSaved) { st.loaded = true; return; }
       try {
         const j = JSON.parse(t);
         st.min = j && typeof j.min === "object" && j.min ? j.min : {};
@@ -95,6 +119,8 @@ Singleton {
       } catch (e) {
         console.warn("desktop: widgets.json is not valid JSON, ignoring it:", e);
       }
+      st.loaded = true;
     }
+    onLoadFailed: st.loaded = true   // no widgets.json yet
   }
 }

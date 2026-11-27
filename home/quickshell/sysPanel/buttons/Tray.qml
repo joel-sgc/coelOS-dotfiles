@@ -74,6 +74,7 @@ RowLayout {
                 root.openPopup = "";
               } else {
                 root.trayMenuItem = trayItem.modelData;
+                root.popupOriginX = trayItem.mapToItem(null, trayItem.width / 2, 0).x;
                 root.openPopup = "tray";
               }
             } else {

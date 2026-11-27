@@ -37,6 +37,8 @@ Item {
   // its popup is open, same as the hover background, not just on hover
   // (matches Clock.qml's own `active` and the mock's {{ xBtnBg }} pattern).
   property bool active: false
+  // The dropdown grows out of this button (Popup.qml reads root.popupOriginX).
+  onActiveChanged: if (active) root.popupOriginX = mapToItem(null, width / 2, 0).x
   // Per-button state tinting (battery low/charging, muted volume, offline
   // network...); defaults to the normal foreground.
   property color iconColor: root.fgColor

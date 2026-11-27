@@ -6,12 +6,32 @@ import "../../widgets"
 
 // Calendar events for the desktop: hand-written events.json plus what
 // coel-gcal-sync writes to gcal-events.json, both {date, start, end, title,
-// where, cal}. Colors per `cal` match the panel's calendar dropdown.
+// where, cal}. Event colors (colorOf) are shared with the panel's calendar
+// dropdown.
 Singleton {
   id: root
 
+  // An event's color: per feed (`cal`, the gcal-url label), except classes,
+  // which get one color per title, since every meeting of a class repeats it.
+  // Repeating class titles take classPalette in order of how often they occur
+  // (ties by title), so the main classes keep distinct, stable colors; one-off
+  // class entries share orange. Yellow is left out: it's the google feed's.
   readonly property var calColors: ({ work: Pal.blue, personal: Pal.purple, health: Pal.green, google: Pal.yellow, "class": Pal.red })
-  function colorOf(cal) { return calColors[cal] || Pal.blue; }
+  readonly property var classPalette: [Pal.red, Pal.blue, Pal.green, Pal.purple, Pal.cyan, Pal.orange]
+  function titleKey(t) { return String(t || "").trim().toLowerCase(); }
+  readonly property var classColors: {
+    const n = {};
+    for (const e of all) if (e.cal === "class") { const k = titleKey(e.title); n[k] = (n[k] || 0) + 1; }
+    const repeating = Object.keys(n).filter(k => n[k] > 1).sort((a, b) => n[b] - n[a] || a.localeCompare(b));
+    const out = {};
+    repeating.forEach((k, i) => out[k] = classPalette[i % classPalette.length]);
+    return out;
+  }
+  function colorOf(e) {
+    if (!e) return Pal.blue;
+    if (e.cal === "class") return classColors[titleKey(e.title)] || Pal.orange;
+    return calColors[e.cal] || Pal.blue;
+  }
 
   property var events: []
   property var gcalEvents: []
@@ -75,7 +95,7 @@ Singleton {
     for (let i = 0; i < 7; i++) {
       const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() - dow + i), k = dkey(d);
       const cols = [];
-      for (const e of (byDay[k] || [])) { const c = String(colorOf(e.cal)); if (cols.indexOf(c) < 0) cols.push(c); }
+      for (const e of (byDay[k] || [])) { const c = String(colorOf(e)); if (cols.indexOf(c) < 0) cols.push(c); }
       out.push({ key: k, dow: ["mo", "tu", "we", "th", "fr", "sa", "su"][i], day: d.getDate(),
                  isToday: k === todayKey, isSel: k === selKey, colors: cols.slice(0, 4) });
     }

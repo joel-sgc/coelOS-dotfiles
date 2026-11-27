@@ -97,6 +97,9 @@ SUITES = [
     Suite("overview-layout", "Quickshell: workspace overview layout logic (Node)", "quickshell", "node", "quickshell/layout.test.js",
           cmds=("node",), nix=("nodejs",)),
 
+    Suite("desk-layout", "Quickshell: desktop card layout (recipes, pins, mode pins) (Node)", "quickshell", "node",
+          "quickshell/desk-layout.test.js", cmds=("node",), nix=("nodejs",)),
+
     Suite("session-hub", "Session hub / VT guard / greetd (NixOS VM test, minutes)", "nixos", "nixos", "nixos/session-hub-test.nix",
           ("slow",), cmds=("nix",), timeout=1800,
           command=("nix", "build", "--impure", "--no-link", "--print-out-paths", "--expr",

@@ -19,6 +19,8 @@ Item {
   id: bellRoot
 
   property bool active: false
+  // The dropdown grows out of this button (Popup.qml reads root.popupOriginX).
+  onActiveChanged: if (active) root.popupOriginX = mapToItem(null, width / 2, 0).x
   property int unreadCount: 0
   property bool dnd: false
   signal clicked()

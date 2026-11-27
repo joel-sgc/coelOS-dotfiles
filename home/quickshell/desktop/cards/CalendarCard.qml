@@ -95,7 +95,7 @@ CardFrame {
         Layout.fillWidth: true
         spacing: 8
         Mono { Layout.preferredWidth: 48; text: parent.e.start || "all day"; color: Pal.muted }
-        Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 14; radius: 1; color: card.cd.colorOf(parent.e.cal) }
+        Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 14; radius: 1; color: card.cd.colorOf(parent.e) }
         Mono { Layout.fillWidth: true; text: parent.e.title || ""; elide: Text.ElideRight }
       }
     }

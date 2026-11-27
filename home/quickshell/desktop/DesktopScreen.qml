@@ -40,6 +40,7 @@ PanelWindow {
     available: available,
     printerActive: Modes.printingNow,
     musicActive: Music.active,
+    modePinned: Modes.pinnedCards,
     user: { min: DeskState.min, pin: DeskState.pin }
   })
   readonly property var heights: ({
@@ -49,7 +50,7 @@ PanelWindow {
   })
   readonly property var placed: L.place(lay, width, height, heights, edges)
 
-  // Tell the pill which cards this desktop has open, and where (DeskState.open).
+  // Tell the pill which cards this desktop has open, and where (DeskState.openRects).
   readonly property var openRects: {
     const o = {};
     if (!shown) return o;

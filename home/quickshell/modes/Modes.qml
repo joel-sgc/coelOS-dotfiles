@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Mpris
+import "../desktop/Layout.js" as DeskLayout
 
 // Automatic modes: what you're doing right now, inferred, with a manual override.
 // Design: example/Desktop Board.dc.html ("Seven modes", "who wins").
@@ -19,7 +20,8 @@ import Quickshell.Services.Mpris
 //   evening    19:00 to 04:00
 //   morning    the default ("default" after 12:00)
 //
-// First match in `order` wins. Per-mode options in settings.toml [modes.<name>].
+// First match in `order` wins. Per-mode options in settings.toml [modes.<name>]
+// (enabled, dnd, sounds, pinned: desktop cards always shown in that mode).
 // A manual pick holds `until` the inferred mode next changes ("event"), for an
 // hour ("hour"), or until changed again ("forever"); the last two survive reloads
 // (modes.json in the data dir).
@@ -258,6 +260,14 @@ Singleton {
   }
 
   readonly property string mode: override ? override.mode : inferred
+  // Desktop cards this mode always shows: by default the ones its layout puts on
+  // the desktop (the Desktop Board's recipe, desktop/Layout.js); settings.toml
+  // [modes.<name>] pinned = [...] replaces that list ([] for none). DeskState
+  // un-minimizes them each time the mode begins.
+  readonly property var pinnedCards: {
+    const c = config[mode];
+    return c && Array.isArray(c.pinned) ? c.pinned.map(String) : DeskLayout.recipeCards(mode);
+  }
   readonly property bool manual: !!override
   readonly property bool dnd: !!(config[mode] && config[mode].dnd)
   readonly property string label: mode === "morning" && new Date(now).getHours() >= 12 ? "default" : info[mode].label

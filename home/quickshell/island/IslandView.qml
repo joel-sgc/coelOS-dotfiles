@@ -28,11 +28,11 @@ PanelWindow {
 
   // ---- hand-off with the desktop (Desktop Board "the travel") ----
   // While this monitor's workspace is empty, an activity whose card the desktop
-  // has open (DeskState.open) leaves the pill: its chip flies into the card. When
+  // has open (DeskState.openRects) leaves the pill: its chip flies into the card. When
   // a window opens it flies back. Interrupts always stay on the pill.
   property bool emptyWs: false
   property bool monitorFocused: false
-  readonly property var deskOpen: (screen && DeskState.open[screen.name]) || ({})
+  readonly property var deskOpen: (screen && DeskState.openRects[screen.name]) || ({})
   readonly property var handedCards: emptyWs ? Object.keys(deskOpen) : []
   Binding { when: view.monitorFocused && !!view.engine; target: view.engine; property: "handedCards"; value: view.handedCards }
   property var flyingBack: []   // chip ids on their way back (kept off the pill until they land)

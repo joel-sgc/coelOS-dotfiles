@@ -102,7 +102,7 @@ FocusScope {
     onLoaded: {
       item.size = Qt.binding(() => slot.shownSize);
       item.flavor = Qt.binding(() => slot.shownFlavor);
-      item.pinned = Qt.binding(() => !!DeskState.pin[slot.cardId]);
+      item.pinned = Qt.binding(() => !!DeskState.pin[slot.cardId]);   // by you (p); mode pins aren't badged
       item.focused = Qt.binding(() => slot.activeFocus && DeskState.focusId === slot.cardId);
       item.width = Qt.binding(() => slot.width);
       item.minToggled.connect(slot.toggleMin);

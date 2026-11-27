@@ -80,9 +80,15 @@ pack = ""
 # morning/default. Each mode picks the desktop layout. Override from the desktop's
 # mode chip (M) or the launcher (actions > mode).
 # Every mode takes `enabled`, `dnd` (silence notification toasts; critical
-# ones and island interrupts still show) and `sounds` (UI sounds; off in class
-# by default, on elsewhere). printing, music and evening default to dnd = false
-# and can be listed here too, e.g. [modes.evening] from = 20.
+# ones and island interrupts still show), `sounds` (UI sounds; off in class
+# by default, on elsewhere) and `pinned`: desktop cards always shown in that
+# mode. By default each mode pins the cards its layout shows (the Desktop
+# Board's); pinned = ["kanban", "pomo"] replaces that list, pinned = [] pins
+# none. Pinned cards stay where the mode puts them (or top of the right column);
+# minimizing one hides it until you next enter the mode.
+# Cards: next weather kanban pomo printer music phone server calendar.
+# printing, music and evening default to dnd = false and can be listed here
+# too, e.g. [modes.evening] from = 20.
 [modes.class]
 enabled = true
 dnd = true
